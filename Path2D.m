@@ -1,4 +1,4 @@
-classdef Path2D
+classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %PATH2D		Represent 2D paths.
 %	This class is abstract and can not be instantiated!
 %	
@@ -18,6 +18,9 @@ classdef Path2D
 %	resample - Resample path.
 %	numel - Number of path elements.
 % 
+%	Path2D visualization methods:
+%	plot - Plot the path.
+% 
 %	Path2D static methods:
 %	pp2Path - Construct path object from piecewise polynomial.
 %	xy2Path - Construct path object from cartesian coordinates.
@@ -30,12 +33,51 @@ classdef Path2D
 	end
 	
 	
+	
 	methods
 		function obj = Path2D()
 		%PATH2D		Construct a PATH2D class instance.
 			
 		end%Constructor
+		
+		
+		function [h,ax] = plot(objORax, varargin)
+		%	PLOT(OBJ) plots the path OBJ in terms of x over y.
+		%	
+		%	PLOT(OBJ,S) additionally applies the line specification S.
+		%
+		%	PLOT(...,NAME,VALUE) specifies line properties using one or
+		%	more Name,Value pair arguments.
+		%
+		%	PLOT(AX,...) plots into the axes with handle AX.
+		%	
+		%	[H,AX] = PLOT(...) returns the handle H to lineseries objects
+		%	and axes handle AX.
+		%	
+		%	The line specification S is a character string supported by the
+		%	standard PLOT command. For example
+		%		PLOT(OBJ, 'LineWidth',2, 'Color',[.6 0 0]) 
+		%	will plot a dark red line  using a line width of 2 points.
+		%
+			
+			if isa(objORax, 'matlab.graphics.axis.Axes')
+				ax = objORax;
+				obj = varargin{1};
+				opts = varargin(2:end);
+			elseif isa(objORax, 'Path2D')
+				ax = gca;
+				obj = objORax;
+				opts = varargin;
+			else
+				error('This should not happen!')
+			end%if
+			
+			wp = getWaypoints(obj);
+			[h,ax] = plot(ax, wp, opts{:});
+			
+		end%fcn
 	end%methods
+	
 	
 	methods (Abstract)
 		
@@ -69,10 +111,25 @@ classdef Path2D
 		%	S = GETPATHLENGTH(OBJ)
 		s = getPathLength(obj)
 		
+		% GETWAYPOINTS	Get sampled path waypoints.
+		%	WP = GETWAYPOINTS(OBJ,N) returns WAYPOINTS object WP containing
+		%	N waypoints.
+		wp = getWaypoints(obj, N)
+		
 		% POINTPROJECTION	Point projection.
+		%	Q = POINTPROJECTION(OBJ,POI) returns the orthogonal projection
+		%	Q of POI onto the path OBJ.
+		%
+		%	[Q,IDX,LAMBDA] = POINTPROJECTION(OBJ,POI) also returns the path
+		%	segment IDX and path path parameter LAMBDA related to Q.
 		[Q,idx,lambda] = pointProjection(obj, poi)
 		
 		% RESAMPLE	Resample path.
+		%	OBJ = RESAMPLE(OBJ,N) resamples path OBJ over path length to N
+		%	sample points.
+		%
+		%	OBJ = RESAMPLE(__,ARGS) specify interpolation settings via
+		%	ARGS.
 		obj = resample(obj, N, varargin)
 		
 		% NUMEL		Number of path elements.
@@ -82,6 +139,7 @@ classdef Path2D
 		N = numel(obj)
 		
 	end%methods
+	
 	
 	methods (Abstract, Static)
 		
