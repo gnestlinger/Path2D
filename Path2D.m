@@ -13,9 +13,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %	append - Append paths.
 %	cart2frenet - Convert cartesian point to frenet coordinates.
 %	frenet2cart - Convert frenet point to cartesian coordinates.
-%	getPathLength - Get lengths of path segments.
+%	getPathLength - Get path length.
+%	getPathLengths - Get lengths of path segments.
 %	pointProjection - Point projection on path.
-%	resample - Resample path.
+%	interp - Interpolate path.
 %	numel - Number of path elements.
 % 
 %	Path2D visualization methods:
@@ -108,13 +109,26 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 		[x,y] = frenet2cart(obj, s, d)
 		
 		% GETPATHLENGTH		Path length.
-		%	S = GETPATHLENGTH(OBJ)
+		%	S = GETPATHLENGTH(OBJ) returns the length S of the path OBJ.
 		s = getPathLength(obj)
+        
+        % GETPATHLENGTHS    Path segment lengths.
+		%	S = GETPATHLENGTHS(OBJ) get the lengths S of each segment of
+		%	path OBJ.
+		s = getPathLengths(obj)
 		
 		% GETWAYPOINTS	Get sampled path waypoints.
 		%	WP = GETWAYPOINTS(OBJ,N) returns WAYPOINTS object WP containing
 		%	N waypoints.
 		wp = getWaypoints(obj, N)
+        
+        % INTERP    Interpolate path.
+		%	OBJ = INTERP(OBJ,TAU) interpolate path at path parameter TAU.
+		%
+		%	OBJ = INTERP(__,ARGS) specify interpolation settings via ARGS.
+        %
+        %   See also INTERP1.
+		obj = resample(obj, tau, varargin)
 		
 		% POINTPROJECTION	Point projection.
 		%	Q = POINTPROJECTION(OBJ,POI) returns the orthogonal projection
@@ -123,14 +137,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 		%	[Q,IDX,LAMBDA] = POINTPROJECTION(OBJ,POI) also returns the path
 		%	segment IDX and path path parameter LAMBDA related to Q.
 		[Q,idx,lambda] = pointProjection(obj, poi)
-		
-		% RESAMPLE	Resample path.
-		%	OBJ = RESAMPLE(OBJ,N) resamples path OBJ over path length to N
-		%	sample points.
-		%
-		%	OBJ = RESAMPLE(__,ARGS) specify interpolation settings via
-		%	ARGS.
-		obj = resample(obj, N, varargin)
 		
 		% NUMEL		Number of path elements.
 		%	N = NUMEL(OBJ) returns the number of path elements, e.g. 
