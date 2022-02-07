@@ -1,164 +1,362 @@
 classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
-%PATH2D		Represent 2D paths.
-%	This class is abstract and can not be instantiated!
-%	
-%	Represent paths in the planar x/y coordinate frame. It provides path
-%	operations that can be especially usefull for automated driving and
-%	robotics applications.
+%PATH2D        Represent 2D paths.
+%   This class is abstract and can not be instantiated!
+%   
+%   Represent paths in the planar x/y coordinate frame utilizing an
+%   analytical representation [x(tau); y(tau)]. It provides path operations
+%   that can be especially usefull for automated driving and robotics
+%   applications.
 % 
-%	Path2D properties:
-%	IsCircuit - Indicates if path is a circuit.
+%   Path2D properties:
+%   IsCircuit - Indicates if path is a circuit.
 % 
-%	Path2D methods:
-%	append - Append paths.
-%	cart2frenet - Convert cartesian point to frenet coordinates.
-%	frenet2cart - Convert frenet point to cartesian coordinates.
-%	getPathLength - Get path length.
-%	getPathLengths - Get lengths of path segments.
-%	pointProjection - Point projection on path.
-%	interp - Interpolate path.
-%	numel - Number of path elements.
+%   Path2D methods:
+%   append - Append paths.
+%   cart2frenet - Convert cartesian point to frenet coordinates.
+%   eval - Evaluate path at path parameter.
+%   frenet2cart - Convert frenet point to cartesian coordinates.
+%   getDomain - Get the domain of the path.
+%   length - Get path length.
+%   getPathLengths - Get lengths of path segments.
+%   isempty - Check if path is empty.
+%   pointProjection - Point projection on path.
+%   numel - Number of path elements.
+%   reverse - Reverse path.
+%   rotate - Rotate path.
+%   shift - Shift path.
 % 
-%	Path2D visualization methods:
-%	plot - Plot the path.
+%   Path2D visualization methods:
+%   plot - Plot the path.
+%   plotG2 - Plot path, heading and curvature.
+%   plottangent - Plot path and tangents.
 % 
-%	Path2D static methods:
-%	pp2Path - Construct path object from piecewise polynomial.
-%	xy2Path - Construct path object from cartesian coordinates.
+%   Path2D static methods:
+%   ll2Path - Construct path from latitude/longitude coordinates.
+%   pp2Path - Construct path object from piecewise polynomial.
+%   xy2Path - Construct path object from cartesian coordinates.
 %
-%	See also .
+%   See also .
 
-	properties
-		% ISCIRCUIT - Logical indicating if path is a circuit.
-		IsCircuit = false
-	end
-	
-	
-	
-	methods
-		function obj = Path2D()
-		%PATH2D		Construct a PATH2D class instance.
-			
-		end%Constructor
-		
-		
-		function [h,ax] = plot(objORax, varargin)
-		%	PLOT(OBJ) plots the path OBJ in terms of x over y.
-		%	
-		%	PLOT(OBJ,S) additionally applies the line specification S.
-		%
-		%	PLOT(...,NAME,VALUE) specifies line properties using one or
-		%	more Name,Value pair arguments.
-		%
-		%	PLOT(AX,...) plots into the axes with handle AX.
-		%	
-		%	[H,AX] = PLOT(...) returns the handle H to lineseries objects
-		%	and axes handle AX.
-		%	
-		%	The line specification S is a character string supported by the
-		%	standard PLOT command. For example
-		%		PLOT(OBJ, 'LineWidth',2, 'Color',[.6 0 0]) 
-		%	will plot a dark red line  using a line width of 2 points.
-		%
-			
-			if isa(objORax, 'matlab.graphics.axis.Axes')
-				ax = objORax;
-				obj = varargin{1};
-				opts = varargin(2:end);
-			elseif isa(objORax, 'Path2D')
-				ax = gca;
-				obj = objORax;
-				opts = varargin;
-			else
-				error('This should not happen!')
-			end%if
-			
-			wp = getWaypoints(obj);
-			[h,ax] = plot(ax, wp, opts{:});
-			
-		end%fcn
-	end%methods
-	
-	
-	methods (Abstract)
-		
-		% APPEND	Append paths.
-		%	OBJ = append(OBJ0,OOBJ1,...,OBJN) appends paths OBJ to OBJN in
-		%	the given order creating path OBJ.
-		obj = append(obj0, varargin)
-		
-		% CART2FRENET	Cartesian point to frenet with respect to path.
-		%	SD = CART2FRENET(OBJ,XY) converts point XY in cartesian
-		%	coordinates to frenet coordinates SD with respect to the path
-		%	OBJ. Point XY is a two-element vector .
-		%
-		%	[SD,Q,IDX,LAMBDA] = CART2FRENET(___) also return 
-		%	 - The cartesian point Q that corresponds to the frenet point SD.
-		%	 - An index IDX indicating the path segment Q relates to.
-		%	 - The path parameter LAMBDA.
-		[sd,Q,idx,lambda] = cart2frenet(obj, cart)
-		
-		% FRENET2CART	Frenet point to cartesian with respect to path.
-		%   XY = FRENET2CART(OBJ,SD) converts points SD in frenet
-		%   coordinates to cartesian coordinates XY with respect to the
-		%   path OBJ. Matrix SD is of size n-by-2.
-		% 
-		%	[SD,Q,IDX] = FRENET2CART(___) returns 
-		%	 - The Point Q that corresponds to the frenet points SD.
-		%	 - An index IDX referring to the path segment Q relates to.
-		[x,y] = frenet2cart(obj, s, d)
-		
-		% GETPATHLENGTH		Path length.
-		%	S = GETPATHLENGTH(OBJ) returns the length S of the path OBJ.
-		s = getPathLength(obj)
+    properties
+        % ISCIRCUIT - Logical indicating if path is a circuit.
+        IsCircuit = false
+    end
+    
+    
+    
+    methods
         
-        % GETPATHLENGTHS    Path segment lengths.
-		%	S = GETPATHLENGTHS(OBJ) get the lengths S of each segment of
-		%	path OBJ.
-		s = getPathLengths(obj)
-		
-		% GETWAYPOINTS	Get sampled path waypoints.
-		%	WP = GETWAYPOINTS(OBJ,N) returns WAYPOINTS object WP containing
-		%	N waypoints.
-		wp = getWaypoints(obj, N)
+        function obj = Path2D()
+        %PATH2D        Construct a PATH2D class instance.
+            
+        end%Constructor
         
-        % INTERP    Interpolate path.
-		%	OBJ = INTERP(OBJ,TAU) interpolate path at path parameter TAU.
-		%
-		%	OBJ = INTERP(__,ARGS) specify interpolation settings via ARGS.
+        function [h,ax] = plot(objORax, varargin)
+        %PLOT   Plot the path.
+        %    PLOT(OBJ) plots the path OBJ in terms of x over y.
+        %    
+        %    PLOT(OBJ,S) additionally applies the line specification S.
         %
-        %   See also INTERP1.
-		obj = resample(obj, tau, varargin)
-		
-		% POINTPROJECTION	Point projection.
-		%	Q = POINTPROJECTION(OBJ,POI) returns the orthogonal projection
-		%	Q of POI onto the path OBJ.
-		%
-		%	[Q,IDX,LAMBDA] = POINTPROJECTION(OBJ,POI) also returns the path
-		%	segment IDX and path path parameter LAMBDA related to Q.
-		[Q,idx,lambda] = pointProjection(obj, poi)
-		
-		% NUMEL		Number of path elements.
-		%	N = NUMEL(OBJ) returns the number of path elements, e.g. 
-		%	 - The number of waypoints for path defined by waypoints.
-		%	 - The number of segments for path defined as a spline.
-		N = numel(obj)
-		
-	end%methods
-	
-	
-	methods (Abstract, Static)
-		
-		% PP2PATH	Path object from piecewise polynomial.
-		%	OBJ = PP2PATH(PP,TAU)
-		%
-		%	See also MKPP.
-		obj = pp2Path(pp, tay, polyDeg)
-		
-		% XY2PATH	Path object from cartesian coordinates.
-		%	OBJ = XY2PATH(X,Y)
-		obj = xy2Path(x, y)
-		
-	end%methods
-	
+        %    PLOT(...,NAME,VALUE) specifies line properties using one or
+        %    more Name,Value pair arguments.
+        %
+        %    PLOT(AX,...) plots into the axes with handle AX.
+        %    
+        %    [H,AX] = PLOT(...) returns the handle H to lineseries objects
+        %    and axes handle AX.
+        %    
+        %    The line specification S is a character string supported by the
+        %    standard PLOT command. For example
+        %        PLOT(OBJ, 'LineWidth',2, 'Color',[.6 0 0]) 
+        %    will plot a dark red line  using a line width of 2 points.
+        %
+        %   See also PLOTG2, PLOTTANGENT.
+            
+            if isa(objORax, 'matlab.graphics.axis.Axes')
+                ax = objORax;
+                obj = varargin{1};
+                opts = varargin(2:end);
+            elseif isa(objORax, 'Path2D')
+                ax = gca;
+                obj = objORax;
+                opts = varargin;
+            else
+                error('This should not happen!')
+            end%if
+
+            [h,ax] = basicPlot(ax, obj, opts{:});
+            
+            % Apply plot styles
+            grid(ax, 'on');
+            axis(ax, 'equal');
+            ylabel(ax, 'y (m)');
+            xlabel(ax, 'x (m)');
+            
+        end%fcn
+        
+        function [h,ax] = plotG2(varargin)
+        %PLOTG2     Plot path, heading and curvature.
+        %
+        %    For Syntax see:
+        %    See also PATH2D/PLOT.
+            
+            % The first argument is either an axes handle or a WAYPOINTS
+            % object:
+            if isa(varargin{1}, 'matlab.graphics.axis.Axes')
+                ax = varargin{1};
+                obj = varargin{2};
+                opts = varargin(3:end);
+            else 
+                ax = [];
+                obj = varargin{1};
+                opts = varargin(2:end);
+            end%if
+            
+            if isempty(ax) || any(~ishghandle(ax))
+                ax = [subplot(2, 2, [1,3]); subplot(2, 2, 2); subplot(2, 2, 4)];
+            elseif numel(ax) < 3
+                error('If specified, three axes handles are required!');
+            end%if
+            
+            N = builtin('numel', obj);
+            h = gobjects(N, 3);
+            h(:,1) = plot(ax(1), obj, opts{:});
+            npStatus = get(ax(2:3), 'NextPlot');
+%             set(ax(2:3), 'NextPlot','replace');
+            for i = 1:N
+                if i == 2
+                    set(ax(2:3), 'NextPlot','add');
+                end
+                
+                [head,curv] = getGDer(obj(i));
+                s = getPathLengths(obj(i));
+                h(i,2) = plot(ax(2), s, head, opts{:});
+                h(i,3) = plot(ax(3), s, curv, opts{:});
+            end%for
+            set(ax(2:3), {'NextPlot'},npStatus);
+            
+            grid(ax(2), 'on');
+            ylabel(ax(2), 'Heading (rad)');
+            grid(ax(3), 'on');
+            xlabel(ax(3), 'Length (m)');
+            ylabel(ax(3), 'Curvature (1/m)');
+            
+            % linkaxes(_, 'x') sets axes XLimMode to manual which can cause
+            % data of subsequent calls of this method to be not completely
+            % shown. Therefore reset axes limit mode to 'auto'.
+            linkaxes(ax(2:3), 'x'); 
+            set(ax, 'XlimMode', 'auto');
+            
+        end%fcn
+        
+        function [h,ax] = plottangent(obj, tau, varargin) 
+        %PLOTTANGENT    Plot path and tangents.
+        %    PLOTTANGENT(OBJ,TAU) plots the path (x,y) and the tangents at
+        %    the path paraemters TAU and highlights the path coordinates at
+        %    TAU.
+        %    
+        %    PLOTTANGENT(...,NAME,VALUE) specifies line properties using
+        %    one or more Name,Value pair arguments.
+        %    
+        %    [H,AX] = PLOTTANGENT(...) returns a handle array H to
+        %    lineseries objects and the axes handle AX. Here, H(1,1) is the
+        %    path-handle, H(i+1,1) and H(i+1,2) the marker- and the
+        %    tangent-handle of TAU(i) respectively.
+        %    
+        %    See also PATH2D/PLOT, PATH2D/PLOTDIFF.
+            
+            %%% Handle input arguments
+            % Check class input ind
+            if ~isnumeric(tau)
+                error('Input argument IND has to be numeric.');
+            end%if
+            
+            % Check dimension of input ind
+            if ~isempty(tau)
+                error('Input argument IND must not be empty.');
+            end%if
+            
+            % Apply plot options if unspecified
+            if nargin < 3
+                opts = {};
+            else
+                opts = varargin;
+            end%if
+            optsPath = {'.', 'LineWidth',1};
+            optsMark = {'Color','k', 'Marker','x', 'MarkerSize',8};
+            optsTang = {'--', 'Color','k', 'LineWidth',0.5};
+            
+            % Initialize handle to graphics objects
+            h = gobjects(1+numel(tau), 2);
+            
+            % Plot the waypoints and get corresponding axis limtis
+            [h(1,1),ax] = plot(obj, optsPath{:}, opts{:});
+            xLimits = xlim;
+            yLimits = ylim;
+            
+            % Check if some path parameters are out of range
+            [tauL,tauU] = getDomain(obj);
+            tauExceeds = (tau > tauU) | (tau < tauL);
+            if any(tauExceeds)
+                warning('PATH2D:plottangent:tauOutOfRange', ...
+                    'Path parameters exceeding domain of path were discarded!')
+                tau(tauExceeds) = [];
+            end%if
+            
+            % Plot the tangents and the corresponding waypoints
+            [x,y,head] = eval(obj, tau);
+            hold on
+            for i = 1:numel(x)
+                xi = x(i);
+                yi = y(i);
+                hi = head(i);
+                
+                % Marker of tangent point
+                h(i+1,1) = plot(xi, yi, optsMark{:}, opts{:});
+                
+                % Length of tangent
+                [r1,r2] = scaleTangentToAxis(xLimits, yLimits, [xi,yi], hi);
+                
+                % Start/end point of tangent
+                Pstart  = [xi + r2*cos(hi); yi + r2*sin(hi)];
+                Pstop   = [xi + r1*cos(hi); yi + r1*sin(hi)];
+                
+                % Draw the tangent using N arrows sticked together
+                N = 25;
+                xq = linspace(Pstart(1), Pstop(1), N);
+                yq = linspace(Pstart(2), Pstop(2), N);
+                % quiver would draw one arrow at every point of xq/yq of
+                % length uq/vq; since the last element of xq/yq is the end
+                % point, no arrow has to be drawn there
+                xq = xq(1:end-1);
+                yq = yq(1:end-1);
+                uq = ones(size(xq))*(Pstop(1)-Pstart(1))/N;
+                vq = ones(size(yq))*(Pstop(2)-Pstart(2))/N;
+                scale = 0;
+                h(i+1,2) = quiver(xq, yq, uq, vq, scale, optsTang{:}, opts{:});
+                
+                % Disable legend entries for tangents
+                set(get(get(h(i+1, 1), 'Annotation'), 'LegendInformation'), ...
+                    'IconDisplayStyle','off');
+                set(get(get(h(i+1, 2), 'Annotation'), 'LegendInformation'), ...
+                    'IconDisplayStyle','off');
+                
+            end%for
+            hold off
+            
+            % Set the axis limtis corresponding to waypointss
+            axis([xLimits, yLimits]);
+            
+        end%fcn
+
+    end%methods
+    
+    
+    methods (Abstract)
+        
+        % APPEND    Append paths.
+        %   OBJ = append(OBJ0,OOBJ1,...,OBJN) appends paths OBJ to OBJN in
+        %   the given order creating path OBJ.
+        obj = append(obj0, varargin)
+        
+        % CART2FRENET    Cartesian point to frenet with respect to path.
+        %   SD = CART2FRENET(OBJ,XY) converts point XY in cartesian
+        %   coordinates to frenet coordinates SD with respect to the path
+        %   OBJ. Point XY is a two-element vector .
+        %
+        %   [SD,Q,IDX,LAMBDA] = CART2FRENET(___) also return 
+        %    - The cartesian point Q that corresponds to the frenet point SD.
+        %    - An index IDX indicating the path segment Q relates to.
+        %    - The path parameter LAMBDA.
+        [sd,Q,idx,lambda] = cart2frenet(obj, xy)
+        
+        % EVAL  Evaluate path at path parameters.
+        %   [X,Y] = EVAL(OBJ,TAU) evaluates analytical path definition at
+        %   path parameters TAU to return the corresponding waypoints
+        %   (X,Y).
+        %
+        %   [__,HEAD,CURV] = EVAL(___) also returns heading HEAD and
+        %   curvature CURV.
+        [x,y,head,curv] = eval(obj, tau)
+        
+        % FRENET2CART    Frenet point to cartesian with respect to path.
+        %   XY = FRENET2CART(OBJ,SD) converts points SD in frenet
+        %   coordinates to cartesian coordinates XY with respect to the
+        %   path OBJ. Matrix SD is of size n-by-2.
+        % 
+        %   [XY,Q,IDX] = FRENET2CART(___) returns 
+        %    - The Point Q that corresponds to the frenet points SD.
+        %    - An index IDX referring to the path segment Q relates to.
+        [xy,Q,idx] = frenet2cart(obj, sd)
+        
+        % GETDOMAIN     Get the domain of the path.
+        %   [TAUL,TAUU] = GETDOMAIN(OBJ) returns the lower and upper domain
+        %   value TAUL and TAUU respectively.
+        [tauL,tauU] = getDomain(obj);
+        
+        % LENGTH    Path length.
+        %   S = LENGTH(OBJ) returns the length S of the path OBJ.
+        s = length(obj)
+        
+        % GETPATHLENGTHS    Get path segment lengths.
+        %   S = GETPATHLENGTHS(OBJ) get the lengths S of each segment of
+        %   path OBJ.
+        s = getPathLengths(obj)
+        
+        % ISEMPTY   Check if path is empty
+        %   FLAG = ISEMPTY(OBJ) returns true if the path contains no path
+        %   elements, i.e. numel(OBJ) == 0, and false otherwise.
+        %
+        %   See also NUMEL.
+        flag = isempty(obj)
+        
+        % POINTPROJECTION    Point projection.
+        %   Q = POINTPROJECTION(OBJ,POI) returns the orthogonal projection
+        %   Q of POI onto the path OBJ.
+        %
+        %   [Q,IDX,LAMBDA] = POINTPROJECTION(OBJ,POI) also returns the path
+        %   segment IDX and path path parameter LAMBDA related to Q.
+        [Q,idx,lambda] = pointProjection(obj, poi)
+            
+        % NUMEL     Number of path elements.
+        %   N = NUMEL(OBJ) returns the number of path elements, e.g. 
+        %    - The number of waypoints for polygon path.
+        %    - The number of segments for a spline path.
+        N = numel(obj)
+        
+        % REVERSE   Reverse path.
+        %   OBJ = REVERSE(OBJ) reverses the path's direction.
+        obj = reverse(obj)
+        
+        % ROTATE    Rotate path.
+        %   OBJ = ROTATE(OBJ,PHI) rotates the path by an angle PHI counter
+        %   clockwise.
+        obj = rotate(obj, phi)
+        
+        % SHIFT     Shift path.
+        %   OBJ = SHIFTBY(OBJ,P) shifts the path by P where P is a
+        %   two-element vector.
+        obj = shift(obj, P)
+        
+    end%methods
+    
+    
+    methods (Abstract, Static)
+        
+        % LL2PATH    Path object from LAT/LON coordinates.
+        %   OBJ = LL2PATH(LAT, LON)
+        obj = ll2Path(lat, lon)
+        
+        % PP2PATH    Path object from piecewise polynomial.
+        %    OBJ = PP2PATH(PP,TAU)
+        %
+        %    See also MKPP.
+        obj = pp2Path(pp, tay, polyDeg)
+        
+        % XY2PATH    Path object from cartesian coordinates.
+        %    OBJ = XY2PATH(X,Y)
+        obj = xy2Path(x, y)
+        
+    end%methods
+    
 end%class
