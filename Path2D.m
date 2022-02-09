@@ -16,11 +16,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   eval - Evaluate path at path parameter.
 %   frenet2cart - Convert frenet point to cartesian coordinates.
 %   getDomain - Get the domain of the path.
-%   length - Get path length.
 %   getPathLengths - Get lengths of path segments.
 %   isempty - Check if path is empty.
-%   pointProjection - Point projection on path.
+%   length - Get path length.
 %   numel - Number of path elements.
+%   pointProjection - Point projection on path.
 %   reverse - Reverse path.
 %   rotate - Rotate path.
 %   shift - Shift path.
@@ -32,8 +32,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 % 
 %   Path2D static methods:
 %   ll2Path - Construct path from latitude/longitude coordinates.
-%   pp2Path - Construct path object from piecewise polynomial.
-%   xy2Path - Construct path object from cartesian coordinates.
+%   pp2Path - Construct path from piecewise polynomial.
+%   xy2Path - Construct path from cartesian coordinates.
 %
 %   See also .
 
@@ -51,11 +51,15 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             
         end%Constructor
         
-        function [h,ax] = plot(objORax, varargin)
+        function [h,ax] = plot(varargin)
         %PLOT   Plot the path.
         %    PLOT(OBJ) plots the path OBJ in terms of x over y.
+        %
+        %    PLOT(OBJ,DTAU) specify path parameter increment to be plotted.
         %    
         %    PLOT(OBJ,S) additionally applies the line specification S.
+        %
+        %    PLOT(OBJ,DTAU,S) specify DTAU before any line specification.
         %
         %    PLOT(...,NAME,VALUE) specifies line properties using one or
         %    more Name,Value pair arguments.
@@ -68,23 +72,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %    The line specification S is a character string supported by the
         %    standard PLOT command. For example
         %        PLOT(OBJ, 'LineWidth',2, 'Color',[.6 0 0]) 
-        %    will plot a dark red line  using a line width of 2 points.
+        %    will plot a dark red line using a line width of 2 points.
         %
         %   See also PLOTG2, PLOTTANGENT.
             
-            if isa(objORax, 'matlab.graphics.axis.Axes')
-                ax = objORax;
-                obj = varargin{1};
-                opts = varargin(2:end);
-            elseif isa(objORax, 'Path2D')
-                ax = gca;
-                obj = objORax;
-                opts = varargin;
-            else
-                error('This should not happen!')
-            end%if
-
-            [h,ax] = basicPlot(ax, obj, opts{:});
+        
+            [ax,obj,dtau,opts] = parsePlotInputs(varargin{:});
+            [h,ax] = basicPlot(ax, obj, dtau, opts{:});
             
             % Apply plot styles
             grid(ax, 'on');
@@ -100,27 +94,20 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %    For Syntax see:
         %    See also PATH2D/PLOT.
             
-            % The first argument is either an axes handle or a WAYPOINTS
-            % object:
-            if isa(varargin{1}, 'matlab.graphics.axis.Axes')
-                ax = varargin{1};
-                obj = varargin{2};
-                opts = varargin(3:end);
-            else 
-                ax = [];
-                obj = varargin{1};
-                opts = varargin(2:end);
-            end%if
+            [ax,obj,dtau,opts] = parsePlotInputs(varargin{:});
             
             if isempty(ax) || any(~ishghandle(ax))
-                ax = [subplot(2, 2, [1,3]); subplot(2, 2, 2); subplot(2, 2, 4)];
+                ax = [...
+                    subplot(2, 2, [1,3]); ...
+                    subplot(2, 2, 2); ...
+                    subplot(2, 2, 4)];
             elseif numel(ax) < 3
-                error('If specified, three axes handles are required!');
+                error('Three axes handles are required!');
             end%if
             
             N = builtin('numel', obj);
             h = gobjects(N, 3);
-            h(:,1) = plot(ax(1), obj, opts{:});
+            h(:,1) = plot(ax(1), obj, dtau, opts{:});
             npStatus = get(ax(2:3), 'NextPlot');
 %             set(ax(2:3), 'NextPlot','replace');
             for i = 1:N
@@ -128,7 +115,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
                     set(ax(2:3), 'NextPlot','add');
                 end
                 
-                [head,curv] = getGDer(obj(i));
+                [~,~,head,curv] = eval(obj(i));
                 s = getPathLengths(obj(i));
                 h(i,2) = plot(ax(2), s, head, opts{:});
                 h(i,3) = plot(ax(3), s, curv, opts{:});
@@ -163,18 +150,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %    path-handle, H(i+1,1) and H(i+1,2) the marker- and the
         %    tangent-handle of TAU(i) respectively.
         %    
-        %    See also PATH2D/PLOT, PATH2D/PLOTDIFF.
+        %    See also PATH2D/PLOT, PATH2D/PLOTG2.
             
             %%% Handle input arguments
-            % Check class input ind
-            if ~isnumeric(tau)
-                error('Input argument IND has to be numeric.');
-            end%if
-            
-            % Check dimension of input ind
-            if ~isempty(tau)
-                error('Input argument IND must not be empty.');
-            end%if
+            assert(isnumeric(tau) && ~isempty(tau), ...
+                'Input argument TAU must be a non-empty numeric vector!');
             
             % Apply plot options if unspecified
             if nargin < 3
@@ -277,6 +257,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %
         %   [__,HEAD,CURV] = EVAL(___) also returns heading HEAD and
         %   curvature CURV.
+        %
+        %   [___] = EVAL(OBJ) subclass specific implementation.
         [x,y,head,curv] = eval(obj, tau)
         
         % FRENET2CART    Frenet point to cartesian with respect to path.
@@ -331,6 +313,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         % ROTATE    Rotate path.
         %   OBJ = ROTATE(OBJ,PHI) rotates the path by an angle PHI counter
         %   clockwise.
+        %
+        %   OBJ = ROTATE(OBJ) rotates the path by the negative of it's
+        %   initial slope.
         obj = rotate(obj, phi)
         
         % SHIFT     Shift path.

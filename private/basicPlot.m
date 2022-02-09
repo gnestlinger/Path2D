@@ -1,4 +1,4 @@
-function [h,axh] = basicPlot(axh, obj, varargin)
+function [h,axh] = basicPlot(axh, obj, dtau, varargin)
 %BASICPLOT  Perform basic plot operations.
 %	To be used by public plot methods to avoid multiple calls to
 %	plot styles like AXIS, TITLE, XLABEL, ...!
@@ -19,11 +19,24 @@ function [h,axh] = basicPlot(axh, obj, varargin)
             set(axh, 'NextPlot', 'add');
         end%if
         
-        [x,y] = getXY(obj(i));
+        obji = obj(i);
+        
+        if isempty(dtau)
+            [x,y] = eval(obji);
+        else
+            s = length(obji);
+            tau = 0:dtau:s;
+            if tau(end) < s
+                % Make sure to plot the terminal point
+                tau = [tau, s];
+            end
+            [x,y] = eval(obji, tau);
+        end
+        
         if strfind([varargin{:}], 'DisplayName')
             h(i) = plot(axh, x, y, varargin{:});
         else
-            name = ['(',num2str(i),') ', class(obj(i))];
+            name = ['(',num2str(i),') ', class(obji)];
             h(i) = plot(axh, x, y, varargin{:}, 'DisplayName',name);
         end%if
     end%for
