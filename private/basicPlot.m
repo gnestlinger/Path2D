@@ -20,7 +20,6 @@ function [h,axh] = basicPlot(axh, obj, dtau, varargin)
         end%if
         
         obji = obj(i);
-        
         if isempty(dtau)
             [x,y] = eval(obji);
         else
@@ -28,9 +27,10 @@ function [h,axh] = basicPlot(axh, obj, dtau, varargin)
             tau = 0:dtau:s;
             if tau(end) < s
                 % Make sure to plot the terminal point
-                tau = [tau, s];
+                [x,y] = eval(obji, [tau,s]);
+            else
+                [x,y] = eval(obji, tau);
             end
-            [x,y] = eval(obji, tau);
         end
         
         if strfind([varargin{:}], 'DisplayName')
@@ -40,10 +40,8 @@ function [h,axh] = basicPlot(axh, obj, dtau, varargin)
             h(i) = plot(axh, x, y, varargin{:}, 'DisplayName',name);
         end%if
     end%for
-
-    if nbsObjects > 1
-        legend(axh, 'show', 'Location','best');
-    end%if
+    
+    legend(axh, 'show', 'Location','best');
 
     % Reset axes to initial state
     set(axh, 'NextPlot',npState);
