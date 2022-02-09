@@ -20,7 +20,6 @@ function [h,axh] = basicPlot(axh, obj, dtau, varargin)
         end%if
         
         obji = obj(i);
-        
         if isempty(dtau)
             [x,y] = eval(obji);
         else
@@ -28,22 +27,25 @@ function [h,axh] = basicPlot(axh, obj, dtau, varargin)
             tau = 0:dtau:s;
             if tau(end) < s
                 % Make sure to plot the terminal point
-                tau = [tau, s];
+                [x,y] = eval(obji, [tau, s]);
+            else
+                [x,y] = eval(obji, tau);
             end
-            [x,y] = eval(obji, tau);
         end
         
-        if strfind([varargin{:}], 'DisplayName')
-            h(i) = plot(axh, x, y, varargin{:});
-        else
-            name = ['(',num2str(i),') ', class(obji)];
-            h(i) = plot(axh, x, y, varargin{:}, 'DisplayName',name);
-        end%if
+%         if strfind([varargin{:}], 'DisplayName')
+%             h(i) = plot(axh, x, y, varargin{:});
+%         else
+%             name = ['(',num2str(i),') ', class(obji)];
+%             h(i) = plot(axh, x, y, varargin{:}, 'DisplayName',name);
+%         end%if
+        % Pass class-based name before varargin so that we do not overwrite
+        % a name possibly given viy varargin
+        name = ['(',num2str(i),') ', class(obji)];
+        h(i) = plot(axh, x, y, 'DisplayName',name, varargin{:});
     end%for
 
-    if nbsObjects > 1
-        legend(axh, 'show', 'Location','best');
-    end%if
+    legend(axh, 'show', 'Location','best');
 
     % Reset axes to initial state
     set(axh, 'NextPlot',npState);
