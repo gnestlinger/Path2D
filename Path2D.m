@@ -51,7 +51,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             
         end%Constructor
         
-        function [h,ax] = plot(varargin)
+        function [hr,axr] = plot(varargin)
         %PLOT   Plot the path.
         %    PLOT(OBJ) plots the path OBJ in terms of x over y.
         %
@@ -76,7 +76,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %
         %   See also PLOTG2, PLOTTANGENT.
             
-        
             [ax,obj,dtau,opts] = parsePlotInputs(varargin{:});
             [h,ax] = basicPlot(ax, obj, dtau, opts{:});
             
@@ -86,9 +85,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             ylabel(ax, 'y (m)');
             xlabel(ax, 'x (m)');
             
+            if nargout > 0
+                hr = h;
+                axr = ax;
+            end
+            
         end%fcn
         
-        function [h,ax] = plotG2(varargin)
+        function [hr,axr] = plotG2(varargin)
         %PLOTG2     Plot path, heading and curvature.
         %
         %    For Syntax see:
@@ -134,9 +138,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             linkaxes(ax(2:3), 'x'); 
             set(ax, 'XlimMode', 'auto');
             
+            if nargout > 0
+                hr = h;
+                axr = ax;
+            end
+            
         end%fcn
         
-        function [h,ax] = plottangent(obj, tau, varargin) 
+        function [hr,axr] = plottangent(obj, tau, varargin) 
         %PLOTTANGENT    Plot path and tangents.
         %    PLOTTANGENT(OBJ,TAU) plots the path (x,y) and the tangents at
         %    the path paraemters TAU and highlights the path coordinates at
@@ -227,8 +236,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             % Set the axis limtis corresponding to waypointss
             axis([xLimits, yLimits]);
             
+            if nargout > 0
+                hr = h;
+                axr = ax;
+            end
+            
         end%fcn
-
+        
     end%methods
     
     
