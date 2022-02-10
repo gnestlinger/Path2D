@@ -79,12 +79,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             [ax,obj,dtau,opts] = parsePlotInputs(varargin{:});
             [h,ax] = plotxy(ax, obj, dtau, opts{:});
             
-            % Apply plot styles
-            grid(ax, 'on');
-            axis(ax, 'equal');
-            ylabel(ax, 'y (m)');
-            xlabel(ax, 'x (m)');
-            
             if nargout > 0
                 hr = h;
                 axr = ax;
@@ -111,7 +105,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             
             N = builtin('numel', obj);
             h = gobjects(N, 3);
-            h(:,1) = plot(ax(1), obj, dtau, opts{:});
+            h(:,1) = plotxy(ax(1), obj, dtau, opts{:});
             npStatus = get(ax(2:3), 'NextPlot');
 %             set(ax(2:3), 'NextPlot','replace');
             for i = 1:N
@@ -179,7 +173,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             h = gobjects(1+numel(tau), 2);
             
             % Plot the waypoints and get corresponding axis limtis
-            [h(1,1),ax] = plot(obj, optsPath{:}, opts{:});
+            [h(1,1),ax] = plotxy([], obj, [], optsPath{:}, opts{:});
             xLimits = xlim;
             yLimits = ylim;
             

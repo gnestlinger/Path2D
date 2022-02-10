@@ -1,7 +1,7 @@
 function [h,axh] = plotxy(axh, obj, dtau, varargin)
 %PLOTXY  Perform basic plot operations.
-%	To be used by public plot methods to avoid multiple calls to
-%	plot styles like AXIS, TITLE, XLABEL, ...!
+%	To be used by public plot methods to avoid multiple calls to plot
+%	styles like AXIS, TITLE, XLABEL, ...!
 %
 %	NOTE: This method supports non-scalar inputs OBJ!
 
@@ -12,9 +12,9 @@ end%if
 npState = get(axh, 'NextPlot');
 
 % Plot paths
-nbsObjects = builtin('numel', obj);
-h = gobjects(nbsObjects, 1);
-for i = 1:nbsObjects
+N = builtin('numel', obj);
+h = gobjects(N, 1);
+for i = 1:N
     if i == 2
         set(axh, 'NextPlot', 'add');
     end%if
@@ -22,15 +22,17 @@ for i = 1:nbsObjects
     obji = obj(i);
     if isempty(dtau)
         [x,y] = eval(obji);
-    else
-        s = length(obji);
-        tau = 0:dtau:s;
-        if tau(end) < s
+    elseif isscalar(dtau) % Interpret as step increment
+        [s0,s1] = getDomain(obji);
+        tau = s0:dtau:s1;
+        if tau(end) < s1
             % Make sure to plot the terminal point
-            [x,y] = eval(obji, [tau,s]);
+            [x,y] = eval(obji, [tau,s1]);
         else
             [x,y] = eval(obji, tau);
         end
+    else
+        [x,y] = eval(obji, dtau);
     end
 
     if strfind([varargin{:}], 'DisplayName')
@@ -41,6 +43,11 @@ for i = 1:nbsObjects
     end%if
 end%for
 
+% Apply plot styles
+grid(axh, 'on');
+axis(axh, 'equal');
+xlabel(axh, 'x (m)');
+ylabel(axh, 'y (m)');
 legend(axh, 'show', 'Location','best');
 
 % Reset axes to initial state
