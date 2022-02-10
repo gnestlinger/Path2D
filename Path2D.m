@@ -77,7 +77,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   See also PLOTG2, PLOTTANGENT.
             
             [ax,obj,dtau,opts] = parsePlotInputs(varargin{:});
-            [h,ax] = basicPlot(ax, obj, dtau, opts{:});
+            [h,ax] = plotxy(ax, obj, dtau, opts{:});
             
             % Apply plot styles
             grid(ax, 'on');
