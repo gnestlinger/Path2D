@@ -23,6 +23,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   pointProjection - Point projection on path.
 %   reverse - Reverse path.
 %   rotate - Rotate path.
+%   select - Select path segments.
 %   shift - Shift path.
 % 
 %   Path2D visualization methods:
@@ -325,6 +326,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   OBJ = ROTATE(OBJ) rotates the path by the negative of it's
         %   initial slope.
         obj = rotate(obj, phi)
+        
+        % SELECT    Select path segments.
+        %   OBJ = SELECT(OBJ,IDXS) selects the path elements IDXS of path
+        %   OBJ, where IDXS can be either an array of indexes or a logical
+        %   array.
+        obj = select(obj, idxs)
         
         % SHIFT     Shift path.
         %   OBJ = SHIFTBY(OBJ,P) shifts the path by P where P is a
