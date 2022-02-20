@@ -17,6 +17,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   frenet2cart - Convert frenet point to cartesian coordinates.
 %   getDomain - Get the domain of the path.
 %   getPathLengths - Get lengths of path segments.
+%   intersectLine - Line intersection.
+%   intersectCircle - Circle intersection.
 %   isempty - Check if path is empty.
 %   length - Get path length.
 %   numel - Number of path elements.
@@ -25,6 +27,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   rotate - Rotate path.
 %   select - Select path segments.
 %   shift - Shift path.
+%   termPoints - Get terminal points.
 % 
 %   Path2D visualization methods:
 %   plot - Plot the path.
@@ -285,14 +288,26 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   value TAUL and TAUU respectively.
         [tauL,tauU] = getDomain(obj);
         
-        % LENGTH    Path length.
-        %   S = LENGTH(OBJ) returns the length S of the path OBJ.
-        s = length(obj)
-        
         % GETPATHLENGTHS    Get path segment lengths.
         %   S = GETPATHLENGTHS(OBJ) get the lengths S of each segment of
         %   path OBJ.
         s = getPathLengths(obj)
+        
+        % INTERSECTLINE     Line intersection.
+        %   [XY,TAU,ERRFLAG] = INTERSECTLINE(OBJ, O, PSI) returns the
+        %   intersection point XY of path OBJ and the line passing through
+        %   O and having the slope PSI, where TAU is the corresponding path
+        %   parameter. Flag ERRFLAG is true if no intersection was found
+        %   and false otherwise.
+        [xy,tau,errFlag] = intersectLine(obj, O, psi)
+        
+        % INTERSECTCIRCLE     Circle intersection.
+        %   [XY,TAU,ERRFLAG] = INTERSECTLINE(OBJ, C, R) returns the
+        %   intersection point XY of path OBJ and the circle with center C
+        %   and radius R, where TAU is the corresponding path parameter.
+        %   Flag ERRFLAG is true if no intersection was found and false
+        %   otherwise.
+        [xy,tau,errFlag] = intersectCircle(obj, C, r)
         
         % ISEMPTY   Check if path is empty
         %   FLAG = ISEMPTY(OBJ) returns true if the path contains no path
@@ -300,6 +315,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %
         %   See also NUMEL.
         flag = isempty(obj)
+        
+        % LENGTH    Path length.
+        %   S = LENGTH(OBJ) returns the length S of the path OBJ.
+        s = length(obj)
         
         % POINTPROJECTION    Point projection.
         %   Q = POINTPROJECTION(OBJ,POI) returns the orthogonal projection
@@ -337,6 +356,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   OBJ = SHIFTBY(OBJ,P) shifts the path by P where P is a
         %   two-element vector.
         obj = shift(obj, P)
+        
+        % TERMPOINTS  Get terminal points.
+        %   [XY0,XY1] = TERMPOINTS(OBJ) returns the terminal points
+        %   (XY0,XY1).
+        [xy0,xy1] = termPoints(obj)
         
     end%methods
     
