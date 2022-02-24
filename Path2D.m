@@ -252,9 +252,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         obj = append(obj0, varargin)
         
         % CART2FRENET    Cartesian point to frenet with respect to path.
-        %   SD = CART2FRENET(OBJ,XY) converts point XY in cartesian
-        %   coordinates to frenet coordinates SD with respect to the path
-        %   OBJ. Point XY is a two-element vector .
+        %   SD = CART2FRENET(OBJ,XY) converts point of interest XY in
+        %   cartesian coordinates to frenet coordinates SD with respect to
+        %   the path OBJ. Point XY is a two-element vector .
         %
         %   [SD,Q,IDX,LAMBDA] = CART2FRENET(___) also return 
         %    - The cartesian point Q that corresponds to the frenet point SD.
@@ -322,7 +322,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         
         % POINTPROJECTION    Point projection.
         %   Q = POINTPROJECTION(OBJ,POI) returns the orthogonal projection
-        %   Q of POI onto the path OBJ.
+        %   Q of point of interest POI onto the path OBJ.
         %
         %   [Q,IDX,LAMBDA] = POINTPROJECTION(OBJ,POI) also returns the path
         %   segment IDX and path path parameter LAMBDA related to Q.
