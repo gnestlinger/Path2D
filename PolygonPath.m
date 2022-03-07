@@ -556,15 +556,17 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %    https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Line_defined_by_two_points
             
             % Handle input arguments
-            narginchk(3, 4)
+            narginchk(1, 4)
             
-            if (numel(P0) ~= 2) || (numel(P1) ~= 2)
-                error('POLYGONPATH:perpendicularDistance',...
-                    'Line must be defined using two 2-D points.');
-            elseif all(P0(:) == P1(:))
-                error('POLYGONPATH:perpendicularDistance',...
-                    'Points are equal!');
+            if nargin < 3
+                [P0,P1] = termPoints(obj);
             end%if
+            
+            assert(isequal(numel(P0), numel(P1), 2), ...
+                'POLYGONPATH:perpendicularDistance', ...
+                'Line must be defined using two 2-D points.');
+            assert(~isequal(P0(:), P1(:)), ...
+                'POLYGONPATH:perpendicularDistance', 'Points are equal!');
             
             if nargin < 4
                 doPlot = false;
@@ -575,9 +577,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % OBJ. See:
             % https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Line_defined_by_two_points
             % Scale by -1 so that points to the left/right of the line from
-            % P1 to P2 have a positive/negative distance value.
-            d = -((P1(2)-P0(2))*obj.x - (P1(1)-P0(1))*obj.y + P1(1)*P0(2) - P1(2)*P0(1)) ...
-                / sqrt((P1(2)-P0(2))^2 + (P1(1)-P0(1))^2);
+            % P0 to P1 have a positive/negative distance value.
+            dx = P1(1) - P0(1);
+            dy = P1(2) - P0(2);
+            d = -(dy*obj.x - dx*obj.y + P1(1)*P0(2) - P1(2)*P0(1)) / sqrt(dx^2 + dy^2);
             
             
             %%% Visualization
@@ -670,12 +673,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         function [obj,idx] = rdp(obj, eps)
         %RDP    Ramer-Douglas-Peucker point reduction.
         %    OBJR = RDP(OBJ,EPS) applies the Ramer-Douglas-Peuker point
-        %    reduction algorithm with parameter EPS. None of the removed
-        %    waypoints has a distance greater than EPS to the resulting
-        %    waypoints!
+        %    reduction algorithm to path OBJ with parameter EPS. None of
+        %    the removed waypoints has a distance greater than EPS to the
+        %    resulting waypoints!
         %    
         %    [OBJR,IDX] = RDP(OBJ,EPS) returns an array IDX so that OBJR =
-        %    GETSAMPLES(OBJ, IDX).
+        %    SELECT(OBJ, IDX).
         %
         
         %    NOTE: This implementation was inspired by dpsimplify.m by
@@ -690,7 +693,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             dprec(1, N);
             
             function dprec(idx0, idx1)
-                d = perpendicularDistance(obj.getSamples(idx0:idx1));
+                d = perpendicularDistance(select(obj, idx0:idx1));
                 [val_max,idx_max] = max(abs(d));
                 if val_max > eps
                     % Split waypoints at IDX_SPLIT and call recursion with
@@ -707,7 +710,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             end%fcn
             
             idx = find(keepIdx);
-            obj = obj.getSamples(idx);
+            obj = select(obj, idx);
             
         end%fcn
         
