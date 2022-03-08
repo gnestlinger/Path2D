@@ -753,14 +753,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % Transposed rotation matrix in R^2 since rotation is performed
             % via p*R
             R = [+cos(phi) sin(phi); -sin(phi) cos(phi)];
-            rotmat2D
             for i = 1:builtin('numel', obj)
                 % Much faster than rotMat*[obj.x,obj.y]'
                 xy_new = [obj(i).x, obj(i).y]*R;
                 
                 obj(i).x = xy_new(:,1);
                 obj(i).y = xy_new(:,2);
-                obj(i).head = obj(i).head;
+                obj(i).head = obj(i).head + phi;
             end%for
             
         end%fcn
@@ -779,7 +778,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             narginchk(2, 2);
             
             if numel(P) ~= 2 || ~isnumeric(P)
-                error(['Method SHIFT requires a numeric input',...
+                error(['Method SHIFT requires a numeric input', ...
                     ' argument with two elements.']);
             end%if
             
@@ -841,7 +840,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             h = cx2Heading(gx, gy);
             c = cx2Curvature(gx, gy, gradient(gx), gradient(gy));
             
-            obj = PolygonPath(x, y, c, h);
+            obj = PolygonPath(x, y, h, c);
             
         end%fcn
         
