@@ -51,7 +51,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 return
             end
             
-            assert(isequal(numel(x), numel(y), numel(head), numel(curv)));
+            assert(isequal(numel(x), numel(y), numel(head), numel(curv)), ...
+                'PolygonPath:Constructor:numelXYHC', ...
+                'Number of path property elements mismatch!');
             obj.x = x(:);
             obj.y = y(:);
             obj.head = head(:);
@@ -778,7 +780,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             narginchk(2, 2);
             
             if numel(P) ~= 2 || ~isnumeric(P)
-                error(['Method SHIFT requires a numeric input', ...
+                error(['Method SHIFT requires a numeric input',...
                     ' argument with two elements.']);
             end%if
             
@@ -799,6 +801,30 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             P0 = [obj.x(1);    obj.y(1)];
             P1 = [obj.x(end);  obj.y(end)];
         end%fcn
+        
+		function write2file(obj, fn)
+		%WRITE2FILE		Write path to file.
+		%	WRITE2FILE(OBJ,FN) writes waypoints OBJ to file with filename
+		%	FN (specify extension!).
+		%	
+			
+			% Open file with write-permission
+			[~,~,fileExt] = fileparts(fn);
+			assert(~isempty(fileExt), 'Specify file name extension!');
+			fid = fopen(fn, 'w');
+			
+			doubleFmt = '%+15.5e ';
+			fprintf(fid,...
+				'%15s %15s %15s %15s %15s\n', ...
+				'x (m)', 'y (m)', 'head (rad)', 'curv (1/m)', 's (m)');
+			fprintf(fid,...
+				[repmat(doubleFmt, [1,5]), '\n'], ...
+				[obj.x, obj.y, obj.head, obj.curv, getPathLengths(obj)]');
+			
+			% Close file
+			fclose(fid);
+			
+		end%fcn
         
         function s = toStruct(obj)
             s = struct('x',obj.x, 'y',obj.y, 'head',obj.head, 'curv',obj.curv);
@@ -869,8 +895,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function obj = xy2Path(x, y)
-            g1X = gradient(x);
-            g1Y = gradient(y);
+            g1X = gradient(x(:));
+            g1Y = gradient(y(:));
             g2X = gradient(g1X);
             g2Y = gradient(g1Y);
             h = cx2Heading(g1X, g1Y);
