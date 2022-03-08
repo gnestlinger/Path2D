@@ -778,7 +778,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             narginchk(2, 2);
             
             if numel(P) ~= 2 || ~isnumeric(P)
-                error(['Method SHIFT requires a numeric input', ...
+                error(['Method SHIFT requires a numeric input',...
                     ' argument with two elements.']);
             end%if
             
@@ -797,6 +797,30 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             xy0 = [x(1); y(1)];
             xy1 = [x(2); y(2)];
         end%fcn
+        
+		function write2file(obj, fn)
+		%WRITE2FILE		Write path to file.
+		%	WRITE2FILE(OBJ,FN) writes waypoints OBJ to file with filename
+		%	FN (specify extension!).
+		%	
+			
+			% Open file with write-permission
+			[~,~,fileExt] = fileparts(fn);
+			assert(~isempty(fileExt), 'Specify file name extension!');
+			fid = fopen(fn, 'w');
+			
+			doubleFmt = '%+15.5e ';
+			fprintf(fid,...
+				'%15s %15s %15s %15s %15s\n', ...
+				'x (m)', 'y (m)', 'head (rad)', 'curv (1/m)', 's (m)');
+			fprintf(fid,...
+				[repmat(doubleFmt, [1,5]), '\n'], ...
+				[obj.x, obj.y, obj.head, obj.curv, getPathLengths(obj)]');
+			
+			% Close file
+			fclose(fid);
+			
+		end%fcn
         
         function s = toStruct(obj)
             s = struct('x',obj.x, 'y',obj.y, 'head',obj.head, 'curv',obj.curv);
