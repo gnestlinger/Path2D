@@ -51,7 +51,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 return
             end
             
-            assert(isequal(numel(x), numel(y), numel(head), numel(curv)));
+            assert(isequal(numel(x), numel(y), numel(head), numel(curv)), ...
+                'PolygonPath:Constructor:numelXYHC', ...
+                'Number of path property elements mismatch!');
             obj.x = x(:);
             obj.y = y(:);
             obj.head = head(:);
@@ -891,8 +893,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function obj = xy2Path(x, y)
-            g1X = gradient(x);
-            g1Y = gradient(y);
+            g1X = gradient(x(:));
+            g1Y = gradient(y(:));
             g2X = gradient(g1X);
             g2Y = gradient(g1Y);
             h = cx2Heading(g1X, g1Y);
