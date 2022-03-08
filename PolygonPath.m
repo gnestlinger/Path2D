@@ -790,12 +790,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function [xy0,xy1] = termPoints(obj)
-            [tau0,tau1] = getDomain(obj);
-            [x,y] = eval(obj, [tau0,tau1]);
+        function [P0,P1] = termPoints(obj)
+%             [tau0,tau1] = getDomain(obj);
+%             [x,y] = eval(obj, [tau0,tau1]);
+%             P0 = [x(1); y(1)];
+%             P1 = [x(2); y(2)];
             
-            xy0 = [x(1); y(1)];
-            xy1 = [x(2); y(2)];
+            P0 = [obj.x(1);    obj.y(1)];
+            P1 = [obj.x(end);  obj.y(end)];
         end%fcn
         
         function s = toStruct(obj)

@@ -358,9 +358,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         obj = shift(obj, P)
         
         % TERMPOINTS  Get terminal points.
-        %   [XY0,XY1] = TERMPOINTS(OBJ) returns the terminal points
-        %   (XY0,XY1).
-        [xy0,xy1] = termPoints(obj)
+        %   [P0,P1] = TERMPOINTS(OBJ) returns the terminal points
+        %   P0 (initial point) and P1 (end point).
+        [P0,P1] = termPoints(obj)
         
     end%methods
     
