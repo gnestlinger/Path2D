@@ -1,7 +1,7 @@
 classdef AppendMethodTest < matlab.unittest.TestCase
     
     methods (Test)
-        function testNonMonotonicS(testCase)
+        function testNonDecreasingPathLength(testCase)
             x = 1:10;
 			obj = PolygonPath.xy2Path(x, x);
 			objA = obj.append(obj);
