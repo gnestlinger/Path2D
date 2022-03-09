@@ -1,52 +1,30 @@
-function qq = ppdiff(pp,j)
-%PPDIFF Differentiate piecewise polynomial.
-%   QQ = PPDIFF(PP,J) returns the J:th derivative of a piecewise
-%   polynomial PP. PP must be on the form evaluated by PPVAL. QQ is a
-%   piecewise polynomial on the same form. Default value for J is 1.
-%
-%   Example:
-%       x = linspace(-pi,pi,9);
-%       y = sin(x);
-%       pp = spline(x,y);
-%       qq = ppdiff(pp);
-%       xx = linspace(-pi,pi,201);
-%       plot(xx,cos(xx),'b',xx,ppval(qq,xx),'r')
-%
-%   See also PPVAL, SPLINE, SPLINEFIT, PPINT
+function dpp = ppdiff(pp, polyDeg)%#codegen
+%PPDIFF		Derivative of piecewise polynomial.
+%	DPP = PPDIFF(PP) returns the piecewise polynomial derivative DPP of
+%	piecewise polynomial PP.
+% 
+%	See also MKPP, UNMKPP, PPVAL.
 
-%   Author: Jonas Lundgren <splinefit@gmail.com> 2009
 
-if nargin < 1, help ppdiff, return, end
-if nargin < 2, j = 1; end
+% Extract PP details
+[breaks,coefs,~,polyOrd,dim] = unmkpp(pp); % POLYORD = POLYDEG+1
 
-% Check diff order
-if ~isreal(j) || mod(j,1) || j < 0
-    msgid = 'PPDIFF:DiffOrder';
-    message = 'Order of derivative must be a non-negative integer!';
-    error(msgid,message)
-end
+% For code generation purpose, polynomial degree can be set via input
+% argument to a compile-time constant (The dimension of COEFS that
+% determines the order must be fixed-size.).
+if nargin < 2
+	polyDeg = polyOrd - 1;
+end%if
 
-% Get coefficients
-coefs = pp.coefs;
-[m,n] = size(coefs);
 
-if j == 0
-    % Do nothing
-elseif j < n
-    % Derivative of order J
-    D = [n-j:-1:1; ones(j-1,n-j)];
-    D = cumsum(D,1);
-    D = prod(D,1);
-    coefs = coefs(:,1:n-j);
-    for k = 1:n-j
-        coefs(:,k) = D(k)*coefs(:,k);
-    end
+% Derivative of polynomial coefficients
+if polyDeg > 0
+	dcoefs = bsxfun(@times, coefs(:,1:polyDeg), double(polyDeg):-1:1);
 else
-    % Derivative kills PP
-    coefs = zeros(m,1);
-end
+	dcoefs = coefs*0;
+end%if
 
-% Set output
-qq = pp;
-qq.coefs = coefs;
-qq.order = size(coefs,2);
+% Create PP with derivative polynomial coefficients
+dpp = mkpp(breaks, dcoefs, dim);
+
+end%fcn
