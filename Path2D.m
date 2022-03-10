@@ -302,8 +302,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         [xy,tau,errFlag] = intersectLine(obj, O, psi)
         
         % INTERSECTCIRCLE     Circle intersection.
-        %   [XY,TAU,ERRFLAG] = INTERSECTLINE(OBJ, C, R) returns the
-        %   intersection point XY of path OBJ and the circle with center C
+        %   [XY,TAU,ERRFLAG] = INTERSECTCIRCLE(OBJ, C, R) returns the
+        %   intersection points XY of path OBJ and the circle with center C
         %   and radius R, where TAU is the corresponding path parameter.
         %   Flag ERRFLAG is true if no intersection was found and false
         %   otherwise.

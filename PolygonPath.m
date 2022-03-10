@@ -2,28 +2,29 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %POLYGONPATH    Polygon path.
 %   Path representation using polygonal chain assumin linear interpolation.
 % 
-%    PolygonPath properties:
-%    x     - Cartesian x-coordinate.
-%    y     - Cartesian y-coordinate.
-%    head - Heading in radians.
-%    curv - Curvature in 1/m.
+%   PolygonPath properties:
+%   x - Cartesian x-coordinate.
+%   y - Cartesian y-coordinate.
+%   head - Heading in radians.
+%   curv - Curvature in 1/m.
 % 
-%    PolygonPath methods:
-%    PolygonPath - Constructor.
-%   fitCircle - 
-%   fitStraight - 
+%   PolygonPath methods:
+%   PolygonPath - Constructor.
+%   fitCircle - Fit circle to path.
+%   fitStraight - Fit straight line to path.
 %   interp - Interpolate path.
-%   perpendicularDistance - 
-%   rdp - 
-%    See superclass.
+%   perpendicularDistance - Distance of path waypoints to line.
+%   rdp - Ramer-Douglas-Peucker point reduction.
+%   See superclass for more methods.
 % 
-%    PolygonPath static methods:
-%    See superclasses.
+%   PolygonPath static methods:
+%   See superclasses.
 % 
-%    See also PATH2D.
+%   See also PATH2D.
 
 %#ok<*PROP>
 %#ok<*EVLC> % Using eval and evalc with two arguments is not recommended ..
+%#ok<*PROPLC> % There is a property named xyz. Maybe this is a reference to it?
 
     properties
         x = zeros(100, 1)
@@ -38,12 +39,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function obj = PolygonPath(x, y, head, curv, isCircuit)
         %POLYGONPATH    Create polygon path object.
-        %    OBJ = POLYGONPATH(X,Y,HEAD,CURV) create polygon path OBJ with
-        %    points (X,Y), heading HEAD in radians and curvature CURV in
-        %    1/m.
+        %   OBJ = POLYGONPATH(X,Y,HEAD,CURV) create polygon path OBJ with
+        %   points (X,Y), heading HEAD in radians and curvature CURV in
+        %   1/m.
         %
-        %    OBJ = POLYGONPATH(___,ISCIRCUIT) set to true if the path is a
-        %    circuit.
+        %   OBJ = POLYGONPATH(___,ISCIRCUIT) set to true if the path is a
+        %   circuit.
         %
         
             if nargin < 1
@@ -152,22 +153,22 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function [objs,e,k,d] = fitStraight(obj, doPlot)
         %FITSTRAIGHT    Fit a straight line to PolygonPath.
-        %    [OBJS,E,K,D] = FITSTRAIGHT(OBJ) fits a straight line OBJS
-        %    with slope K and offset D to a set of given waypoints (OBJ.X,
-        %    OBJ.Y) minimizing the error E.
+        %   [OBJS,E,K,D] = FITSTRAIGHT(OBJ) fits a straight line OBJS
+        %   with slope K and offset D to a set of given waypoints (OBJ.X,
+        %   OBJ.Y) minimizing the error E.
+        %   
+        %   [___] = FITSTRAIGHT(OBJ,DOPLOT) allows to enable the plot for
+        %   checking the fitting result visually.
+        %   
+        %   Parameters C and D model the fitted line according to
+        %     y_fit = C*OBJ.X + D
         %    
-        %    [___] = FITSTRAIGHT(OBJ,DOPLOT) allows to enable the plot for
-        %    checking the fitting result visually.
+        %   Minimization is performed in the least-squares sense minimizing
+        %   the sum of squared errors:
+        %     SUM[(Y(i)-C*X(i) - D)^2]
+        %      i
         %    
-        %    Parameters C and D model the fitted line according to
-        %      y_fit = C*OBJ.X + D
-        %    
-        %    Minimization is performed in the least-squares sense minimizing
-        %    the sum of squared errors:
-        %      SUM[(Y(i)-C*X(i) - D)^2]
-        %       i
-        %    
-        %    See also POLYGONPATH/FITCIRCLE.
+        %   See also POLYGONPATH/FITCIRCLE.
                     
             if nargin < 2
                 doPlot = false;
@@ -213,20 +214,20 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function [objc,e,xc,yc,R] = fitCircle(obj, N, doPlot)
         %FITCIRCLE  Fit a circle to PolygonPath.
-        %    [OBJC,E,XC,YC,R] = FITCIRCLE(OBJ,N) fits a circle with
-        %    center(XC,YC) and radius R to waypoints (OBJ.X, OBJ.Y)
-        %    minimizing the error E. Returns OBJC of class POLYGONPATH
-        %    sampled at angles according to linspace(0, 2*pi, N).
+        %   [OBJC,E,XC,YC,R] = FITCIRCLE(OBJ,N) fits a circle with
+        %   center(XC,YC) and radius R to waypoints (OBJ.X, OBJ.Y)
+        %   minimizing the error E. Returns OBJC of class POLYGONPATH
+        %   sampled at angles according to linspace(0, 2*pi, N).
+        %   
+        %   [___] = FITCIRCLE(...,DOPLOT) allows to enable the plot for
+        %   checking the fitting result visually.
         %    
-        %    [___] = FITCIRCLE(...,DOPLOT) allows to enable the plot for
-        %    checking the fitting result visually.
+        %   Minimization is performed in the least-squares sense minimizing
+        %   the sum of squared errors:
+        %     SUM[(R(i)^2-R^2)^2]
+        %      i
         %    
-        %    Minimization is performed in the least-squares sense minimizing
-        %    the sum of squared errors:
-        %      SUM[(R(i)^2-R^2)^2]
-        %       i
-        %    
-        %    See also POLYGONPATH/FITSTRAIGHT.
+        %   See also POLYGONPATH/FITSTRAIGHT.
             
             if nargin < 3
                 doPlot = false;
@@ -296,8 +297,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % Normalize orientation vectors to length 1
             u = bsxfun(@rdivide, u, hypot(u(:,1), u(:,2)));
             
-            % Get the indexes referring to the path segments according to frenet
-            % coordinates s-values
+            % Get the indexes referring to the path segments according to
+            % frenet coordinates s-values
             sEval = sd(:,1);
             idx = zeros(size(sEval), 'uint32');
             % idx2 = bsxfun(@lt, sEval', Ps);
@@ -312,7 +313,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             end%for
             
             % The points on the path (i.e. d=0) are given by the segments
-            % initial point plus the remaining length along the current segment
+            % initial point plus the remaining length along the current
+            % segment
             Ps = circshift(Ps, 1);
             Ps(1) = 0;
             Q = Pxy(idx,:) + bsxfun(@times, sEval-Ps(idx), u(idx,:));
@@ -359,7 +361,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcns       
         
         function obj = interp(obj, tau, varargin)
-        % INTERP    Interpolate path.
+        %INTERP     Interpolate path.
         %   OBJ = INTERP(OBJ,TAU) interpolate path at path parameter TAU.
         %
         %   OBJ = INTERP(__,ARGS) specify interpolation settings via ARGS.
@@ -380,9 +382,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function [xy,tauS,errFlag] = intersectCircle(obj, C, r, doPlot)
             
-            %   EXAMPLES:
-            %   >> s = PolygonPath.xy2Path([0 0 -3 -2 -4 -3 1 1], [0 1 2 3 4 5 4 0]);
-            %   >> intersectCircle(s, [-1 3], 2, true)
+        %   EXAMPLES:
+        %   >> s = PolygonPath.xy2Path([0 0 -3 -2 -4 -3 1 1], [0 1 2 3 4 5 4 0]);
+        %   >> intersectCircle(s, [-1 3], 2, true)
             
             if nargin < 4
                 doPlot = false;
@@ -424,7 +426,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             segIdx = [idxSecant(isValidSec); idxTangent(isValidTan)];
             
             if isempty(tauLoc)
-                x = NaN;
+                x = NaN; 
                 y = NaN;
                 errFlag = true;
             else
@@ -671,47 +673,22 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             end%if
             
         end%fcn
-        
+
         function [obj,idx] = rdp(obj, eps)
         %RDP    Ramer-Douglas-Peucker point reduction.
         %    OBJR = RDP(OBJ,EPS) applies the Ramer-Douglas-Peuker point
         %    reduction algorithm to path OBJ with parameter EPS. None of
         %    the removed waypoints has a distance greater than EPS to the
-        %    resulting waypoints!
+        %    resulting path!
         %    
         %    [OBJR,IDX] = RDP(OBJ,EPS) returns an array IDX so that OBJR =
         %    SELECT(OBJ, IDX).
         %
-        
-        %    NOTE: This implementation was inspired by dpsimplify.m by
-        %    Wolfgang Schwanghart found at MathWorks File Exchange.
             
-            % Initialize a logical array indicating which waypoints to keep
-            N = numel(obj);
-            keepIdx = true(1, N);
-            
-            % Recursively set indexes of waypoints that can be discarded to
-            % false
-            dprec(1, N);
-            
-            function dprec(idx0, idx1)
-                d = perpendicularDistance(select(obj, idx0:idx1));
-                [val_max,idx_max] = max(abs(d));
-                if val_max > eps
-                    % Split waypoints at IDX_SPLIT and call recursion with
-                    % those two resulting segments until we end in the else
-                    % statement.
-                    idx_split = idx_max + idx0 - 1;
-                    dprec(idx0, idx_split);
-                    dprec(idx_split, idx1);
-                else
-                     if idx0 ~= idx1-1
-                        keepIdx(idx0+1:idx1-1) = false;
-                     end%if
-                end%if
-            end%fcn
-            
-            idx = find(keepIdx);
+            % The actual implementation is moved to a separate file,
+            % otherwise its nested function would block code generation for
+            % all class methods in older MATLAB releases!
+            [~,~,idx] = ramerDouglasPeucker(obj.x, obj.y, eps);
             obj = select(obj, idx);
             
         end%fcn
@@ -913,10 +890,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             HeaderFile = '';
             Description = '';
             BusElements = {...
-                {'x',     100, 'double',    -1, 'real', 'Sample', 'Variable', [], [], 'm', ''},...
-                {'y',     100, 'double',    -1, 'real', 'Sample', 'Variable', [], [], 'm', ''},...
-                {'head', 100, 'double',    -1, 'real', 'Sample', 'Variable', [], [], 'rad', ''},...
-                {'curv', 100, 'double',    -1, 'real', 'Sample', 'Variable', [], [], '1/m', ''},...
+                {'x',    100, 'double', -1, 'real', 'Sample', 'Variable', [], [], 'm', ''},...
+                {'y',    100, 'double', -1, 'real', 'Sample', 'Variable', [], [], 'm', ''},...
+                {'head', 100, 'double', -1, 'real', 'Sample', 'Variable', [], [], 'rad', ''},...
+                {'curv', 100, 'double', -1, 'real', 'Sample', 'Variable', [], [], '1/m', ''},...
                 };
             c = {{BusName,HeaderFile,Description,BusElements}};
         end%fcn
