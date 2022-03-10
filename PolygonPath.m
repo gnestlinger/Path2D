@@ -399,8 +399,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             dy = diff(y0);
             y0(end) = [];
             
-            % Solve quadratic polynomial, custom version of
-            % roots([a,b,c])
+            % Each path segment is written as a line P(t) = P0 + t*(P1-P0)
+            % from its initial point P0 to its end point P1, where t =
+            % 0,..,1. This results in
+            %   [x0 + t(x1-x0)]^2 + [y0 + t(y1-y0)]^2 = r^2
+            % which requires solving a quadratic polynomial 
+            %   a*t^2 + b*t + c = 0
             a = dx.^2 + dy.^2;
             b = 2*(x0.*dx + y0.*dy);
             c = x0.^2 + y0.^2 - r^2;
@@ -419,14 +423,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             isTangent = ~((discriminant < 0) | isSecant);
             tauTangent = 0.5*-b(isTangent)./a(isTangent);
             idxTangent = idxs(isTangent);
-            isValidTan = ~((tauTangent < 0) | (tauTangent > 1));
+            isValidTan = ~(tauTangent < 0) & (tauTangent < 1);
             
             % Combined set of solutions
             tauLoc = [tauSecant(isValidSec); tauTangent(isValidTan)];
             segIdx = [idxSecant(isValidSec); idxTangent(isValidTan)];
             
             if isempty(tauLoc)
-                x = NaN; 
+                x = NaN;
                 y = NaN;
                 errFlag = true;
             else
