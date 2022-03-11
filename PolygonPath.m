@@ -420,7 +420,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             isValidSec = ~((tauSecant < 0) | (tauSecant > 1));
             
             % Tangent solutions (one solution per segment)
-            isTangent = ~((discriminant < 0) | isSecant);
+            isTangent = ~((discriminant < 0) | isSecant); % (discriminant == 0)
             tauTangent = 0.5*-b(isTangent)./a(isTangent);
             idxTangent = idxs(isTangent);
             isValidTan = ~(tauTangent < 0) & (tauTangent < 1);
@@ -430,23 +430,27 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             segIdx = [idxSecant(isValidSec); idxTangent(isValidTan)];
             
             if isempty(tauLoc)
-                x = NaN;
-                y = NaN;
+                xy = zeros(0, 2);
+                tauS = zeros(0,1);
                 errFlag = true;
             else
                 s = getPathLengths(obj);
-                tauS = s(segIdx) + (s(segIdx+1)-s(segIdx)).*tauLoc;
-                [x,y] = eval(obj, sort(tauS));
+                tauS = sort(s(segIdx) + (s(segIdx+1)-s(segIdx)).*tauLoc);
+                [x,y] = eval(obj, tauS);
+                xy = [x,y];
                 errFlag = false;
             end
-            xy = [x,y];
+            
+            % At most two intersections per path segment!
+            assert(size(xy, 1) <= (numel(obj)-1)*2)
+            assert(size(xy, 1) == size(tauS, 1))
                 
             if doPlot
                 [~,ax] = plot(obj, 'Marker','.');
                 hold on
                 phi = 0:pi/100:2*pi;
                 plot(ax, r*cos(phi) + C(1), r*sin(phi) + C(2));
-                plot(ax, x, y, 'ko')
+                plot(ax, xy(:,1), xy(:,2), 'ko')
                 hold off
             end%if
             
