@@ -456,7 +456,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function [xy,tau,errFlag] = intersectLine(obj, O, psi, doPlot)
+        function [xy,tauS,errFlag] = intersectLine(obj, O, psi, doPlot)
             
             if nargin < 4
                 doPlot = false;
@@ -469,51 +469,41 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             xPath = xyPath(:,1);
             yPath = xyPath(:,2);
             
-            % Find indexes where the paths y-component changes sign
-            signs = int8(sign(yPath));
-            indxs = find(diff(signs, 1));
+            % Find indexes where the paths y-component changes sign. SIGN
+            % returns 0 only for arguments that eare exactly equal to zero.
+            % We try to catch values almost equal to zero via a magic
+            % threshold.
+            signs1 = int8(sign(yPath)); 
+            signs2 = abs(yPath) > 1e-12;
+            indxs = find(any(diff([signs1,signs2], 1, 1), 2));
             if isempty(indxs) % No intersection of path/line
+                xy = zeros(0, 2);
+                tauS = zeros(0,1);
                 errFlag = true;
-                
-                % TODO: Fallbacks
-                xy = [0;0];
-                tau = 0;
             else
-                errFlag = false;
-
-                x = [];
-                ind0 = 0;
-                indF = 0;
-                for i = 1:numel(indxs)
-                    % IND0F can not exceed number of path samples since
-                    % indexes were obtained using DIFF!
-                    ind0F = [indxs(i), indxs(i)+1];
-                    x0F = xPath(ind0F);
-                    y0F = yPath(ind0F);
+                % IND0F can not exceed number of path samples since indexes
+                % were obtained using DIFF!
+                idxs0F = [indxs, indxs+1];
+                x0F = reshape(xPath(idxs0F), size(idxs0F));
+                y0Fd = diff(reshape(yPath(idxs0F), size(idxs0F)), 1, 2);
+                x = xPath(indxs) - yPath(indxs) .* diff(x0F, 1, 2)./y0Fd; 
                 
-%                     xTmp = interp1(y0F, x0F, 0, 'linear');
-                    xTmp = x0F(1) - y0F(1) * diff(x0F)/diff(y0F);
-                    if isempty(x) || (abs(xTmp) < abs(x)) % Smallest value error wins
-                        x = xTmp;
-                        ind0 = ind0F(1);
-                        indF = ind0F(2);
-                    end%if
-                end%for
+                % Undo transformation. Due to the above rotation/shift, the
+                % intersections y-component is zero. Therefore, only the
+                % x-component needs to be rotated.
+%                 xy = (R * [x';zeros(1,numel(x))] + repmat(O(:), [1,numel(x)]))';
+                xy = [R(1,1)*x + O(1), R(2,1)*x + O(2)];
                 
-                % Undo transformation
-                xy = R * [x;0] + O(:);
-                
-                % Path length parameter. Since we assume linear
-                % interpolation between waypoints, the local path segment
-                % parameter can be computed from x or y
+                % Since we assume linear interpolation between waypoints,
+                % the local path segment parameter can be computed from x
+                % or y
 %                 tauLocal = (x - x0F(1))/diff(x0F);
-                tauLocal = -y0F(1)/diff(y0F);
+                tauLocal = -yPath(indxs)./y0Fd;
                 s = getPathLengths(obj);
-                tau = s(ind0);
-                tau = tau + (s(indF) - tau)*tauLocal;
+                tauS = s(indxs);
+                tauS = tauS + (s(indxs+1) - tauS).*tauLocal;
                 
-                [x,y] = eval(obj,tau);
-                assert(all(abs(xy - [x;y]) < 1e15));
+                errFlag = false;
             end%if
             
             if doPlot
@@ -525,7 +515,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 Pstop   = [O(1) + r1*cos(psi); O(2) + r1*sin(psi)];
                 plot(gca, [Pstart(1) Pstop(1)], [Pstart(2) Pstop(2)])
                 
-                plot(ax, xy(1), xy(2), 'ko')
+                plot(ax, xy(:,1), xy(:,2), 'ko')
                 hold off
             end%if
             
