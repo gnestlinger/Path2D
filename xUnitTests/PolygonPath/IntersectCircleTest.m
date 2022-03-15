@@ -22,7 +22,7 @@ classdef IntersectCircleTest < matlab.unittest.TestCase
             testCase.verifyEqual(act, exp);
             
             % No intersection with path
-            [act,s] = intersectCircle(obj0, [0 4], 2, true);
+            [act,s] = intersectCircle(obj0, [0 4], 2, doPlot);
             exp = zeros(0,2);
             testCase.verifyEqual(act, exp);
             testCase.verifyEqual(size(act,1), size(s,1));
