@@ -2,25 +2,25 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 %SPLINEPATH     Spline path.
 %   Path representation using splines.
 % 
-%	SPLINEPATH properties:
-%	breaks - Cartesian x-coordinate.
-%	coefs - Cartesian y-coordinate.
+%   SPLINEPATH properties:
+%   Breaks - Cartesian x-coordinate.
+%   Coefs - Cartesian y-coordinate.
 % 
-%	SPLINEPATH methods:
-%	SplinePath - Constructor.
-%	See superclasses.
+%   SPLINEPATH methods:
+%   SplinePath - Constructor.
+%   See superclasses.
 % 
-%	SPLINEPATH static methods:
-%	See superclasses.
+%   SPLINEPATH static methods:
+%   See superclasses.
 % 
-%	See also PATH2D.
+%   See also PATH2D.
 
 %#ok<*EVLC> % Using eval and evalc with two arguments is not recommended ..
 
-	properties
-		Breaks = [0 1]
+    properties (SetAccess = private)
+        Breaks = 0
         Coefs = zeros(2,0,4) % path dimension by # of segments by # order
-	end
+    end
 	
 	
 	
@@ -28,15 +28,18 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 		
 		function obj = SplinePath(breaks, coefs)
 		%SPLINEPATH     Create spline path object.
-		%	OBJ = SPLINEPATH(X,Y,HEAD,CURV) 
+		%	OBJ = SPLINEPATH(BREAKS,COEFS) creates a spline path OBJ with
+		%	breaks BREAKS of size 1-by-(N+1) and coefficients COEFS of size
+		%	2-by-N-by-K, where N is the number of spline segments and K-1
+		%	the polynomial degree.
 		%
 		%	OBJ = SPLINEPATH(___,ISCIRCUIT) set to true if the path is a
 		%	circuit.
 		%
 		
             if nargin < 1
-				% Return with default values
-				return
+                % Return with default values
+                return
             end
 			
             assert(size(coefs,1) == 2, 'Coefficients must be 2D!');
@@ -46,7 +49,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 			obj.Coefs = coefs;
 			
 			if nargin < 3
-				obj.IsCircuit = false;
+                [P0,P1] = termPoints(obj);
+                obj.IsCircuit = (norm(P1 - P0) < 1e-5);
 			else
 				obj.IsCircuit = isCircuit;
 			end%if
@@ -63,7 +67,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 			
 		end%fcn
 		
-		function [sd,Q,idx,lambda] = cart2frenet(obj, poi, doPlot)
+		function [sd,Q,idx,tau] = cart2frenet(obj, poi, doPlot)
 			
 		end%fcn
         
@@ -74,7 +78,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 dbreaks = diff(breaks);
                 tau = linspace(breaks(1), breaks(end), 1e3);
             end
-            pp = mkpp(obj.Breaks, obj.Coefs, 2);
+            pp = mkpp(obj);
             xy = ppval(pp, tau);
             x = xy(1,:)';
             y = xy(2,:)';
@@ -120,9 +124,49 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 			
 		end%fcn
 		
-		function [Q,idx,lambda] = pointProjection(obj, poi)
-			
+        function pp = mkpp(obj)
+            pp = mkpp(obj.Breaks, obj.Coefs, 2);
+        end%fcn
+        
+        function [Q,idx,tau] = pointProjection(obj, poi, doPlot)
+            
+            pp = mkpp(obj);
+            ppd = ppdiff(pp);
+            fh = @(tau) abs(pointAngle(obj, pp, ppd, poi, tau) - pi/2);
+            [tau0,tau1] = getDomain(obj);
+            [tau,fval,exitflag,output] = fminbnd(fh, tau0, tau1);
+            
+            [x,y] = eval(obj, tau);
+            Q = [x;y];
+            
+            idx = find(tau > obj.Breaks, 1, 'last');
+            
+            if (nargin > 2) && doPlot
+                plot(obj, 'Marker','.')
+                hold on
+                plot(poi(1), poi(2), 'rx')
+                plot(Q(1), Q(2), 'ro')
+                hold off
+            end%if
+            
 		end%fcn
+        
+        function d = pathDistance(obj, P, tau)
+            
+            pp = mkpp(obj);
+            xy = ppval(pp, tau);
+            d = hypot(xy(1,:) - P(1), xy(2,:) - P(2));
+            
+        end%fcn
+        
+        function phi = pointAngle(obj, pp, ppd, P, tau)
+            
+            xy = ppval(pp, tau);
+            dxy = ppval(ppd, tau);
+            w = P(:) - xy;
+            phi = atan2(w(2), w(1)) - atan2(dxy(2), dxy(1));
+            
+        end%fcn
 		
 		function n = numel(obj)
 			n = size(obj.Coefs, 2); % Return number of spline segments
@@ -200,7 +244,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 		
 		function obj = pp2Path(pp)
             [breaks,coefs,nbrSeg,polyOrd,dim] = unmkpp(pp);
-			obj = SplinePath(breaks, reshape(coefs, [2,[],polyOrd]));
+            assert(dim == 2)
+			obj = SplinePath(breaks, reshape(coefs, 2, nbrSeg, polyOrd));
 		end%fcn
 		
 		function obj = xy2Path(x, y)
