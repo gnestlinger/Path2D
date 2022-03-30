@@ -254,13 +254,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         % CART2FRENET    Cartesian point to frenet with respect to path.
         %   SD = CART2FRENET(OBJ,XY) converts point of interest XY in
         %   cartesian coordinates to frenet coordinates SD with respect to
-        %   the path OBJ. Point XY is a two-element vector .
+        %   the path OBJ. Point XY is a two-element vector.
         %
-        %   [SD,Q,IDX,LAMBDA] = CART2FRENET(___) also return 
+        %   [SD,Q,IDX,TAU] = CART2FRENET(___) also return 
         %    - The cartesian point Q that corresponds to the frenet point SD.
         %    - An index IDX indicating the path segment Q relates to.
-        %    - The path parameter LAMBDA.
-        [sd,Q,idx,lambda] = cart2frenet(obj, xy)
+        %    - The path parameter TAU.
+        [sd,Q,idx,tau] = cart2frenet(obj, xy)
         
         % EVAL  Evaluate path at path parameters.
         %   [X,Y] = EVAL(OBJ,TAU) evaluates analytical path definition at
@@ -294,7 +294,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         s = getPathLengths(obj)
         
         % INTERSECTLINE     Line intersection.
-        %   [XY,TAU,ERRFLAG] = INTERSECTLINE(OBJ, O, PSI) returns the
+        %   [XY,TAU,ERRFLAG] = INTERSECTLINE(OBJ,O,PSI) returns the
         %   intersection point XY of path OBJ and the line passing through
         %   O and having the slope PSI, where TAU is the corresponding path
         %   parameter. Flag ERRFLAG is true if no intersection was found
@@ -302,7 +302,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         [xy,tau,errFlag] = intersectLine(obj, O, psi)
         
         % INTERSECTCIRCLE     Circle intersection.
-        %   [XY,TAU,ERRFLAG] = INTERSECTCIRCLE(OBJ, C, R) returns the
+        %   [XY,TAU,ERRFLAG] = INTERSECTCIRCLE(OBJ,C,R) returns the
         %   intersection points XY of path OBJ and the circle with center C
         %   and radius R, where TAU is the corresponding path parameter.
         %   Flag ERRFLAG is true if no intersection was found and false
@@ -322,11 +322,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         
         % POINTPROJECTION    Point projection.
         %   Q = POINTPROJECTION(OBJ,POI) returns the orthogonal projection
-        %   Q of point of interest POI onto the path OBJ.
+        %   Q of point of interest POI onto the path OBJ. Point POI is a
+        %   two-element vector.
         %
-        %   [Q,IDX,LAMBDA] = POINTPROJECTION(OBJ,POI) also returns the path
-        %   segment IDX and path path parameter LAMBDA related to Q.
-        [Q,idx,lambda] = pointProjection(obj, poi)
+        %   [Q,IDX,TAU] = POINTPROJECTION(OBJ,POI) also returns the path
+        %   segment IDX and path parameter TAU related to Q.
+        [Q,idx,tau] = pointProjection(obj, poi)
             
         % NUMEL     Number of path elements.
         %   N = NUMEL(OBJ) returns the number of path elements, e.g. 

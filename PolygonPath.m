@@ -75,7 +75,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             obj.curv    = [obj.curv; obj2.curv];
         end%fcn
         
-        function [sd,Q,idx,lambda] = cart2frenet(obj, xy, doPlot)
+        function [sd,Q,idx,tau] = cart2frenet(obj, xy, doPlot)
             
         %   EXAMPLES:
         %   >> sd = cart2frenet(PolygonPath.xy2Path(0:3, [0 0 1 0]), [1; 1])
@@ -89,8 +89,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %     -3.5355
         %
         %    See also PATH2D/CART2FRENET.
-
-            [Q,idx,lambda] = pointProjection(obj, xy);
+            
+            [Q,idx,tau] = pointProjection(obj, xy);
             
             % Get the orientation vector related with Q to calculate the
             % sign of distance from point of interest to path
@@ -106,7 +106,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             u = P1 - P0;
             
             % Get sign via z-component of cross product u x (Q-poi)
-            qp = Q - xy;
+            qp = Q - xy(:);
             signD = sign(u(1)*qp(2) - u(2)*qp(1));
             
             sd = [...
@@ -620,7 +620,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function [Q,idx,lambda] = pointProjection(obj, poi, doPlot)
+        function [Q,idx,tau] = pointProjection(obj, poi, doPlot)
             
             if nargin < 3
                 doPlot = false;
@@ -634,7 +634,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 X = obj.x;
                 Y = obj.y;
             end
-
+            
             % To find Q, two conditions must be satisfied: 
             % https://de.wikipedia.org/wiki/Orthogonalprojektion
             %    (1) Q = P0 + lambda * u, where u := P1-P0
@@ -643,27 +643,27 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             %   lambda = dot(POI - P0, u)/dot(u, u)
             P0 = [X(1:end-1), Y(1:end-1)];
             u = diff([X, Y], 1, 1);
-            lambdas = dot(bsxfun(@minus, poi', P0), u, 2) ./ sum(u.^2, 2);
+            lambdas = dot(bsxfun(@minus, poi(:)', P0), u, 2) ./ sum(u.^2, 2);
             idxs = find((lambdas >= 0) & (lambdas < 1));
             
             if isempty(idxs) % Fallback
                 % Return the waypoint closest to point of interest
                 [~,idx] = min(hypot(obj.x - poi(1), obj.y - poi(2)));
                 Q = [X(idx); Y(idx)];
-                lambda = 0;
+                tau = 0;
             else
                 % All potential solutions
                 Qi = P0(idxs,:) + bsxfun(@times, lambdas(idxs), u(idxs,:));
-
+                
                 % Return the closest point
                 [~,minInd] = min(hypot(Qi(:,1) - poi(1), Qi(:,2) - poi(2)));
                 Q = Qi(minInd,:)';
                 idx = idxs(minInd);
-                lambda = lambdas(idx);
+                tau = lambdas(idx);
             end%if
             
             if doPlot
-                plot(X, Y, 'Marker','.')
+                plot(obj, 'Marker','.')
                 hold on
                 plot(poi(1), poi(2), 'rx')
                 plot(Q(1), Q(2), 'ro')
