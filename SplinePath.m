@@ -8,6 +8,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 % 
 %   SPLINEPATH methods:
 %   SplinePath - Constructor.
+%   mkpp - Create piecewise polynomial structure.
 %   See superclasses.
 % 
 %   SPLINEPATH static methods:
@@ -21,12 +22,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         Breaks = 0
         Coefs = zeros(2,0,4) % path dimension by # of segments by # order
     end
-	
+    
 	
 	
 	methods
 		
-		function obj = SplinePath(breaks, coefs)
+		function obj = SplinePath(breaks, coefs, isCircuit)
 		%SPLINEPATH     Create spline path object.
 		%	OBJ = SPLINEPATH(BREAKS,COEFS) creates a spline path OBJ with
 		%	breaks BREAKS of size 1-by-(N+1) and coefficients COEFS of size
@@ -41,13 +42,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 % Return with default values
                 return
             end
-			
+            
             assert(size(coefs,1) == 2, 'Coefficients must be 2D!');
-			assert(isequal(numel(breaks)-1, size(coefs,2)), ...
+            assert(isequal(numel(breaks)-1, size(coefs,2)), ...
                 'Breaks and spline segments do not match!');
-			obj.Breaks = breaks;
-			obj.Coefs = coefs;
-			
+            obj.Breaks = breaks;
+            obj.Coefs = coefs;
+            
 			if nargin < 3
                 [P0,P1] = termPoints(obj);
                 obj.IsCircuit = (norm(P1 - P0) < 1e-5);
@@ -57,15 +58,19 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 			
 		end%Constructor
 		
-		function obj = append(obj, obj2)
+        function obj = append(obj, obj2)
             
             breaks = obj.Breaks;
-            obj.Breaks = [breaks, obj2.Breaks(2:end) + breaks(end)];
+            obj.Breaks = [breaks, breaks(end) + obj2.Breaks(2:end)];
             
             coefs = obj.Coefs; % TODO: handle non-matching degree
-            obj.Coefs = cat(2, obj.Coefs, obj2.Coefs);
-			
-		end%fcn
+            [~,~,k] = size(coefs);
+            [~,n2,k2] = size(obj2.Coefs);
+            
+            assert(k2 <= k, 'Degree of path to append must not exceed degree of initial path!')
+            obj.Coefs = cat(2, obj.Coefs, cat(3, zeros(2,n2,k-k2), obj2.Coefs));
+            
+        end%fcn
 		
 		function [sd,Q,idx,tau] = cart2frenet(obj, poi, doPlot)
 			
@@ -74,14 +79,27 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         function [x,y,head,curv] = eval(obj, tau)
             
             if nargin < 2
+                % M samples per spline segment
+                M = 100;
+                N = numel(obj);
+                
                 breaks = obj.Breaks;
-                dbreaks = diff(breaks);
-                tau = linspace(breaks(1), breaks(end), 1e3);
+                tau = coder.nullcopy(zeros(N*M , 1));
+                tau(1:M) = linspace(breaks(1), breaks(2), 100);
+                for i = 2:N
+                    % To avoid repeated break entries, overwrite end break
+                    % of preceeding segment with initial (and equal) break
+                    % of current segment
+                    ii = (i-1)*M;
+                    jj = ii + M;
+                    tau(ii:jj) = linspace(breaks(i), breaks(i+1), M+1);
+                end
             end
+            
             pp = mkpp(obj);
-            xy = ppval(pp, tau);
-            x = xy(1,:)';
-            y = xy(2,:)';
+            xy = ppval(pp, tau)';
+            x = xy(:,1);
+            y = xy(:,2);
             
             if nargout > 2
                 ppD1 = ppdiff(pp);
@@ -96,10 +114,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             end%if
             
         end%fcn
-		
-		function [xy,Q,idx] = frenet2cart(obj, sd)
+        
+        function [xy,Q,idx] = frenet2cart(obj, sd)
             
-		end%fcn
+        end%fcn
         
         function [tauL,tauU] = getDomain(obj)
             tauL = obj.Breaks(1);
@@ -120,11 +138,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             flag = (numel(obj) < 1);
         end%fcn
         
-		function s = length(obj, idx0, idx1)
-			
+		function s = length(obj)
+            
 		end%fcn
 		
         function pp = mkpp(obj)
+        %MKPP   Create piecewise polynomial struct.
+        %   PP = MKPP(OBJ) creates piecewise polynomial structure PP from
+        %   path OBJ.
+        %
+        %   See also PPVAL, MKPP, UNMKPP.
             pp = mkpp(obj.Breaks, obj.Coefs, 2);
         end%fcn
         
