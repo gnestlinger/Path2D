@@ -1,6 +1,6 @@
 classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %POLYGONPATH    Polygon path.
-%   Path representation using polygonal chain assumin linear interpolation.
+%   Path representation using polygonal chain assuming linear interpolation.
 % 
 %   PolygonPath properties:
 %   x - Cartesian x-coordinate.
@@ -525,17 +525,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             flag = (numel(obj) < 1);
         end%fcn
         
-        function s = length(obj, idx0, idx1)
-            
-            if nargin < 2
-                xtmp = obj.x;
-                ytmp = obj.y;
-            else
-                xtmp = obj.x(idx0:idx1);
-                ytmp = obj.y(idx0:idx1);
-            end
-            s = sum(hypot(diff(xtmp), diff(ytmp)));
-            
+        function s = length(obj)
+            s = sum(hypot(diff(obj.x), diff(obj.y)));
         end%fcn
         
         function n = numel(obj)
@@ -768,11 +759,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function [P0,P1] = termPoints(obj)
-%             [tau0,tau1] = getDomain(obj);
-%             [x,y] = eval(obj, [tau0,tau1]);
-%             P0 = [x(1); y(1)];
-%             P1 = [x(2); y(2)];
-            
             P0 = [obj.x(1);    obj.y(1)];
             P1 = [obj.x(end);  obj.y(end)];
         end%fcn

@@ -1,5 +1,5 @@
 classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
-%PATH2D        Represent 2D paths.
+%PATH2D     Represent 2D paths.
 %   This class is abstract and can not be instantiated!
 %   
 %   Represent paths in the planar x/y coordinate frame utilizing an
@@ -39,8 +39,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   pp2Path - Construct path from piecewise polynomial.
 %   xy2Path - Construct path from cartesian coordinates.
 %
-%   See also .
-
+%   See also PolygonPath.
+    
     properties
         % ISCIRCUIT - Logical indicating if path is a circuit.
         IsCircuit = false
@@ -317,7 +317,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         flag = isempty(obj)
         
         % LENGTH    Path length.
-        %   S = LENGTH(OBJ) returns the length S of the path OBJ.
+        %   S = LENGTH(OBJ) returns the arc length S of the path OBJ.
         s = length(obj)
         
         % POINTPROJECTION    Point projection.
