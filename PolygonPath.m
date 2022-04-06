@@ -133,6 +133,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
+        function [tauL,tauU] = domain(obj)
+            tauL = 0;
+            tauU = length(obj);
+        end%fcn
+        
         function [x,y,head,curv] = eval(obj, tau)
             
             if nargin < 2
@@ -337,13 +342,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 legend show
                 title(mfilename)
             end%if
-            
-        end%fcn
-        
-        function [tauL,tauU] = getDomain(obj)
-            
-            tauL = 0;
-            tauU = length(obj);
             
         end%fcn
         
