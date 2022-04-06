@@ -1,6 +1,6 @@
 classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %POLYGONPATH    Polygon path.
-%   Path representation using polygonal chain assumin linear interpolation.
+%   Path representation using polygonal chain assuming linear interpolation.
 % 
 %   PolygonPath properties:
 %   x - Cartesian x-coordinate.
@@ -89,7 +89,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %     -3.5355
         %
         %    See also PATH2D/CART2FRENET.
-            
+
             [Q,idx,tau] = pointProjection(obj, xy);
             
             % Get the orientation vector related with Q to calculate the
@@ -131,6 +131,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 legend show
             end%if
             
+        end%fcn
+        
+        function [tauL,tauU] = domain(obj)
+            tauL = 0;
+            tauU = length(obj);
         end%fcn
         
         function [x,y,head,curv] = eval(obj, tau)
@@ -340,13 +345,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function [tauL,tauU] = getDomain(obj)
-            
-            tauL = 0;
-            tauU = length(obj);
-            
-        end%fcn
-        
         function s = getPathLengths(obj, idx0, idx1)
             
             if nargin < 2
@@ -475,18 +473,18 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % threshold.
             signs1 = int8(sign(yPath)); 
             signs2 = abs(yPath) > 1e-12;
-            indxs = find(any(diff([signs1,signs2], 1, 1), 2));
-            if isempty(indxs) % No intersection of path/line
+            idxs0 = find(any(diff([signs1,signs2], 1, 1), 2));
+            if isempty(idxs0) % No intersection of path/line
                 xy = zeros(0, 2);
                 tauS = zeros(0,1);
                 errFlag = true;
             else
-                % IND0F can not exceed number of path samples since indexes
-                % were obtained using DIFF!
-                idxs0F = [indxs, indxs+1];
-                x0F = reshape(xPath(idxs0F), size(idxs0F));
-                y0Fd = diff(reshape(yPath(idxs0F), size(idxs0F)), 1, 2);
-                x = xPath(indxs) - yPath(indxs) .* diff(x0F, 1, 2)./y0Fd; 
+                % End index can not exceed number of path samples since
+                % indexes were obtained using DIFF!
+                idxsE = idxs0 + 1;
+                x0F = [xPath(idxs0), xPath(idxsE)];
+                y0Fd = diff([yPath(idxs0), yPath(idxsE)], 1, 2);
+                x = xPath(idxs0) - yPath(idxs0) .* diff(x0F, 1, 2)./y0Fd; 
                 
                 % Undo transformation. Due to the above rotation/shift, the
                 % intersections y-component is zero. Therefore, only the
@@ -498,10 +496,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 % the local path segment parameter can be computed from x
                 % or y
 %                 tauLocal = (x - x0F(1))/diff(x0F);
-                tauLocal = -yPath(indxs)./y0Fd;
+                tauLocal = -yPath(idxs0)./y0Fd;
                 s = getPathLengths(obj);
-                tauS = s(indxs);
-                tauS = tauS + (s(indxs+1) - tauS).*tauLocal;
+                tauS = s(idxs0);
+                tauS = tauS + (s(idxsE) - tauS).*tauLocal;
                 
                 errFlag = false;
             end%if
@@ -525,17 +523,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             flag = (numel(obj) < 1);
         end%fcn
         
-        function s = length(obj, idx0, idx1)
-            
-            if nargin < 2
-                xtmp = obj.x;
-                ytmp = obj.y;
-            else
-                xtmp = obj.x(idx0:idx1);
-                ytmp = obj.y(idx0:idx1);
-            end
-            s = sum(hypot(diff(xtmp), diff(ytmp)));
-            
+        function s = length(obj)
+            s = sum(hypot(diff(obj.x), diff(obj.y)));
         end%fcn
         
         function n = numel(obj)
@@ -634,7 +623,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 X = obj.x;
                 Y = obj.y;
             end
-            
+
             % To find Q, two conditions must be satisfied: 
             % https://de.wikipedia.org/wiki/Orthogonalprojektion
             %    (1) Q = P0 + lambda * u, where u := P1-P0
@@ -654,7 +643,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             else
                 % All potential solutions
                 Qi = P0(idxs,:) + bsxfun(@times, lambdas(idxs), u(idxs,:));
-                
+
                 % Return the closest point
                 [~,minInd] = min(hypot(Qi(:,1) - poi(1), Qi(:,2) - poi(2)));
                 Q = Qi(minInd,:)';
@@ -768,11 +757,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function [P0,P1] = termPoints(obj)
-%             [tau0,tau1] = getDomain(obj);
-%             [x,y] = eval(obj, [tau0,tau1]);
-%             P0 = [x(1); y(1)];
-%             P1 = [x(2); y(2)];
-            
             P0 = [obj.x(1);    obj.y(1)];
             P1 = [obj.x(end);  obj.y(end)];
         end%fcn

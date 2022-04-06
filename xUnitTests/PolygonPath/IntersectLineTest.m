@@ -42,7 +42,7 @@ classdef IntersectLineTest < matlab.unittest.TestCase
             testCase.verifyEqual(size(s), [1,1]);
             
             % Intersection with end point
-            [act,s] = intersectLine(obj0, [10 0], pi/2, true);
+            [act,s] = intersectLine(obj0, [10 0], pi/2, false);
             exp = P1';
             testCase.verifyEqual(act, exp, 'AbsTol',1e-12);
             testCase.verifyEqual(size(s), [1,1]);

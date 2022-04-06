@@ -1,5 +1,5 @@
 classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
-%PATH2D        Represent 2D paths.
+%PATH2D     Represent 2D paths.
 %   This class is abstract and can not be instantiated!
 %   
 %   Represent paths in the planar x/y coordinate frame utilizing an
@@ -13,21 +13,21 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   Path2D methods:
 %   append - Append paths.
 %   cart2frenet - Convert cartesian point to frenet coordinates.
+%   domain - Domain of the path.
 %   eval - Evaluate path at path parameter.
 %   frenet2cart - Convert frenet point to cartesian coordinates.
-%   getDomain - Get the domain of the path.
 %   getPathLengths - Get lengths of path segments.
 %   intersectLine - Line intersection.
 %   intersectCircle - Circle intersection.
 %   isempty - Check if path is empty.
-%   length - Get path length.
+%   length - Path length.
 %   numel - Number of path elements.
 %   pointProjection - Point projection on path.
 %   reverse - Reverse path.
 %   rotate - Rotate path.
 %   select - Select path segments.
 %   shift - Shift path.
-%   termPoints - Get terminal points.
+%   termPoints - Terminal points.
 % 
 %   Path2D visualization methods:
 %   plot - Plot the path.
@@ -39,8 +39,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   pp2Path - Construct path from piecewise polynomial.
 %   xy2Path - Construct path from cartesian coordinates.
 %
-%   See also .
-
+%   See also PolygonPath.
+    
     properties
         % ISCIRCUIT - Logical indicating if path is a circuit.
         IsCircuit = false
@@ -182,7 +182,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             yLimits = ylim;
             
             % Check if some path parameters are out of range
-            [tauL,tauU] = getDomain(obj);
+            [tauL,tauU] = domain(obj);
             tauExceeds = (tau > tauU) | (tau < tauL);
             if any(tauExceeds)
                 warning('PATH2D:plottangent:tauOutOfRange', ...
@@ -262,6 +262,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %    - The path parameter TAU.
         [sd,Q,idx,tau] = cart2frenet(obj, xy)
         
+        % DOMAIN    Domain of the path.
+        %   [TAUL,TAUU] = DOMAIN(OBJ) returns the lower and upper domain
+        %   value TAUL and TAUU respectively.
+        [tauL,tauU] = domain(obj);
+        
         % EVAL  Evaluate path at path parameters.
         %   [X,Y] = EVAL(OBJ,TAU) evaluates analytical path definition at
         %   path parameters TAU to return the corresponding waypoints
@@ -282,11 +287,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %    - The Point Q that corresponds to the frenet points SD.
         %    - An index IDX referring to the path segment Q relates to.
         [xy,Q,idx] = frenet2cart(obj, sd)
-        
-        % GETDOMAIN     Get the domain of the path.
-        %   [TAUL,TAUU] = GETDOMAIN(OBJ) returns the lower and upper domain
-        %   value TAUL and TAUU respectively.
-        [tauL,tauU] = getDomain(obj);
         
         % GETPATHLENGTHS    Get path segment lengths.
         %   S = GETPATHLENGTHS(OBJ) get the lengths S of each segment of
@@ -317,7 +317,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         flag = isempty(obj)
         
         % LENGTH    Path length.
-        %   S = LENGTH(OBJ) returns the length S of the path OBJ.
+        %   S = LENGTH(OBJ) returns the arc length S of the path OBJ.
         s = length(obj)
         
         % POINTPROJECTION    Point projection.
