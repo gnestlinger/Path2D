@@ -76,6 +76,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 			
 		end%fcn
         
+        function [tauL,tauU] = domain(obj)
+            tauL = obj.Breaks(1);
+            tauU = obj.Breaks(end);
+        end%fcn
+        
         function [x,y,head,curv] = eval(obj, tau)
             
             if nargin < 2
@@ -118,11 +123,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         function [xy,Q,idx] = frenet2cart(obj, sd)
             
         end%fcn
-        
-        function [tauL,tauU] = getDomain(obj)
-            tauL = obj.Breaks(1);
-            tauU = obj.Breaks(end);
-        end%fcn
 		
 		function s = getPathLengths(obj, idx0, idx1)
             
@@ -156,7 +156,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             pp = mkpp(obj);
             ppd = ppdiff(pp);
             fh = @(tau) abs(pointAngle(obj, pp, ppd, poi, tau) - pi/2);
-            [tau0,tau1] = getDomain(obj);
+            [tau0,tau1] = domain(obj);
             [tau,fval,exitflag,output] = fminbnd(fh, tau0, tau1);
             
             [x,y] = eval(obj, tau);
@@ -204,7 +204,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             narginchk(1, 2);
             
             if nargin < 2
-                tau0 = getDomain(obj);
+                tau0 = domain(obj);
                 [~,~,phi] = eval(obj, tau0);
             end%if
             
@@ -241,7 +241,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function [P0,P1] = termPoints(obj)
             
-            [tau0,tau1] = getDomain(obj);
+            [tau0,tau1] = domain(obj);
             [x,y] = eval(obj, [tau0,tau1]);
             P0 = [x(1); y(1)];
             P1 = [x(2); y(2)];
