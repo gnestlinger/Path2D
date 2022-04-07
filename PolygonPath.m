@@ -118,7 +118,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 doPlot = false;
             end
             if doPlot
-                plot(obj.x, obj.y, 'Marker','.', 'MarkerSize',8, 'DisplayName','RefPath');
+                plot(obj, 'Marker','.', 'MarkerSize',8, 'DisplayName','RefPath');
                 hold on
                 plot(obj.x(1), obj.y(1), 'g.', 'MarkerSize',18, 'DisplayName','Initial point');
                 plot(xy(1), xy(2), 'o', 'DisplayName','PoI');
@@ -331,8 +331,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 doPlot = false;
             end
             if doPlot
-                plot(obj.x, obj.y, 'Marker','.', 'MarkerSize',15, ...
-                    'DisplayName','PolygonPath');
+                plot(obj, 'Marker','.', 'MarkerSize',15, 'DisplayName','PolygonPath');
                 hold on
                 plot(xy(:,1), xy(:,2), 'o', 'DisplayName','xy');
                 plot(Q(:,1), Q(:,2), 'kx', 'DisplayName','Q');
@@ -718,7 +717,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
             % Transposed rotation matrix in R^2 since rotation is performed
             % via p*R
-            R = [+cos(phi) sin(phi); -sin(phi) cos(phi)];
+            R = [cos(phi) sin(phi); -sin(phi) cos(phi)];
             for i = 1:builtin('numel', obj)
                 % Much faster than rotMat*[obj.x,obj.y]'
                 xy_new = [obj(i).x, obj(i).y]*R;
