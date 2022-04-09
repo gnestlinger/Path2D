@@ -323,10 +323,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         % POINTPROJECTION    Point projection.
         %   Q = POINTPROJECTION(OBJ,POI) returns the orthogonal projection
         %   Q of point of interest POI onto the path OBJ. Point POI is a
-        %   two-element vector.
+        %   two-element vector and Q is of size N-by-2.
         %
         %   [Q,IDX,TAU] = POINTPROJECTION(OBJ,POI) also returns the path
         %   segment IDX and path parameter TAU related to Q.
+        %
+        %   Multiple solutions are concatenated vertically, i.e. Q, IDX and
+        %   TAU have as many rows as solutions are found.
         [Q,idx,tau] = pointProjection(obj, poi)
             
         % NUMEL     Number of path elements.
