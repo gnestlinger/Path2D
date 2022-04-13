@@ -23,6 +23,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   length - Path length.
 %   numel - Number of path elements.
 %   pointProjection - Point projection on path.
+%   restrict - Restrict path domain.
 %   reverse - Reverse path.
 %   rotate - Rotate path.
 %   select - Select path segments.
@@ -247,7 +248,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
     methods (Abstract)
         
         % APPEND    Append paths.
-        %   OBJ = append(OBJ0,OOBJ1,...,OBJN) appends paths OBJ to OBJN in
+        %   OBJ = append(OBJ0,OBJ1,...,OBJN) appends paths OBJ to OBJN in
         %   the given order creating path OBJ.
         obj = append(obj0, varargin)
         
@@ -275,7 +276,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   [__,HEAD,CURV] = EVAL(___) also returns heading HEAD and
         %   curvature CURV.
         %
-        %   [___] = EVAL(OBJ) subclass specific implementation.
+        %   [___] = EVAL(OBJ) evaluates path OBJ according to subclass
+        %   specific implementation.
         [x,y,head,curv] = eval(obj, tau)
         
         % FRENET2CART    Frenet point to cartesian with respect to path.
@@ -323,10 +325,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         % POINTPROJECTION    Point projection.
         %   Q = POINTPROJECTION(OBJ,POI) returns the orthogonal projection
         %   Q of point of interest POI onto the path OBJ. Point POI is a
-        %   two-element vector.
+        %   two-element vector and Q is of size N-by-2.
         %
         %   [Q,IDX,TAU] = POINTPROJECTION(OBJ,POI) also returns the path
         %   segment IDX and path parameter TAU related to Q.
+        %
+        %   Multiple solutions are concatenated vertically, i.e. Q, IDX and
+        %   TAU have as many rows as solutions are found.
         [Q,idx,tau] = pointProjection(obj, poi)
             
         % NUMEL     Number of path elements.
@@ -334,6 +339,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %    - The number of waypoints for polygon path.
         %    - The number of segments for a spline path.
         N = numel(obj)
+        
+        % RESTRICT  Restrict domain.
+        %   OBJ = RESTRICT(OBJ,TAU0,TAUF) returns the path with restricted
+        %   domain to the interval [TAU0, TAUF]. If TAU0/TAUF exceeds the
+        %   lower/upper domain or are empty, the respective bound is kept.
+        obj = restrict(obj, tau0, tauF)
         
         % REVERSE   Reverse path.
         %   OBJ = REVERSE(OBJ) reverses the path's direction.
@@ -347,7 +358,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   initial slope.
         obj = rotate(obj, phi)
         
-        % SELECT    Select path segments.
+        % SELECT    Select path elements.
         %   OBJ = SELECT(OBJ,IDXS) selects the path elements IDXS of path
         %   OBJ, where IDXS can be either an array of indexes or a logical
         %   array.

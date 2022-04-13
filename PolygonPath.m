@@ -27,7 +27,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %#ok<*PROPLC> % There is a property named xyz. Maybe this is a reference to it?
 
     properties
-        x = zeros(100, 1)
+        x = linspace(0, 99, 100)'
         y = zeros(100, 1)
         head = zeros(100, 1)
         curv = zeros(100, 1)
@@ -90,7 +90,18 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %
         %    See also PATH2D/CART2FRENET.
 
-            [Q,idx,tau] = pointProjection(obj, xy);
+            [Qs,idxs,taus] = pointProjection(obj, xy);
+            if isempty(Qs)
+                % Take the waypoint closest to point of interest
+                [~,idx] = min(hypot(obj.x - xy(1), obj.y - xy(2)));
+                Q = [obj.x(idx) obj.y(idx)];
+                tau = 0;
+            else
+                Q = Qs(1,:);
+                idx = idxs(1);
+                tau = taus(1);
+            end%fcn
+                
             
             % Get the orientation vector related with Q to calculate the
             % sign of distance from point of interest to path
@@ -106,7 +117,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             u = P1 - P0;
             
             % Get sign via z-component of cross product u x (Q-poi)
-            qp = Q - xy(:);
+            qp = Q(:) - xy(:);
             signD = sign(u(1)*qp(2) - u(2)*qp(1));
             
             sd = [...
@@ -118,7 +129,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 doPlot = false;
             end
             if doPlot
-                plot(obj.x, obj.y, 'Marker','.', 'MarkerSize',8, 'DisplayName','RefPath');
+                plot(obj, 'Marker','.', 'MarkerSize',8, 'DisplayName','RefPath');
                 hold on
                 plot(obj.x(1), obj.y(1), 'g.', 'MarkerSize',18, 'DisplayName','Initial point');
                 plot(xy(1), xy(2), 'o', 'DisplayName','PoI');
@@ -331,8 +342,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 doPlot = false;
             end
             if doPlot
-                plot(obj.x, obj.y, 'Marker','.', 'MarkerSize',15, ...
-                    'DisplayName','PolygonPath');
+                plot(obj, 'Marker','.', 'MarkerSize',15, 'DisplayName','PolygonPath');
                 hold on
                 plot(xy(:,1), xy(:,2), 'o', 'DisplayName','xy');
                 plot(Q(:,1), Q(:,2), 'kx', 'DisplayName','Q');
@@ -633,34 +643,52 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             P0 = [X(1:end-1), Y(1:end-1)];
             u = diff([X, Y], 1, 1);
             lambdas = dot(bsxfun(@minus, poi(:)', P0), u, 2) ./ sum(u.^2, 2);
-            idxs = find((lambdas >= 0) & (lambdas < 1));
+            idx = find((lambdas >= 0) & [lambdas(1:end-1) < 1; lambdas(end) <= 1]);
             
-            if isempty(idxs) % Fallback
-                % Return the waypoint closest to point of interest
-                [~,idx] = min(hypot(obj.x - poi(1), obj.y - poi(2)));
-                Q = [X(idx); Y(idx)];
-                tau = 0;
-            else
-                % All potential solutions
-                Qi = P0(idxs,:) + bsxfun(@times, lambdas(idxs), u(idxs,:));
-
-                % Return the closest point
-                [~,minInd] = min(hypot(Qi(:,1) - poi(1), Qi(:,2) - poi(2)));
-                Q = Qi(minInd,:)';
-                idx = idxs(minInd);
-                tau = lambdas(idx);
-            end%if
+            % Return all potential solutions
+            Q = P0(idx,:) + bsxfun(@times, lambdas(idx), u(idx,:));
+            tau = lambdas(idx);
             
             if doPlot
                 plot(obj, 'Marker','.')
+                legend off
                 hold on
-                plot(poi(1), poi(2), 'rx')
-                plot(Q(1), Q(2), 'ro')
+                plot(poi(1), poi(2), 'rx', 'DisplayName','PoI')
+                plot(Q(:,1), Q(:,2), 'ro', 'DisplayName','Q')
                 hold off
+                legend show
             end%if
             
         end%fcn
 
+        function obj = restrict(obj, tau0, tauF)
+            
+            assert(tau0 < tauF)
+            
+            % Find the lower/upper index so that restricted domain is
+            % covered
+            [tauL,tauU] = obj.domain();
+            tauS = obj.getPathLengths();
+            if isempty(tau0) || (tau0 < tauL)
+                idx0 = 1;
+            else
+                idx0 = find(tau0 >= tauS, 1, 'last');
+            end
+            if isempty(tauF) || (tauF > tauU)
+                idxF = numel(obj);
+            else
+                idxF = find(tauF <= tauS, 1, 'first');
+            end%if
+            
+            [x,y,h,c] = obj.eval([tau0 tauF]);
+            obj = obj.select(idx0:idxF);
+            obj.x([1 end]) = x;
+            obj.y([1 end]) = y;
+            obj.head([1 end]) = h;
+            obj.curv([1 end]) = c;
+            
+        end%fcn
+        
         function [obj,idx] = rdp(obj, eps)
         %RDP    Ramer-Douglas-Peucker point reduction.
         %    OBJR = RDP(OBJ,EPS) applies the Ramer-Douglas-Peuker point
@@ -718,7 +746,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
             % Transposed rotation matrix in R^2 since rotation is performed
             % via p*R
-            R = [+cos(phi) sin(phi); -sin(phi) cos(phi)];
+            R = [cos(phi) sin(phi); -sin(phi) cos(phi)];
             for i = 1:builtin('numel', obj)
                 % Much faster than rotMat*[obj.x,obj.y]'
                 xy_new = [obj(i).x, obj(i).y]*R;
