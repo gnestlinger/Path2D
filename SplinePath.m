@@ -195,6 +195,31 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 			n = size(obj.Coefs, 2); % Return number of spline segments
 		end%fcn
         
+        function obj = restrict(obj, tau0, tauF)
+            
+            assert(tau0 < tauF)
+            
+            % Find the lower/upper index so that restricted domain is
+            % covered
+            [tauL,tauU] = obj.domain();
+            taus = obj.Breaks;
+            if isempty(tau0) || (tau0 < tauL)
+                idx0 = 1;
+            else
+                idx0 = find(tau0 >= taus, 1, 'last');
+            end
+            if isempty(tauF) || (tauF > tauU)
+                idxF = numel(obj);
+            else
+                idxF = find(tauF >= taus, 1, 'last');
+            end%if
+            
+            obj = obj.select(idx0:idxF);
+            obj.Breaks(1) = tau0;
+            obj.Breaks(end) = tauF;
+            
+        end%fcn
+        
         function obj = reverse(obj)
 			
 		end%fcn
