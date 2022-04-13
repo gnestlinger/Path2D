@@ -27,7 +27,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %#ok<*PROPLC> % There is a property named xyz. Maybe this is a reference to it?
 
     properties
-        x = zeros(100, 1)
+        x = linspace(0, 99, 100)'
         y = zeros(100, 1)
         head = zeros(100, 1)
         curv = zeros(100, 1)
@@ -661,6 +661,34 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
 
+        function obj = restrict(obj, tau0, tauF)
+            
+            assert(tau0 < tauF)
+            
+            % Find the lower/upper index so that restricted domain is
+            % covered
+            [tauL,tauU] = obj.domain();
+            tauS = obj.getPathLengths();
+            if isempty(tau0) || (tau0 < tauL)
+                idx0 = 1;
+            else
+                idx0 = find(tau0 >= tauS, 1, 'last');
+            end
+            if isempty(tauF) || (tauF > tauU)
+                idxF = numel(obj);
+            else
+                idxF = find(tauF <= tauS, 1, 'first');
+            end%if
+            
+            [x,y,h,c] = obj.eval([tau0 tauF]);
+            obj = obj.select(idx0:idxF);
+            obj.x([1 end]) = x;
+            obj.y([1 end]) = y;
+            obj.head([1 end]) = h;
+            obj.curv([1 end]) = c;
+            
+        end%fcn
+        
         function [obj,idx] = rdp(obj, eps)
         %RDP    Ramer-Douglas-Peucker point reduction.
         %    OBJR = RDP(OBJ,EPS) applies the Ramer-Douglas-Peuker point
