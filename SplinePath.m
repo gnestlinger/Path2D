@@ -23,11 +23,15 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         Coefs = zeros(2,0,4) % path dimension by # of segments by # order
     end
     
+    properties (Access = private)
+        % ArcLengths - Cumulative length of spline segments
+        ArcLengths = 0;
+    end
 	
 	
 	methods
 		
-		function obj = SplinePath(breaks, coefs, isCircuit)
+        function obj = SplinePath(breaks, coefs, s, isCircuit)
 		%SPLINEPATH     Create spline path object.
 		%	OBJ = SPLINEPATH(BREAKS,COEFS) creates a spline path OBJ with
 		%	breaks BREAKS of size 1-by-(N+1) and coefficients COEFS of size
@@ -43,37 +47,58 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 return
             end
             
-            assert(size(coefs,1) == 2, 'Coefficients must be 2D!');
+            assert(size(coefs,1) == 2, 'Spline must be 2D valued!');
             assert(isequal(numel(breaks)-1, size(coefs,2)), ...
-                'Breaks and spline segments do not match!');
+                'Number of breaks and spline segments does not match!');
             obj.Breaks = breaks;
             obj.Coefs = coefs;
             
-			if nargin < 3
+            if (nargin < 3) || isempty(s)
+                pp = mkpp(breaks, coefs, 2);
+                N = numel(obj);
+                s = coder.nullcopy(zeros(N+1,1));
+                s(1) = 0;
+                for i = 1:N
+                    tau = linspace(breaks(i), breaks(i+1), 1000);
+                    dxy = diff(ppval(pp, tau), 1, 2);
+                    s(i+1) = s(i) + sum(hypot(dxy(1,:), dxy(2,:)));
+                end
+            end
+            assert(numel(s) == numel(breaks));
+            obj.ArcLengths = s - s(1); % Make sure first element is zero!
+            
+            
+            if nargin < 4
                 [P0,P1] = termPoints(obj);
                 obj.IsCircuit = (norm(P1 - P0) < 1e-5);
-			else
-				obj.IsCircuit = isCircuit;
-			end%if
-			
-		end%Constructor
+            else
+                obj.IsCircuit = isCircuit;
+            end%if
+            
+        end%Constructor
 		
         function obj = append(obj, obj2)
             
             breaks = obj.Breaks;
             coefs = obj.Coefs;
+            arcLen = obj.ArcLengths;
             
             obj.Breaks = [breaks, breaks(end) + obj2.Breaks(2:end)];
             
             [~,~,k] = size(coefs);
             [~,n2,k2] = size(obj2.Coefs);
             assert(k2 <= k, 'Degree of path to append must not exceed degree of initial path!')
-            obj.Coefs = cat(2, obj.Coefs, cat(3, zeros(2,n2,k-k2), obj2.Coefs));
+            obj.Coefs = cat(2, coefs, cat(3, zeros(2,n2,k-k2), obj2.Coefs));
+            
+            [~,P1] = obj.termPoints();
+            P0 = obj2.termPoints();
+            ds = sqrt( sum((P0 - P1).^2) );
+            obj.ArcLengths = [arcLen; obj2.ArcLengths(2:end) + arcLen(end) + ds];
             
         end%fcn
 		
 		function [sd,Q,idx,tau] = cart2frenet(obj, xy, doPlot)
-			
+            
 		end%fcn
         
         function [tauL,tauU] = domain(obj)
@@ -128,7 +153,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         end%fcn
 		
 		function s = getPathLengths(obj, idx0, idx1)
-            
+            s = obj.ArcLengths;
 		end%fcn
         
         function [xy,tau,errFlag] = intersectLine(obj, O, psi)
@@ -141,7 +166,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             flag = (numel(obj) < 1);
         end%fcn
         
-		function s = length(obj)
+		function s = length(obj, tau)
+            
+            if nargin < 1
+                s = obj.ArcLengths(end);
+            else
+                idx = find(tau > obj.Breaks, 1, 'last');
+                taus = linspace(obj.Breaks(idx), tau, 100);
+                xy = diff(ppval(mkpp(obj), taus), 1, 2);
+                s = obj.ArcLengths(idx) + hypot(xy(1,:), xy(2,:));
+            end%if
             
 		end%fcn
 		
@@ -276,12 +310,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 obj(i).Coefs = coefs;
             end%for
             
-		end%fcn
+        end%fcn
         
         function obj = select(obj, idxs)
             
-            tmp = unique([idxs(:), idxs(:)+1]);
-            obj = SplinePath(obj.Breaks(tmp), obj.Coefs(:,idxs,:));
+            idxsc = idxs(:);
+            tmp = unique([idxsc, idxsc+1]);
+            s = obj.ArcLengths(tmp);
+            obj = SplinePath(obj.Breaks(tmp), obj.Coefs(:,idxs,:), s - s(1));
             
         end%fcn
 		
@@ -307,7 +343,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         end%fcn
         
 		function s = toStruct(obj)
-			s = struct('breaks',obj.Breaks, 'coefs',obj.Coefs);
+			s = struct(...
+                'breaks',obj.Breaks, ...
+                'coefs',obj.Coefs, ...
+                'lengths', obj.ArcLengths);
 		end%fcn
 		
 	end%methods
@@ -320,7 +359,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 	
 	methods (Static)
         
-        function obj = ll2Path(lat, lon)%#codegen
+        function obj = ll2Path(lat, lon) %#ok<STOUT,INUSD>
+            error('Not implemented!')
 		end%fcn
 		
 		function obj = pp2Path(pp)
@@ -329,11 +369,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 			obj = SplinePath(breaks, reshape(coefs, 2, nbrSeg, polyOrd));
 		end%fcn
 		
-		function obj = xy2Path(x, y)
+		function obj = xy2Path(x, y) %#ok<STOUT,INUSD>
+            error('Not implemented!')
 		end%fcn
 		
 		function obj = fromStruct(s)
-			obj = SplinePath(s.breaks, s.coefs);
+			obj = SplinePath(s.breaks, s.coefs, s.lengths);
 		end%fcn
 		
 		function c = getBusDef()
@@ -341,8 +382,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 			HeaderFile = '';
 			Description = '';
 			BusElements = {...
-				{'breaks',      100, 'double',	-1, 'real', 'Sample', 'Variable', [], [], '', ''},...
+				{'breaks',      101, 'double',	-1, 'real', 'Sample', 'Variable', [], [], '', ''},...
 				{'coefs', [2,100,4], 'double',	-1, 'real', 'Sample', 'Variable', [], [], '', ''},...
+                {'lengths',     101, 'double',	-1, 'real', 'Sample', 'Variable', [], [], '', ''},...
 				};
 			c = {{BusName,HeaderFile,Description,BusElements}};
 		end%fcn
