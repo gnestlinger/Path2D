@@ -61,18 +61,18 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         function obj = append(obj, obj2)
             
             breaks = obj.Breaks;
+            coefs = obj.Coefs;
+            
             obj.Breaks = [breaks, breaks(end) + obj2.Breaks(2:end)];
             
-            coefs = obj.Coefs; % TODO: handle non-matching degree
             [~,~,k] = size(coefs);
             [~,n2,k2] = size(obj2.Coefs);
-            
             assert(k2 <= k, 'Degree of path to append must not exceed degree of initial path!')
             obj.Coefs = cat(2, obj.Coefs, cat(3, zeros(2,n2,k-k2), obj2.Coefs));
             
         end%fcn
 		
-		function [sd,Q,idx,tau] = cart2frenet(obj, poi, doPlot)
+		function [sd,Q,idx,tau] = cart2frenet(obj, xy, doPlot)
 			
 		end%fcn
         
@@ -102,7 +102,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             end
             
             pp = mkpp(obj);
-            xy = ppval(pp, tau)';
+            
+            % Avoid PPVAL returning 3D arrays for empty evaluation sites by
+            % applying (:)
+            xy = ppval(pp, tau(:))';
             x = xy(:,1);
             y = xy(:,2);
             
@@ -155,12 +158,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             pp = mkpp(obj);
             ppd = ppdiff(pp);
-            fh = @(tau) abs(pointAngle(obj, pp, ppd, poi, tau) - pi/2);
+            fh = @(tau) abs(ppIncAngle(pp, ppd, poi, tau) - pi/2);
             [tau0,tau1] = domain(obj);
             [tau,fval,exitflag,output] = fminbnd(fh, tau0, tau1);
             
             [x,y] = eval(obj, tau);
-            Q = [x;y];
+            Q = [x y];
             
             idx = find(tau > obj.Breaks, 1, 'last');
             
@@ -172,22 +175,52 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 hold off
             end%if
             
-		end%fcn
+        end%fcn
+        
+        function [Q,idx,tau] = pointProjectionAll(obj, poi, doPlot)
+            
+            pp = mkpp(obj);
+            ppd = ppdiff(pp);
+            fh = @(tau) abs(ppIncAngle(pp, ppd, poi, tau) - pi/2);
+            
+            N = numel(obj);
+            taus = coder.nullcopy(zeros(N,1));
+            fvals = coder.nullcopy(zeros(N,1));
+            flags = coder.nullcopy(zeros(N,1));
+            breaks = obj.Breaks;
+            tau0 = breaks(1);
+            for i = 1:N
+                tau1 = breaks(i+1);
+                [taui,fval,exitflag,output] = fminbnd(fh, tau0, tau1);
+                taus(i) = taui;
+                fvals(i) = fval;
+                flags(i) = exitflag;
+                tau0 = tau1;
+            end
+            
+            isValid = (fvals < 1);
+            
+            % Set return arguments
+            [x,y] = eval(obj, taus(isValid));
+            Q = [x y];
+            idx = find(isValid);
+            tau = taus(isValid);
+            
+            if (nargin > 2) && doPlot
+                plot(obj, 'Marker','.')
+                hold on
+                plot(poi(1), poi(2), 'rx')
+                plot(Q(:,1), Q(:,2), 'ro')
+                hold off
+            end%if
+            
+        end%fcn
         
         function d = pathDistance(obj, P, tau)
             
             pp = mkpp(obj);
             xy = ppval(pp, tau);
             d = hypot(xy(1,:) - P(1), xy(2,:) - P(2));
-            
-        end%fcn
-        
-        function phi = pointAngle(obj, pp, ppd, P, tau)
-            
-            xy = ppval(pp, tau);
-            dxy = ppval(ppd, tau);
-            w = P(:) - xy;
-            phi = atan2(w(2), w(1)) - atan2(dxy(2), dxy(1));
             
         end%fcn
 		
