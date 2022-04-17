@@ -23,7 +23,7 @@ for i = 1:N
     if isempty(dtau)
         [x,y] = eval(obji);
     elseif isscalar(dtau) % Interpret as step increment
-        [s0,s1] = getDomain(obji);
+        [s0,s1] = domain(obji);
         tau = s0:dtau:s1;
         if tau(end) < s1
             % Make sure to plot the terminal point
