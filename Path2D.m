@@ -192,7 +192,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             end%if
             
             % Plot the tangents and the corresponding waypoints
-            [x,y,head] = eval(obj, tau);
+            [x,y,head] = obj.eval(tau);
             hold on
             for i = 1:numel(x)
                 xi = x(i);
@@ -239,6 +239,39 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
                 hr = h;
                 axr = ax;
             end
+            
+        end%fcn
+        
+        function tau = sampleDomain(obj, arg)
+        %SAMPLEDOMAIN   Sample domain of path.
+        %
+        %	TAU = SAMPLEDOMAIN(OBJ,ARG) returns the path parameter TAU
+        %	sampled over the domain of path OBJ depending on the class of
+        %	ARG: if ARG is 
+        %     - double or single it is iterpreted as a step increment
+        %     - uintx it is interpreted as the number of samples.
+        %	
+        %   In both cases, TAU contains the domain's terminal points.
+        
+            assert(isscalar(arg));
+            
+            [tau0,tau1] = obj.domain();
+            switch class(arg)
+                case {'double','single'} % Interpret as step increment
+                    [tau0,tau1] = obj.domain();
+                    tmp = (tau0:arg:tau1)';
+                    if tmp(end) < tau1 % Make sure to include the end point
+                        tau = [tmp; tau1];
+                    else
+                        tau = tmp;
+                    end%if
+                    
+                case {'uint8', 'uint16', 'uint32', 'uint64'}
+                    tau = linspace(tau0, tau1, arg);
+                    
+                otherwise
+                   error('Unsupported data type for argument ARG!')
+            end%switch
             
         end%fcn
         
