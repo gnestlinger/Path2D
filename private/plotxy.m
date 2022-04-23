@@ -1,4 +1,4 @@
-function [h,axh] = plotxy(axh, obj, tauIn, varargin)
+function [h,axh,tau] = plotxy(axh, obj, tauIn, varargin)
 %PLOTXY  Perform basic plot operations.
 %	To be used by public plot methods to avoid multiple calls to plot
 %	styles like AXIS, TITLE, XLABEL, ...!
@@ -24,7 +24,7 @@ for i = 1:N
     obji = obj(i);
     
     if isempty(tauIn)
-        [x,y] = obji.eval();
+        [x,y,tau] = obji.eval();
     else
         if isscalar(tauIn)
             tau = obji.sampleDomain(tauIn);
@@ -37,17 +37,14 @@ for i = 1:N
     if isDisplayNameProvided
         h(i) = plot(axh, x, y, varargin{:});
     else
-        h(i) = plot(axh, x, y, varargin{:}, ...
-            'DisplayName',['(',num2str(i),') ', class(obji)]);
+        if N > 1
+            name = ['(',num2str(i),') ', class(obji)];
+        else
+            name = class(obji);
+        end
+        h(i) = plot(axh, x, y, varargin{:}, 'DisplayName',name);
     end%if
 end%for
-
-% Apply plot styles
-grid(axh, 'on');
-axis(axh, 'equal');
-xlabel(axh, 'x (m)');
-ylabel(axh, 'y (m)');
-legend(axh, 'show', 'Location','best');
 
 % Reset axes to initial state
 set(axh, 'NextPlot',npState);

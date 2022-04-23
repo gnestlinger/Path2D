@@ -149,16 +149,17 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             tauU = length(obj);
         end%fcn
         
-        function [x,y,head,curv] = eval(obj, tau)
+        function [x,y,tau,head,curv] = eval(obj, tau)
             
+            s = getPathLengths(obj);
             if nargin < 2
                 x = obj.x;
                 y = obj.y;
                 head = obj.head;
                 curv = obj.curv;
+                tau = s;
             else
-                sAct = getPathLengths(obj);
-                xyhc = interp1(sAct, [obj.x,obj.y,obj.head,obj.curv], tau);
+                xyhc = interp1(s, [obj.x,obj.y,obj.head,obj.curv], tau);
                 x = xyhc(:,1);
                 y = xyhc(:,2);
                 head = xyhc(:,3);
@@ -680,7 +681,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 idxF = find(tauF <= tauS, 1, 'first');
             end%if
             
-            [x,y,h,c] = obj.eval([tau0 tauF]);
+            [x,y,~,h,c] = obj.eval([tau0 tauF]);
             obj = obj.select(idx0:idxF);
             obj.x([1 end]) = x;
             obj.y([1 end]) = y;

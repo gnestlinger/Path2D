@@ -83,6 +83,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             
             [ax,obj,dtau,opts] = parsePlotInputs(varargin{:});
             [h,ax] = plotxy(ax, obj, dtau, opts{:});
+            applyPlotxyStyles(ax);
             
             if nargout > 0
                 hr = h;
@@ -110,25 +111,28 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             
             N = builtin('numel', obj);
             h = gobjects(N, 3);
-            h(:,1) = plotxy(ax(1), obj, dtau, opts{:});
-            npStatus = get(ax(2:3), 'NextPlot');
+            npStatus = get(ax(1:3), 'NextPlot');
 %             set(ax(2:3), 'NextPlot','replace');
             for i = 1:N
+                
+                obji = obj(i);
+                
                 if i == 2
-                    set(ax(2:3), 'NextPlot','add');
+                    set(ax(1:3), 'NextPlot','add');
                 end
                 
-                [~,~,head,curv] = eval(obj(i));
-                s = getPathLengths(obj(i));
-                h(i,2) = plot(ax(2), s, head, opts{:});
-                h(i,3) = plot(ax(3), s, curv, opts{:});
+                [h(i,1),~,tau] = plotxy(ax(1), obji, dtau, opts{:});
+                [~,~,~,head,curv] = obji.eval(tau);
+                h(i,2) = plot(ax(2), tau, head, opts{:});
+                h(i,3) = plot(ax(3), tau, curv, opts{:});
             end%for
-            set(ax(2:3), {'NextPlot'},npStatus);
+            set(ax(1:3), {'NextPlot'},npStatus);
             
+            applyPlotxyStyles(ax(1));
             grid(ax(2), 'on');
             ylabel(ax(2), 'Heading (rad)');
             grid(ax(3), 'on');
-            xlabel(ax(3), 'Length (m)');
+            xlabel(ax(3), 'tau');
             ylabel(ax(3), 'Curvature (1/m)');
             
             % linkaxes(_, 'x') sets axes XLimMode to manual which can cause
@@ -183,7 +187,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             yLimits = ylim;
             
             % Check if some path parameters are out of range
-            [tauL,tauU] = domain(obj);
+            [tauL,tauU] = obj.domain();
             tauExceeds = (tau > tauU) | (tau < tauL);
             if any(tauExceeds)
                 warning('PATH2D:plottangent:tauOutOfRange', ...
@@ -192,7 +196,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             end%if
             
             % Plot the tangents and the corresponding waypoints
-            [x,y,head] = obj.eval(tau);
+            [x,y,~,head] = obj.eval(tau);
             hold on
             for i = 1:numel(x)
                 xi = x(i);
@@ -306,12 +310,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   path parameters TAU to return the corresponding waypoints
         %   (X,Y).
         %
-        %   [__,HEAD,CURV] = EVAL(___) also returns heading HEAD and
-        %   curvature CURV.
+        %   [__,TAU,HEAD,CURV] = EVAL(___) also returns path parameter TAU,
+        %   heading HEAD and curvature CURV.
         %
         %   [___] = EVAL(OBJ) evaluates path OBJ according to subclass
         %   specific implementation.
-        [x,y,head,curv] = eval(obj, tau)
+        [x,y,tau,head,curv] = eval(obj, tau)
         
         % FRENET2CART    Frenet point to cartesian with respect to path.
         %   XY = FRENET2CART(OBJ,SD) converts points SD in frenet
