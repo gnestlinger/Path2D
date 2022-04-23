@@ -57,7 +57,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         end%Constructor
         
         function [hr,axr] = plot(varargin)
-        %PLOT   Plot the path.
+        %PLOT   Plot path.
         %    PLOT(OBJ) plots the path OBJ in terms of x over y.
         %
         %    PLOT(OBJ,DTAU) specify path parameter increment to be plotted.
@@ -95,8 +95,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         function [hr,axr] = plotG2(varargin)
         %PLOTG2     Plot path, heading and curvature.
         %
-        %    For Syntax see:
-        %    See also PATH2D/PLOT.
+        %    For syntax see also PATH2D/PLOT.
             
             [ax,obj,dtau,opts] = parsePlotInputs(varargin{:});
             
@@ -148,84 +147,74 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             
         end%fcn
         
-        function [hr,axr] = plottangent(obj, tau, varargin) 
+        function [hr,axr] = plottangent(varargin) 
         %PLOTTANGENT    Plot path and tangents.
-        %    PLOTTANGENT(OBJ,TAU) plots the path (x,y) and the tangents at
-        %    the path paraemters TAU and highlights the path coordinates at
-        %    TAU.
-        %    
-        %    PLOTTANGENT(...,NAME,VALUE) specifies line properties using
-        %    one or more Name,Value pair arguments.
+        %    PLOTTANGENT(OBJ,TAU) plots the path and tangents at the path
+        %    parameters TAU and highlights the path coordinates at TAU. If
+        %    TAU is empty, tangents are plotted for the path's terminal
+        %    points.
         %    
         %    [H,AX] = PLOTTANGENT(...) returns a handle array H to
         %    lineseries objects and the axes handle AX. Here, H(1,1) is the
         %    path-handle, H(i+1,1) and H(i+1,2) the marker- and the
         %    tangent-handle of TAU(i) respectively.
         %    
+        %    For Syntax see also PATH2D/PLOT.
+        %
         %    See also PATH2D/PLOT, PATH2D/PLOTG2.
             
-            %%% Handle input arguments
-            assert(isnumeric(tau) && ~isempty(tau), ...
-                'Input argument TAU must be a non-empty numeric vector!');
-            
-            % Apply plot options if unspecified
-            if nargin < 3
-                opts = {};
-            else
-                opts = varargin;
-            end%if
-            optsPath = {'.', 'LineWidth',1};
-            optsMark = {'Color','k', 'Marker','x', 'MarkerSize',8};
-            optsTang = {'--', 'Color','k', 'LineWidth',0.5};
-            
-            % Initialize handle to graphics objects
-            h = gobjects(1+numel(tau), 2);
-            
-            % Plot the waypoints and get corresponding axis limtis
-            [h(1,1),ax] = plotxy([], obj, [], optsPath{:}, opts{:});
-            xLimits = xlim;
-            yLimits = ylim;
+            [ax,obj,tau,opts] = parsePlotInputs(varargin{:});
+            if isempty(ax) || ~ishghandle(ax)
+                ax = gca;
+            end
             
             % Check if some path parameters are out of range
             [tauL,tauU] = obj.domain();
             tauExceeds = (tau > tauU) | (tau < tauL);
             if any(tauExceeds)
                 warning('PATH2D:plottangent:tauOutOfRange', ...
-                    'Path parameters exceeding domain of path were discarded!')
+                    'Path parameters exceeding path domain were discarded!')
                 tau(tauExceeds) = [];
-            end%if
+            end%if   
+            if isempty(tau)
+                tau = [tauL tauU];
+            end
             
-            % Plot the tangents and the corresponding waypoints
+            % Plot options
+            optsMark = {'Color','k', 'Marker','x', 'MarkerSize',8};
+            optsTang = {'Color','k', 'LineWidth',0.5};
+            
+            % Initialize handle to graphics objects
+            h = gobjects(1+numel(tau), 2);
+            
+            % Plot the path and get its axis limtis
+            npStatus = get(ax, 'NextPlot');
+            [h(1,1),ax] = plotxy(ax, obj, [], opts{:});
+            xLimits = xlim;
+            yLimits = ylim;
+            
+            % Add the tangents and the corresponding path waypoints
+            set(ax, 'NextPlot','add');
             [x,y,~,head] = obj.eval(tau);
-            hold on
             for i = 1:numel(x)
                 xi = x(i);
                 yi = y(i);
                 hi = head(i);
                 
                 % Marker of tangent point
-                h(i+1,1) = plot(xi, yi, optsMark{:}, opts{:});
+                h(i+1,1) = plot(xi, yi, optsMark{:});
                 
                 % Length of tangent
                 [r1,r2] = scaleTangentToAxis(xLimits, yLimits, [xi,yi], hi);
                 
                 % Start/end point of tangent
-                Pstart  = [xi + r2*cos(hi); yi + r2*sin(hi)];
-                Pstop   = [xi + r1*cos(hi); yi + r1*sin(hi)];
+                P01  = [...
+                    xi + [r2 r1]*cos(hi); ...
+                    yi + [r2 r1]*sin(hi)];
                 
                 % Draw the tangent using N arrows sticked together
-                N = 25;
-                xq = linspace(Pstart(1), Pstop(1), N);
-                yq = linspace(Pstart(2), Pstop(2), N);
-                % quiver would draw one arrow at every point of xq/yq of
-                % length uq/vq; since the last element of xq/yq is the end
-                % point, no arrow has to be drawn there
-                xq = xq(1:end-1);
-                yq = yq(1:end-1);
-                uq = ones(size(xq))*(Pstop(1)-Pstart(1))/N;
-                vq = ones(size(yq))*(Pstop(2)-Pstart(2))/N;
-                scale = 0;
-                h(i+1,2) = quiver(xq, yq, uq, vq, scale, optsTang{:}, opts{:});
+                h(i+1,2) = quiver(P01(1), P01(2), diff(P01(1,:)), diff(P01(2,:)), ...
+                    optsTang{:});
                 
                 % Disable legend entries for tangents
                 set(get(get(h(i+1, 1), 'Annotation'), 'LegendInformation'), ...
@@ -234,10 +223,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
                     'IconDisplayStyle','off');
                 
             end%for
-            hold off
+            
+            % Reset to initial value
+            set(ax, 'NextPlot',npStatus);
             
             % Set the axis limtis corresponding to waypointss
             axis([xLimits, yLimits]);
+            applyPlotxyStyles(ax);
             
             if nargout > 0
                 hr = h;

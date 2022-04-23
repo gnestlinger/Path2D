@@ -1,7 +1,10 @@
 function [h,axh,tau] = plotxy(axh, obj, tauIn, varargin)
-%PLOTXY  Perform basic plot operations.
-%	To be used by public plot methods to avoid multiple calls to plot
-%	styles like AXIS, TITLE, XLABEL, ...!
+%PLOTXY     Plot path in the x/y plane.
+%   PLOTXY(AXH,OBJ,TAU,VARARGIN) plots path OBJ into axes AXH evaluated at
+%   TAU applying line specifications via VARARGIN.
+% 
+%   [H,AXH,TAU] = PLOTXY(___) return line handles H, axes handle H and path
+%   parameter TAU.
 %
 %	NOTE: This method supports non-scalar inputs OBJ!
 
