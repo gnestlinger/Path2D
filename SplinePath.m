@@ -16,8 +16,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 % 
 %   See also PATH2D.
 
-%#ok<*EVLC> % Using eval and evalc with two arguments is not recommended ..
-
     properties (SetAccess = private)
         Breaks = 0
         Coefs = zeros(2,0,4) % path dimension by # of segments by # order
@@ -55,7 +53,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             if (nargin < 3) || isempty(s)
                 pp = mkpp(breaks, coefs, 2);
-                N = numel(obj);
+                N = obj.numel();
                 s = coder.nullcopy(zeros(N+1,1));
                 s(1) = 0;
                 for i = 1:N
@@ -69,7 +67,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             
             if nargin < 4
-                [P0,P1] = termPoints(obj);
+                [P0,P1] = obj.termPoints();
                 obj.IsCircuit = (norm(P1 - P0) < 1e-5);
             else
                 obj.IsCircuit = isCircuit;
@@ -106,12 +104,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             tauU = obj.Breaks(end);
         end%fcn
         
-        function [x,y,head,curv] = eval(obj, tau)
+        function [x,y,tau,head,curv] = eval(obj, tau)
             
             if nargin < 2
                 % M samples per spline segment
                 M = 100;
-                N = numel(obj);
+                N = obj.numel();
                 
                 breaks = obj.Breaks;
                 tau = coder.nullcopy(zeros(N*M , 1));
@@ -126,7 +124,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 end
             end
             
-            pp = mkpp(obj);
+            pp = obj.mkpp();
             
             % Avoid PPVAL returning 3D arrays for empty evaluation sites by
             % applying (:)
@@ -134,12 +132,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             x = xy(:,1);
             y = xy(:,2);
             
-            if nargout > 2
+            if nargout > 3
                 ppD1 = ppdiff(pp);
                 xyD1 = ppval(ppD1, tau);
                 head = cx2Heading(xyD1(1,:), xyD1(2,:))';
                 
-                if nargout > 3
+                if nargout > 4
                     ppD2 = ppdiff(ppD1);
                     xyD2 = ppval(ppD2, tau);
                     curv = cx2Curvature(xyD1(1,:), xyD1(2,:), xyD2(1,:), xyD2(2,:))';
@@ -163,7 +161,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         end%fcn
         
         function flag = isempty(obj)
-            flag = (numel(obj) < 1);
+            flag = (obj.numel() < 1);
         end%fcn
         
 		function s = length(obj, tau)
@@ -173,7 +171,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             else
                 idx = find(tau > obj.Breaks, 1, 'last');
                 taus = linspace(obj.Breaks(idx), tau, 100);
-                xy = diff(ppval(mkpp(obj), taus), 1, 2);
+                xy = diff(ppval(obj.mkpp(), taus), 1, 2);
                 s = obj.ArcLengths(idx) + hypot(xy(1,:), xy(2,:));
             end%if
             
@@ -190,13 +188,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function [Q,idx,tau] = pointProjection(obj, poi, doPlot)
             
-            pp = mkpp(obj);
+            pp = obj.mkpp();
             ppd = ppdiff(pp);
             fh = @(tau) abs(ppIncAngle(pp, ppd, poi, tau) - pi/2);
-            [tau0,tau1] = domain(obj);
+            [tau0,tau1] = obj.domain();
             [tau,fval,exitflag,output] = fminbnd(fh, tau0, tau1);
             
-            [x,y] = eval(obj, tau);
+            [x,y] = obj.eval(tau);
             Q = [x y];
             
             idx = find(tau > obj.Breaks, 1, 'last');
@@ -235,7 +233,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             isValid = (fvals < 1);
             
             % Set return arguments
-            [x,y] = eval(obj, taus(isValid));
+            [x,y] = obj.eval(taus(isValid));
             Q = [x y];
             idx = find(isValid);
             tau = taus(isValid);
@@ -252,7 +250,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function d = pathDistance(obj, P, tau)
             
-            pp = mkpp(obj);
+            pp = obj.mkpp();
             xy = ppval(pp, tau);
             d = hypot(xy(1,:) - P(1), xy(2,:) - P(2));
             
@@ -276,7 +274,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 idx0 = find(tau0 >= taus, 1, 'last');
             end
             if isempty(tauF) || (tauF > tauU)
-                idxF = numel(obj);
+                idxF = obj.numel();
             else
                 idxF = find(tauF >= taus, 1, 'last');
             end%if
@@ -296,15 +294,15 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             narginchk(1, 2);
             
             if nargin < 2
-                tau0 = domain(obj);
-                [~,~,phi] = eval(obj, tau0);
+                tau0 = obj.domain();
+                [~,~,~,phi] = obj.eval(tau0);
             end%if
             
             R = rotmat2D(-phi);
             for i = 1:builtin('numel', obj)
                 obji = obj(i);
                 coefs = obji.Coefs;
-                for ii = 1:numel(obji)
+                for ii = 1:obj.numel()
                    coefs(:,ii,:) = R*squeeze(coefs(:,ii,:));
                 end
                 obj(i).Coefs = coefs;
@@ -335,8 +333,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function [P0,P1] = termPoints(obj)
             
-            [tau0,tau1] = domain(obj);
-            [x,y] = eval(obj, [tau0,tau1]);
+            [tau0,tau1] = obj.domain();
+            [x,y] = obj.eval([tau0,tau1]);
             P0 = [x(1); y(1)];
             P1 = [x(2); y(2)];
             
