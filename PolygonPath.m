@@ -23,7 +23,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %   See also PATH2D.
 
 %#ok<*PROP>
-%#ok<*EVLC> % Using eval and evalc with two arguments is not recommended ..
 %#ok<*PROPLC> % There is a property named xyz. Maybe this is a reference to it?
 
     properties
@@ -90,7 +89,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %
         %    See also PATH2D/CART2FRENET.
 
-            [Qs,idxs,taus] = pointProjection(obj, xy);
+            [Qs,idxs,taus] = obj.pointProjection(xy);
             if isempty(Qs)
                 % Take the waypoint closest to point of interest
                 [~,idx] = min(hypot(obj.x - xy(1), obj.y - xy(2)));
@@ -106,7 +105,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % Get the orientation vector related with Q to calculate the
             % sign of distance from point of interest to path
             idx0 = idx;
-            if idx0 == numel(obj)
+            if idx0 == obj.numel()
                 idx1 = idx0;
                 idx0 = idx0 - 1;
             else
@@ -146,12 +145,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function [tauL,tauU] = domain(obj)
             tauL = 0;
-            tauU = length(obj);
+            tauU = obj.length();
         end%fcn
         
         function [x,y,tau,head,curv] = eval(obj, tau)
             
-            s = getPathLengths(obj);
+            s = obj.getPathLengths();
             if nargin < 2
                 x = obj.x;
                 y = obj.y;
@@ -194,7 +193,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % Extract x/y data
             objX = obj.x;
             objY = obj.y;
-            N = numel(obj);
+            N = obj.numel();
             
             % Create (overdetermined) system of equations
             A = [objX, ones(N, 1)];
@@ -206,15 +205,15 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             d = cd(2);
             
             % The fitted y coordinates
-            ys = objX*k+d; 
+            ys = objX*k + d; 
             
             % Create POLYGONPATH object
-            objs = PolygonPath(objX, ys, ...
-                atan2(ys(2)-ys(1), objX(2)-objX(1))*ones(N,1), ...
-                zeros(N,1));
+            objs = PolygonPath(objX([1 end]), ys([1 end]), ...
+                ones(2,1) * atan2(ys(2)-ys(1), objX(2)-objX(1)), ...
+                zeros(2,1));
             
             % Calculate error
-            e = 1/numel(objY)*sum((objY - objs.y).^2);
+            e = 1/N*sum((objY - ys).^2);
             
             % Plot if requested
             if doPlot
@@ -224,8 +223,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 hold off
                 legend off; legend show; % to update the legend
             end%if
-            
-            objs = select(objs, [1,N]);
             
         end%fcn
         
@@ -380,9 +377,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             narginchk(2, 5)
             
             % INTERP1 requires at least two samples
-            assert(numel(obj) > 1)
+            assert(obj.numel() > 1)
             
-            sAct = getPathLengths(obj);
+            sAct = obj.getPathLengths();
             xyhc = interp1(sAct, [obj.x,obj.y,obj.head,obj.curv], tau(:), ...
                 varargin{:});
             obj = PolygonPath(xyhc(:,1), xyhc(:,2), xyhc(:,3), xyhc(:,4));
@@ -400,7 +397,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             end
             
             % Brute force approach: check every path segment
-            idxs = (1:numel(obj)-1)';
+            idxs = (1:obj.numel()-1)';
             x0 = obj.x - C(1);
             dx = diff(x0);
             x0(end) = [];
@@ -443,15 +440,15 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 tauS = zeros(0,1);
                 errFlag = true;
             else
-                s = getPathLengths(obj);
+                s = obj.getPathLengths();
                 tauS = sort(s(segIdx) + (s(segIdx+1)-s(segIdx)).*tauLoc);
-                [x,y] = eval(obj, tauS);
+                [x,y] = obj.eval(tauS);
                 xy = [x,y];
                 errFlag = false;
             end
             
             % At most two intersections per path segment!
-            assert(size(xy, 1) <= (numel(obj)-1)*2)
+            assert(size(xy, 1) <= (obj.numel()-1)*2)
             assert(size(xy, 1) == size(tauS, 1))
                 
             if doPlot
@@ -508,7 +505,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 % or y
 %                 tauLocal = (x - x0F(1))/diff(x0F);
                 tauLocal = -yPath(idxs0)./y0Fd;
-                s = getPathLengths(obj);
+                s = obj.getPathLengths();
                 tauS = s(idxs0);
                 tauS = tauS + (s(idxsE) - tauS).*tauLocal;
                 
@@ -531,7 +528,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function flag = isempty(obj)
-            flag = (numel(obj) < 1);
+            flag = (obj.numel() < 1);
         end%fcn
         
         function s = length(obj)
@@ -561,7 +558,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             narginchk(1, 4)
             
             if nargin < 3
-                [P0,P1] = termPoints(obj);
+                [P0,P1] = obj.termPoints();
             end%if
             
             assert(isequal(numel(P0), numel(P1), 2), ...
@@ -676,7 +673,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 idx0 = find(tau0 >= tauS, 1, 'last');
             end
             if isempty(tauF) || (tauF > tauU)
-                idxF = numel(obj);
+                idxF = obj.numel();
             else
                 idxF = find(tauF <= tauS, 1, 'first');
             end%if
@@ -705,7 +702,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % otherwise its nested function would block code generation for
             % all class methods in older MATLAB releases!
             [~,~,idx] = ramerDouglasPeucker(obj.x, obj.y, eps);
-            obj = select(obj, idx);
+            obj = obj.select(idx);
             
         end%fcn
         
@@ -807,7 +804,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 				'x (m)', 'y (m)', 'head (rad)', 'curv (1/m)', 's (m)');
 			fprintf(fid,...
 				[repmat(doubleFmt, [1,5]), '\n'], ...
-				[obj.x, obj.y, obj.head, obj.curv, getPathLengths(obj)]');
+				[obj.x, obj.y, obj.head, obj.curv, obj.getPathLengths()]');
 			
 			% Close file
 			fclose(fid);
