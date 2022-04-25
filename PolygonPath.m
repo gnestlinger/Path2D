@@ -68,8 +68,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%Constructor
         
         function obj = append(obj, obj2)
-            obj.x        = [obj.x; obj2.x];
-            obj.y        = [obj.y; obj2.y];
+            obj.x       = [obj.x; obj2.x];
+            obj.y       = [obj.y; obj2.y];
             obj.head    = [obj.head; obj2.head];
             obj.curv    = [obj.curv; obj2.curv];
         end%fcn
@@ -135,10 +135,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 plot([P0(1),P1(1)], [P0(2),P1(2)], 'r.', 'MarkerSize',8, 'DisplayName','P0/P1');
                 plot(Q(1), Q(2), 'kx', 'DisplayName','Q');
                 plot([xy(1), Q(1)], [xy(2), Q(2)]);
-                axis equal
-                grid on
                 hold off
-                legend show
+                legend('-DynamicLegend')
             end%if
             
         end%fcn
@@ -164,6 +162,59 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 head = xyhc(:,3);
                 curv = xyhc(:,4);
             end
+            
+        end%fcn
+        
+        function [objc,e,xc,yc,R] = fitCircle(obj, N, doPlot)
+        %FITCIRCLE  Fit a circle to PolygonPath.
+        %   [OBJC,E,XC,YC,R] = FITCIRCLE(OBJ,N) fits a circle with
+        %   center(XC,YC) and radius R to waypoints (OBJ.X, OBJ.Y)
+        %   minimizing the error E. Returns OBJC of class POLYGONPATH
+        %   sampled at angles according to linspace(0, 2*pi, N).
+        %   
+        %   [___] = FITCIRCLE(...,DOPLOT) allows to enable the plot for
+        %   checking the fitting result visually.
+        %    
+        %   Minimization is performed in the least-squares sense minimizing
+        %   the sum of squared errors:
+        %     SUM[(R(i)^2-R^2)^2]
+        %      i
+        %    
+        %   See also POLYGONPATH/FITSTRAIGHT.
+            
+            if nargin < 3
+                doPlot = false;
+            end%if
+            
+            % Extract x/y data
+            xsub = obj.x;
+            ysub = obj.y;
+            
+            method = 'Kasa';
+            switch method
+                case 'Kasa'
+                    [xc,yc,R,e] = fitCircle_Kasa(xsub, ysub);
+                otherwise
+                    % 
+            end%switch
+            
+            % Create POLYGONPATH object
+            phi = linspace(0, 2*pi, N);
+            objc = PolygonPath(...
+                R*cos(phi) + xc, ...
+                R*sin(phi) + yc, ...
+                2*R*phi, ...
+                1/R*ones(N,1), ...
+                phi + pi/2);
+            
+            % Plot if requested
+            if doPlot
+                plot(obj, 'b-', 'MarkerSize',10, 'DisplayName','PolygonPath');
+                hold on
+                plot(objc, 'Color','k', 'DisplayName','Circle');
+                hold off
+                legend('-DynamicLegend')
+            end%if
             
         end%fcn
         
@@ -221,60 +272,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 hold on
                 plot(objs, 'b', 'Marker','.', 'DisplayName','Straight');
                 hold off
-                legend off; legend show; % to update the legend
-            end%if
-            
-        end%fcn
-        
-        function [objc,e,xc,yc,R] = fitCircle(obj, N, doPlot)
-        %FITCIRCLE  Fit a circle to PolygonPath.
-        %   [OBJC,E,XC,YC,R] = FITCIRCLE(OBJ,N) fits a circle with
-        %   center(XC,YC) and radius R to waypoints (OBJ.X, OBJ.Y)
-        %   minimizing the error E. Returns OBJC of class POLYGONPATH
-        %   sampled at angles according to linspace(0, 2*pi, N).
-        %   
-        %   [___] = FITCIRCLE(...,DOPLOT) allows to enable the plot for
-        %   checking the fitting result visually.
-        %    
-        %   Minimization is performed in the least-squares sense minimizing
-        %   the sum of squared errors:
-        %     SUM[(R(i)^2-R^2)^2]
-        %      i
-        %    
-        %   See also POLYGONPATH/FITSTRAIGHT.
-            
-            if nargin < 3
-                doPlot = false;
-            end%if
-            
-            % Extract x/y data
-            xsub = obj.x;
-            ysub = obj.y;
-            
-            method = 'Kasa';
-            switch method
-                case 'Kasa'
-                    [xc,yc,R,e] = fitCircle_Kasa(xsub, ysub);
-                otherwise
-                    % 
-            end%switch
-            
-            % Create POLYGONPATH object
-            phi = linspace(0, 2*pi, N);
-            objc = PolygonPath(...
-                R*cos(phi) + xc, ...
-                R*sin(phi) + yc, ...
-                2*R*phi, ...
-                1/R*ones(N,1), ...
-                phi + pi/2);
-            
-            % Plot if requested
-            if doPlot
-                plot(obj, 'b-', 'MarkerSize',10, 'DisplayName','PolygonPath');
-                hold on
-                plot(objc, 'Color','k', 'DisplayName','Circle');
-                hold off
-                legend off; legend show; % to update the legend
+                legend('-DynamicLegend')
             end%if
             
         end%fcn
@@ -285,7 +283,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %   EXAMPLES:
         %   >> s = [-1;sqrt(8);sqrt(8)+sqrt(10);10;sqrt(8)+sqrt(10)+sqrt(41);13];
         %   >> d = ones(size(s));
-        %   >> xy = frenet2cart([0 2 5 10], [0 2 3 -1], [s,d; s,-d], true)
+        %   >> xy = frenet2cart(PolygonPath.xy2Path([0 2 5 10], [0 2 3 -1]), [s,d; s,-d], true)
         %   xy = 
         %  -1.4142         0
         %   1.2929    2.7071
@@ -305,7 +303,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             u = diff(Pxy, 1, 1); % Orientation vectors/TODO: make use of heading
             assert(size(u, 1) > 0, 'Path must have at least two points!');
             
-            % Cumulative length of path segments
+            % Inlined calculation of cumulative path length instead of
+            % calling getPathLengths() to avoid repeated call to diff()
             Ps = cumsum(hypot(u(:,1), u(:,2)));
             
             % Normalize orientation vectors to length 1
@@ -314,15 +313,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % Get the indexes referring to the path segments according to
             % frenet coordinates s-values
             sEval = sd(:,1);
-            idx = zeros(size(sEval), 'uint32');
+            Ns = numel(sEval);
+            idx = zeros(Ns, 1, 'uint32');
             % idx2 = bsxfun(@lt, sEval', Ps);
-            for i = 1:numel(idx)
+            for i = 1:Ns
                 isLessEqual = sEval(i) < Ps;
-                if ~any(isLessEqual)
-                    idx(i) = numel(Ps);
-                else
+                if any(isLessEqual)
                     index = find(isLessEqual, 1, 'first');
                     idx(i) = index(1);
+                else
+                    idx(i) = numel(Ps);
                 end
             end%for
             
@@ -344,27 +344,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 hold on
                 plot(xy(:,1), xy(:,2), 'o', 'DisplayName','xy');
                 plot(Q(:,1), Q(:,2), 'kx', 'DisplayName','Q');
-                axis equal
-                grid on
                 hold off
-                legend show
+                legend('-DynamicLegend')
                 title(mfilename)
             end%if
             
         end%fcn
         
-        function s = getPathLengths(obj, idx0, idx1)
-            
-            if nargin < 2
-                xtmp = obj.x;
-                ytmp = obj.y;
-            else
-                xtmp = obj.x(idx0:idx1);
-                ytmp = obj.y(idx0:idx1);
-            end
-            s = [0; cumsum(hypot(diff(xtmp), diff(ytmp)))];
-            
-        end%fcns       
+        function s = getPathLengths(obj)
+            s = [0; cumsum(hypot(diff(obj.x), diff(obj.y)))];
+        end%fcn
         
         function obj = interp(obj, tau, varargin)
         %INTERP     Interpolate path.
@@ -649,12 +638,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
             if doPlot
                 plot(obj, 'Marker','.')
-                legend off
                 hold on
                 plot(poi(1), poi(2), 'rx', 'DisplayName','PoI')
                 plot(Q(:,1), Q(:,2), 'ro', 'DisplayName','Q')
                 hold off
-                legend show
+                legend('-DynamicLegend');
             end%if
             
         end%fcn
@@ -844,17 +832,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function obj = ll2Path(lat, lon)
-            
-            % Convert from lat/lon to UTM
-            [x,y] = ll2utm(lat(:), lon(:));
-            
-            gx = gradient(x);
-            gy = gradient(y);
-            h = cx2Heading(gx, gy);
-            c = cx2Curvature(gx, gy, gradient(gx), gradient(gy));
-            
-            obj = PolygonPath(x, y, h, c);
-            
+            [x,y] = ll2utm(lat(:), lon(:)); % Convert from lat/lon to UTM
+            obj = PolygonPath.xy2Path(x, y);
         end%fcn
         
         function obj = pp2Path(pp, tau, polyDeg)
@@ -880,12 +859,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function obj = xy2Path(x, y)
-            g1X = gradient(x(:));
-            g1Y = gradient(y(:));
-            g2X = gradient(g1X);
-            g2Y = gradient(g1Y);
-            h = cx2Heading(g1X, g1Y);
-            c = cx2Curvature(g1X, g1Y, g2X, g2Y);
+            gx = gradient(x(:));
+            gy = gradient(y(:));
+            h = cx2Heading(gx, gy);
+            c = cx2Curvature(gx, gy, gradient(gx), gradient(gy));
             obj = PolygonPath(x, y, h, c);
         end%fcn
         
