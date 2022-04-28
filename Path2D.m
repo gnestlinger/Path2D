@@ -36,6 +36,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   plottangent - Plot path and tangents.
 % 
 %   Path2D static methods:
+%   empty   - Instantiate empty path.
 %   ll2Path - Construct path from latitude/longitude coordinates.
 %   pp2Path - Construct path from piecewise polynomial.
 %   xy2Path - Construct path from cartesian coordinates.
@@ -408,18 +409,26 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
     
     methods (Abstract, Static)
         
+        % EMPTY     Instantiate empty path.
+        %   OBJ = <ClassName>.EMPTY() instantiates the empty path OBJ for
+        %   which numel(OBJ) = 0 holds.
+        obj = empty()
+        
         % LL2PATH    Path object from LAT/LON coordinates.
-        %   OBJ = LL2PATH(LAT, LON)
+        %   OBJ = <ClassName>.LL2PATH(LAT, LON) instantiates the path OBJ
+        %   from latitude/longitude data.
         obj = ll2Path(lat, lon)
         
         % PP2PATH    Path object from piecewise polynomial.
-        %    OBJ = PP2PATH(PP,TAU)
+        %    OBJ = <ClassName>.PP2PATH(PP,TAU) instantiates the path OBJ
+        %   from piecewise polynomial struct PP.
         %
         %    See also MKPP.
         obj = pp2Path(pp, tay, polyDeg)
         
         % XY2PATH    Path object from cartesian coordinates.
-        %    OBJ = XY2PATH(X,Y)
+        %    OBJ = <ClassName>.XY2PATH(X,Y) instantiates the path OBJ
+        %   from x/y data.
         obj = xy2Path(x, y)
         
     end%methods

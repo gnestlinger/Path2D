@@ -831,6 +831,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             obj = PolygonPath(r*cos(t), r*sin(t), t+pi/2, repmat(1/r,N,1));
         end%fcn
         
+        function obj = empty()
+            
+            % Explizitly initialize with empty array
+            emt = zeros(0,1);
+            obj = PolygonPath(emt, emt, emt, emt, false);
+        end%fcn
+        
         function obj = ll2Path(lat, lon)
             [x,y] = ll2utm(lat(:), lon(:)); % Convert from lat/lon to UTM
             obj = PolygonPath.xy2Path(x, y);
