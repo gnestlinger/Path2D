@@ -242,12 +242,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         function tau = sampleDomain(obj, arg)
         %SAMPLEDOMAIN   Sample domain of path.
         %
-        %	TAU = SAMPLEDOMAIN(OBJ,ARG) returns the path parameter TAU
-        %	sampled over the domain of path OBJ depending on the class of
-        %	ARG: if ARG is 
+        %   TAU = SAMPLEDOMAIN(OBJ,ARG) returns the path parameter TAU
+        %   sampled over the domain of path OBJ depending on the class of
+        %   ARG: if ARG is 
         %     - double or single it is iterpreted as a step increment
         %     - uintx it is interpreted as the number of samples.
-        %	
+        %   
         %   In both cases, TAU contains the domain's terminal points.
         
             assert(isscalar(arg));
@@ -264,7 +264,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
                     end%if
                     
                 case {'uint8', 'uint16', 'uint32', 'uint64'}
-                    tau = linspace(tau0, tau1, arg);
+                    tau = linspace(tau0, tau1, arg)';
                     
                 otherwise
                    error('Unsupported data type for argument ARG!')
