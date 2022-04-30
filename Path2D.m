@@ -299,15 +299,15 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         [tauL,tauU] = domain(obj);
         
         % EVAL  Evaluate path at path parameters.
-        %   [X,Y] = EVAL(OBJ,TAU) evaluates analytical path definition at
-        %   path parameters TAU to return the corresponding waypoints
-        %   (X,Y).
-        %
-        %   [__,TAU,HEAD,CURV] = EVAL(___) also returns path parameter TAU,
-        %   heading HEAD and curvature CURV.
+        %   [X,Y,TAU,HEAD,CURV] = EVAL(OBJ,TAU) evaluates analytical path
+        %   definition at path parameters TAU to return the corresponding
+        %   waypoints (X,Y), path parameter TAU, heading HEAD and curvature
+        %   CURV. All return values are of size numel(TAU)-by-1.
         %
         %   [___] = EVAL(OBJ) evaluates path OBJ according to subclass
         %   specific implementation.
+        %
+        %   Note: Evaluation outside the domain will return NaN!
         [x,y,tau,head,curv] = eval(obj, tau)
         
         % FRENET2CART    Frenet point to cartesian with respect to path.

@@ -156,12 +156,34 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 curv = obj.curv;
                 tau = s;
             else
-                xyhc = interp1(s, [obj.x,obj.y,obj.head,obj.curv], tau);
+                
+                tau = tau(:);
+                if numel(obj) > 1 % At least 2 sample points as required by INTERP1
+                    xyhc = interp1(s, [obj.x,obj.y,obj.head,obj.curv], tau, 'linear');
+                    
+                elseif numel(obj) > 0 % Just one sample point
+                    % Create a synthetic point for INTERP1
+                    xn = obj.x + cos(obj.head);
+                    yn = obj.y + sin(obj.head);
+                    Y = [...
+                        [obj.x, obj.y, obj.head, obj.curv]; 
+                        [xn, yn, obj.head, obj.curv];
+                        ];
+                    
+                    xyhc = interp1([s;s+1], Y, tau, 'linear');
+                    
+                    % Set interpolation values outside domain to NaN
+                    xyhc(tau ~= s,:) = NaN;
+                    
+                else % Empty path
+                    xyhc = NaN(numel(tau), 4);
+                end
                 x = xyhc(:,1);
                 y = xyhc(:,2);
                 head = xyhc(:,3);
                 curv = xyhc(:,4);
-            end
+                    
+            end%if
             
         end%fcn
         
@@ -352,7 +374,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function s = getPathLengths(obj)
-            s = [0; cumsum(hypot(diff(obj.x), diff(obj.y)))];
+            if isempty(obj)
+                s = zeros(0,1);
+            else
+                s = [0; cumsum(hypot(diff(obj.x), diff(obj.y)))];
+            end
         end%fcn
         
         function obj = interp(obj, tau, varargin)
