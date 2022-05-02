@@ -371,10 +371,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         N = numel(obj)
         
         % RESTRICT  Restrict domain.
-        %   OBJ = RESTRICT(OBJ,TAU0,TAUF) returns the path with restricted
-        %   domain to the interval [TAU0, TAUF]. If TAU0/TAUF exceeds the
+        %   OBJ = RESTRICT(OBJ,TAU0,TAU1) returns the path with restricted
+        %   domain to the interval [TAU0, TAU1]. If TAU0/TAU1 exceeds the
         %   lower/upper domain or are empty, the respective bound is kept.
-        obj = restrict(obj, tau0, tauF)
+        obj = restrict(obj, tau0, tau1)
         
         % REVERSE   Reverse path.
         %   OBJ = REVERSE(OBJ) reverses the path's direction.

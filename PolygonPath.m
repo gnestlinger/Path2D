@@ -673,27 +673,34 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
 
-        function obj = restrict(obj, tau0, tauF)
+        function [obj,tau0,tau1] = restrict(obj, tau0, tau1)
             
-            assert(tau0 < tauF)
+            if isempty(obj) || isempty([tau0(:); tau1(:)])
+                return
+            end
             
             % Find the lower/upper index so that restricted domain is
             % covered
             [tauL,tauU] = obj.domain();
             tauS = obj.getPathLengths();
-            if isempty(tau0) || (tau0 < tauL)
+            if isempty(tau0) || (tau0 < tauL) || (tau0 > tauU)
+                tau0 = tauL;
                 idx0 = 1;
             else
                 idx0 = find(tau0 >= tauS, 1, 'last');
             end
-            if isempty(tauF) || (tauF > tauU)
-                idxF = obj.numel();
+            if isempty(tau1) || (tau1 > tauU) || (tau1 < tauL)
+                tau1 = tauU;
+                idx1 = obj.numel();
             else
-                idxF = find(tauF <= tauS, 1, 'first');
+                idx1 = find(tau1 <= tauS, 1, 'first');
             end%if
             
-            [x,y,~,h,c] = obj.eval([tau0 tauF]);
-            obj = obj.select(idx0:idxF);
+            assert(tau0 < tau1, 'PolygonPath:restrict:domain', ...
+                'tau0 >= tau1')
+            
+            [x,y,~,h,c] = obj.eval([tau0 tau1]);
+            obj = obj.select(idx0:idx1);
             obj.x([1 end]) = x;
             obj.y([1 end]) = y;
             obj.head([1 end]) = h;
