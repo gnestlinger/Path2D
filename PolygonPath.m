@@ -26,10 +26,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %#ok<*PROPLC> % There is a property named xyz. Maybe this is a reference to it?
 
     properties
-        x = linspace(0, 99, 100)'
-        y = zeros(100, 1)
-        head = zeros(100, 1)
-        curv = zeros(100, 1)
+        x = zeros(0, 1)
+        y = zeros(0, 1)
+        head = zeros(0, 1)
+        curv = zeros(0, 1)
     end
     
     
@@ -38,6 +38,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function obj = PolygonPath(x, y, head, curv, isCircuit)
         %POLYGONPATH    Create polygon path object.
+        %   OBJ = POLYGONPATH() creates an empty path.
+        %
         %   OBJ = POLYGONPATH(X,Y,HEAD,CURV) create polygon path OBJ with
         %   points (X,Y), heading HEAD in radians and curvature CURV in
         %   1/m.
@@ -862,13 +864,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             end
             t = linspace(phi01(1), phi01(2), N);
             obj = PolygonPath(r*cos(t), r*sin(t), t+pi/2, repmat(1/r,N,1));
-        end%fcn
-        
-        function obj = empty()
-            
-            % Explizitly initialize with empty array
-            emt = zeros(0,1);
-            obj = PolygonPath(emt, emt, emt, emt, false);
         end%fcn
         
         function obj = ll2Path(lat, lon)
