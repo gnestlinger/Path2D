@@ -7,7 +7,7 @@ classdef RestrictTest < matlab.unittest.TestCase
     
     methods (Test)
         function testEmptyPath(testCase, tau0, tau1)
-            obj = PolygonPath.empty();
+            obj = PolygonPath();
             [tauL,tauU] = obj.domain();
             
             objr = obj.restrict(tau0, tau1);

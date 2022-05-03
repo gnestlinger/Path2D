@@ -1,8 +1,8 @@
-classdef EmptyTest < matlab.unittest.TestCase
+classdef ConstructorEmptyTest < matlab.unittest.TestCase
     
     properties (TestParameter)
         obj = struct(...
-            'PolygonPath', PolygonPath.empty());
+            'PolygonPath', PolygonPath());
     end
     
     methods (Test)
