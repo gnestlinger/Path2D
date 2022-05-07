@@ -13,22 +13,31 @@ classdef SampleDomainTest < matlab.unittest.TestCase
         function testUint8(testCase, obj, uintx)
             
             N = cast(10, uintx);
+            if isempty(obj)
+                testCase.verifyError(@() obj.sampleDomain(N), ...
+                    'PATH2D:sampleDomain:PathMustBeNonempty');
+                return
+            end
+            
             tau = obj.sampleDomain(N);
-            testCase.verifySize(tau, [N,1]);
+            flag = isempty(obj);
+            testCase.verifySize(tau, [N*double(~flag),1]);
             
         end%fcn
         
         function testFloat(testCase, obj, float)
             
+            dtau = cast(1.5, float);
             if isempty(obj)
-                % TODO: decide what should be returned in this case
+                testCase.verifyError(@() obj.sampleDomain(dtau), ...
+                    'PATH2D:sampleDomain:PathMustBeNonempty');
                 return
             end
-            dtau = cast(1.5, float);
+            
             tau = obj.sampleDomain(dtau);
             flag = (unique(diff(tau), 'stable') == dtau);
             testCase.verifyTrue(numel(flag) < 3);
-            testCase.verifyTrue(flag(1));
+            testCase.verifyTrue(isempty(flag) || flag(1));
             
         end%fcn
     end

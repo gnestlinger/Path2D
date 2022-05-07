@@ -13,7 +13,7 @@ for i = 1:nargin
     switch class(varargin{i})
         case 'matlab.graphics.axis.Axes'
             indAx = i;
-        case 'double'
+        case {'double','single','uint8', 'uint16', 'uint32', 'uint64'}
             indDtau = i;
         case 'char'
             indOpts = i;

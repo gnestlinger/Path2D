@@ -23,10 +23,9 @@ for i = 1:N
     if i == 2
         set(axh, 'NextPlot','add');
     end%if
-
-    obji = obj(i);
     
-    if isempty(tauIn)
+    obji = obj(i);
+    if isempty(tauIn) || isempty(obji)
         [x,y,tau] = obji.eval();
     else
         if isscalar(tauIn)
@@ -36,17 +35,20 @@ for i = 1:N
         end
         [x,y] = obji.eval(tau);
     end
-
+    
     if isDisplayNameProvided
-        h(i) = plot(axh, x, y, varargin{:});
+        hi = plot(axh, x, y, varargin{:});
     else
         if N > 1
             name = ['(',num2str(i),') ', class(obji)];
         else
             name = class(obji);
         end
-        h(i) = plot(axh, x, y, varargin{:}, 'DisplayName',name);
+        hi = plot(axh, x, y, varargin{:}, 'DisplayName',name);
     end%if
+    if ~isempty(hi)
+        h(i) = hi;
+    end
 end%for
 
 % Reset axes to initial state

@@ -247,14 +247,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %     - double or single it is iterpreted as a step increment
         %     - uintx it is interpreted as the number of samples.
         %   
-        %   In both cases, TAU contains the domain's terminal points.
+        %   In both cases, TAU contains the domain's terminal points and
+        %   OBJ must be a non-empty path!
         
             assert(isscalar(arg));
+            assert(~isempty(obj), 'PATH2D:sampleDomain:PathMustBeNonempty', ...
+                'Path mut be non-empty!')
             
             [tau0,tau1] = obj.domain();
             switch class(arg)
                 case {'double','single'} % Interpret as step increment
-                    [tau0,tau1] = obj.domain();
                     tmp = (tau0:arg:tau1)';
                     if tmp(end) < tau1 % Make sure to include the end point
                         tau = [tmp; tau1];
