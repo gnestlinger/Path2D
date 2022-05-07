@@ -144,8 +144,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function [tauL,tauU] = domain(obj)
-            tauL = 0;
-            tauU = obj.length();
+            if isempty(obj)
+                tauL = NaN;
+                tauU = NaN;
+            else
+                tauL = 0;
+                tauU = obj.length();
+            end
         end%fcn
         
         function [x,y,tau,head,curv] = eval(obj, tau)
@@ -731,9 +736,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function obj = reverse(obj)
             
-        %    NOTE: This method supports array inputs OBJ!
-            
-            % Handle input arguments
             narginchk(1,1);
             
             % Reverse path
@@ -806,8 +808,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function [P0,P1] = termPoints(obj)
-            P0 = [obj.x(1);    obj.y(1)];
-            P1 = [obj.x(end);  obj.y(end)];
+            if isempty(obj)
+                P0 = [NaN; NaN];
+                P1 = [NaN; NaN];
+            else
+                P0 = [obj.x(1);    obj.y(1)];
+                P1 = [obj.x(end);  obj.y(end)];
+            end
         end%fcn
         
 		function write2file(obj, fn)

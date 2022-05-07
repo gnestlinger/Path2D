@@ -265,7 +265,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
                     end%if
                     
                 case {'uint8', 'uint16', 'uint32', 'uint64'}
-                    tau = linspace(tau0, tau1, arg)';
+                        tau = linspace(tau0, tau1, arg)';
                     
                 otherwise
                    error('Unsupported data type for argument ARG!')
@@ -296,7 +296,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         
         % DOMAIN    Domain of the path.
         %   [TAUL,TAUU] = DOMAIN(OBJ) returns the lower and upper domain
-        %   value TAUL and TAUU respectively.
+        %   value TAUL and TAUU respectively. For empty paths NaNs are
+        %   returned.
         [tauL,tauU] = domain(obj);
         
         % EVAL  Evaluate path at path parameters.
@@ -378,7 +379,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         obj = restrict(obj, tau0, tau1)
         
         % REVERSE   Reverse path.
-        %   OBJ = REVERSE(OBJ) reverses the path's direction.
+        %   OBJ = REVERSE(OBJ) reverses the order of path elements.
         obj = reverse(obj)
         
         % ROTATE    Rotate path.
@@ -401,8 +402,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         obj = shift(obj, P)
         
         % TERMPOINTS  Get terminal points.
-        %   [P0,P1] = TERMPOINTS(OBJ) returns the terminal points
-        %   P0 (initial point) and P1 (end point).
+        %   [P0,P1] = TERMPOINTS(OBJ) returns the terminal points P0
+        %   (initial point) and P1 (end point) of size 2-by-1. For empty
+        %   paths NaNs are returned.
         [P0,P1] = termPoints(obj)
         
     end%methods
