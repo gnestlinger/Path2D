@@ -27,6 +27,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   reverse - Reverse path.
 %   rotate - Rotate path.
 %   select - Select path segments.
+%   setIsCircuit - Set property IsCircuit.
 %   shift - Shift path.
 %   termPoints - Terminal points.
 % 
@@ -270,6 +271,17 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
                 otherwise
                    error('Unsupported data type for argument ARG!')
             end%switch
+            
+        end%fcn
+        
+        function obj = setIsCircuit(obj, ths)
+        %SETISCIRCUIT   Sets property IsCircuit
+        %   OBJ = SETISCIRCUIT(OBJ, THS) sets property IsCircuit to true if
+        %   the distance between the path's terminal points is smaller than
+        %   THS, and to false otherwise.
+        
+            [P0,P1] = obj.termPoints();
+            obj.IsCircuit = (norm(P1 - P0) < ths);
             
         end%fcn
         

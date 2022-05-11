@@ -62,7 +62,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             obj.curv = curv(:);
             
             if nargin < 5
-                obj.IsCircuit = false;
+                obj = obj.setIsCircuit(1e-5);
             else
                 obj.IsCircuit = isCircuit;
             end%if
