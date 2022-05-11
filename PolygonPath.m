@@ -646,13 +646,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             end
             
             % Initial/terminal points per segment
-            if obj.IsCircuit
-                X = [obj.x; obj.x(1)];
-                Y = [obj.y; obj.y(1)];
-            else
-                X = obj.x;
-                Y = obj.y;
-            end
+            X = obj.x;
+            Y = obj.y;
 
             % To find Q, two conditions must be satisfied: 
             % https://de.wikipedia.org/wiki/Orthogonalprojektion
