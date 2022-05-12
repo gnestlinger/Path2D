@@ -300,10 +300,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   cartesian coordinates to frenet coordinates SD with respect to
         %   the path OBJ. Point XY is a two-element vector.
         %
-        %   [SD,Q,IDX,TAU] = CART2FRENET(___) also return 
-        %    - The cartesian point Q that corresponds to the frenet point SD.
-        %    - An index IDX indicating the path segment Q relates to.
-        %    - The path parameter TAU.
+        %   [SD,Q,IDX,TAU] = CART2FRENET(___) returns the corresponding
+        %    - cartesian point Q on the path.
+        %    - index IDX referring to the path segment Q relates to.
+        %    - path parameter TAU.
+        %
+        %    See also FRENET2CART.
         [sd,Q,idx,tau] = cart2frenet(obj, xy)
         
         % DOMAIN    Domain of the path.
@@ -321,17 +323,20 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   [___] = EVAL(OBJ) evaluates path OBJ according to subclass
         %   specific implementation.
         %
-        %   Note: Evaluation outside the domain will return NaN!
+        %   Note: Evaluation outside the path's domain will return NaN!
         [x,y,tau,head,curv] = eval(obj, tau)
         
         % FRENET2CART    Frenet point to cartesian with respect to path.
-        %   XY = FRENET2CART(OBJ,SD) converts points SD in frenet
-        %   coordinates to cartesian coordinates XY with respect to the
-        %   path OBJ. Matrix SD is of size n-by-2.
+        %   XY = FRENET2CART(OBJ,SD) converts points of interest SD in
+        %   frenet coordinates to cartesian coordinates XY with respect to
+        %   the path OBJ. Pass SD as matrix of size n-by-2.
         % 
-        %   [XY,Q,IDX] = FRENET2CART(___) returns 
-        %    - The Point Q that corresponds to the frenet points SD.
-        %    - An index IDX referring to the path segment Q relates to.
+        %   [XY,Q,IDX,TAU] = FRENET2CART(___) returns the corresponding
+        %    - cartesian points Q on the path.
+        %    - indexes IDX referring to the path segments Q relates to.
+        %    - path parameters TAU.
+        %
+        %   See also CART2FRENET.
         [xy,Q,idx] = frenet2cart(obj, sd)
         
         % GETPATHLENGTHS    Get path segment lengths.
@@ -341,16 +346,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         
         % INTERSECTLINE     Line intersection.
         %   [XY,TAU,ERRFLAG] = INTERSECTLINE(OBJ,O,PSI) returns the
-        %   intersection point XY of path OBJ and the line passing through
-        %   O and having the slope PSI, where TAU is the corresponding path
-        %   parameter. Flag ERRFLAG is true if no intersection was found
-        %   and false otherwise.
+        %   intersection points XY of path OBJ and the line passing through
+        %   O and having the slope PSI, where TAU are the corresponding
+        %   path parameters. Flag ERRFLAG is true if no intersection was
+        %   found and false otherwise.
         [xy,tau,errFlag] = intersectLine(obj, O, psi)
         
         % INTERSECTCIRCLE     Circle intersection.
         %   [XY,TAU,ERRFLAG] = INTERSECTCIRCLE(OBJ,C,R) returns the
         %   intersection points XY of path OBJ and the circle with center C
-        %   and radius R, where TAU is the corresponding path parameter.
+        %   and radius R, where TAU are the corresponding path parameters.
         %   Flag ERRFLAG is true if no intersection was found and false
         %   otherwise.
         [xy,tau,errFlag] = intersectCircle(obj, C, r)
