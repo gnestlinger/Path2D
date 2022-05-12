@@ -10,25 +10,28 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   Path2D properties:
 %   IsCircuit - Indicates if path is a circuit.
 % 
-%   Path2D methods:
+%   Path2D methods (modify path object):
 %   append - Append paths.
+%   restrict - Restrict path domain.
+%   reverse - Reverse path.
+%   rotate - Rotate path.
+%   sampleDomain - Sample domain of path.
+%   select - Select path segments.
+%   setIsCircuit - Set property IsCircuit.
+%   shift - Shift path.
+% 
+%   Path2D path operation:
 %   cart2frenet - Convert cartesian point to frenet coordinates.
 %   domain - Domain of the path.
 %   eval - Evaluate path at path parameter.
 %   frenet2cart - Convert frenet point to cartesian coordinates.
 %   getPathLengths - Get lengths of path segments.
-%   intersectLine - Line intersection.
 %   intersectCircle - Circle intersection.
+%   intersectLine - Line intersection.
 %   isempty - Check if path is empty.
 %   length - Path length.
 %   numel - Number of path elements.
 %   pointProjection - Point projection on path.
-%   restrict - Restrict path domain.
-%   reverse - Reverse path.
-%   rotate - Rotate path.
-%   select - Select path segments.
-%   setIsCircuit - Set property IsCircuit.
-%   shift - Shift path.
 %   termPoints - Terminal points.
 % 
 %   Path2D visualization methods:
@@ -245,7 +248,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   TAU = SAMPLEDOMAIN(OBJ,ARG) returns the path parameter TAU
         %   sampled over the domain of path OBJ depending on the class of
         %   ARG: if ARG is 
-        %     - double or single it is iterpreted as a step increment
+        %     - double or single it is interpreted as a step increment,
         %     - uintx it is interpreted as the number of samples.
         %   
         %   In both cases, TAU contains the domain's terminal points and
