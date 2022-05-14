@@ -10,24 +10,28 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   Path2D properties:
 %   IsCircuit - Indicates if path is a circuit.
 % 
-%   Path2D methods:
+%   Path2D methods (modify path object):
 %   append - Append paths.
+%   restrict - Restrict path domain.
+%   reverse - Reverse path.
+%   rotate - Rotate path.
+%   sampleDomain - Sample domain of path.
+%   select - Select path segments.
+%   setIsCircuit - Set property IsCircuit.
+%   shift - Shift path.
+% 
+%   Path2D path operation:
 %   cart2frenet - Convert cartesian point to frenet coordinates.
 %   domain - Domain of the path.
 %   eval - Evaluate path at path parameter.
 %   frenet2cart - Convert frenet point to cartesian coordinates.
 %   getPathLengths - Get lengths of path segments.
-%   intersectLine - Line intersection.
 %   intersectCircle - Circle intersection.
+%   intersectLine - Line intersection.
 %   isempty - Check if path is empty.
 %   length - Path length.
 %   numel - Number of path elements.
 %   pointProjection - Point projection on path.
-%   restrict - Restrict path domain.
-%   reverse - Reverse path.
-%   rotate - Rotate path.
-%   select - Select path segments.
-%   shift - Shift path.
 %   termPoints - Terminal points.
 % 
 %   Path2D visualization methods:
@@ -241,20 +245,22 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         function tau = sampleDomain(obj, arg)
         %SAMPLEDOMAIN   Sample domain of path.
         %
-        %	TAU = SAMPLEDOMAIN(OBJ,ARG) returns the path parameter TAU
-        %	sampled over the domain of path OBJ depending on the class of
-        %	ARG: if ARG is 
-        %     - double or single it is iterpreted as a step increment
+        %   TAU = SAMPLEDOMAIN(OBJ,ARG) returns the path parameter TAU
+        %   sampled over the domain of path OBJ depending on the class of
+        %   ARG: if ARG is 
+        %     - double or single it is interpreted as a step increment,
         %     - uintx it is interpreted as the number of samples.
-        %	
-        %   In both cases, TAU contains the domain's terminal points.
+        %   
+        %   In both cases, TAU contains the domain's terminal points and
+        %   OBJ must be a non-empty path!
         
             assert(isscalar(arg));
+            assert(~isempty(obj), 'PATH2D:sampleDomain:PathMustBeNonempty', ...
+                'Path mut be non-empty!')
             
             [tau0,tau1] = obj.domain();
             switch class(arg)
                 case {'double','single'} % Interpret as step increment
-                    [tau0,tau1] = obj.domain();
                     tmp = (tau0:arg:tau1)';
                     if tmp(end) < tau1 % Make sure to include the end point
                         tau = [tmp; tau1];
@@ -263,11 +269,22 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
                     end%if
                     
                 case {'uint8', 'uint16', 'uint32', 'uint64'}
-                    tau = linspace(tau0, tau1, arg);
+                        tau = linspace(tau0, tau1, arg)';
                     
                 otherwise
                    error('Unsupported data type for argument ARG!')
             end%switch
+            
+        end%fcn
+        
+        function obj = setIsCircuit(obj, ths)
+        %SETISCIRCUIT   Sets property IsCircuit
+        %   OBJ = SETISCIRCUIT(OBJ, THS) sets property IsCircuit to true if
+        %   the distance between the path's terminal points is smaller than
+        %   THS, and to false otherwise.
+        
+            [P0,P1] = obj.termPoints();
+            obj.IsCircuit = (norm(P1 - P0) < ths);
             
         end%fcn
         
@@ -286,37 +303,43 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   cartesian coordinates to frenet coordinates SD with respect to
         %   the path OBJ. Point XY is a two-element vector.
         %
-        %   [SD,Q,IDX,TAU] = CART2FRENET(___) also return 
-        %    - The cartesian point Q that corresponds to the frenet point SD.
-        %    - An index IDX indicating the path segment Q relates to.
-        %    - The path parameter TAU.
+        %   [SD,Q,IDX,TAU] = CART2FRENET(___) returns the corresponding
+        %    - cartesian point Q on the path.
+        %    - index IDX referring to the path segment Q relates to.
+        %    - path parameter TAU.
+        %
+        %    See also FRENET2CART.
         [sd,Q,idx,tau] = cart2frenet(obj, xy)
         
         % DOMAIN    Domain of the path.
         %   [TAUL,TAUU] = DOMAIN(OBJ) returns the lower and upper domain
-        %   value TAUL and TAUU respectively.
+        %   value TAUL and TAUU respectively. For empty paths NaNs are
+        %   returned.
         [tauL,tauU] = domain(obj);
         
         % EVAL  Evaluate path at path parameters.
-        %   [X,Y] = EVAL(OBJ,TAU) evaluates analytical path definition at
-        %   path parameters TAU to return the corresponding waypoints
-        %   (X,Y).
-        %
-        %   [__,TAU,HEAD,CURV] = EVAL(___) also returns path parameter TAU,
-        %   heading HEAD and curvature CURV.
+        %   [X,Y,TAU,HEAD,CURV] = EVAL(OBJ,TAU) evaluates analytical path
+        %   definition at path parameters TAU to return the corresponding
+        %   waypoints (X,Y), path parameter TAU, heading HEAD and curvature
+        %   CURV. All return values are of size numel(TAU)-by-1.
         %
         %   [___] = EVAL(OBJ) evaluates path OBJ according to subclass
         %   specific implementation.
+        %
+        %   Note: Evaluation outside the path's domain will return NaN!
         [x,y,tau,head,curv] = eval(obj, tau)
         
         % FRENET2CART    Frenet point to cartesian with respect to path.
-        %   XY = FRENET2CART(OBJ,SD) converts points SD in frenet
-        %   coordinates to cartesian coordinates XY with respect to the
-        %   path OBJ. Matrix SD is of size n-by-2.
+        %   XY = FRENET2CART(OBJ,SD) converts points of interest SD in
+        %   frenet coordinates to cartesian coordinates XY with respect to
+        %   the path OBJ. Pass SD as matrix of size n-by-2.
         % 
-        %   [XY,Q,IDX] = FRENET2CART(___) returns 
-        %    - The Point Q that corresponds to the frenet points SD.
-        %    - An index IDX referring to the path segment Q relates to.
+        %   [XY,Q,IDX,TAU] = FRENET2CART(___) returns the corresponding
+        %    - cartesian points Q on the path.
+        %    - indexes IDX referring to the path segments Q relates to.
+        %    - path parameters TAU.
+        %
+        %   See also CART2FRENET.
         [xy,Q,idx] = frenet2cart(obj, sd)
         
         % GETPATHLENGTHS    Get path segment lengths.
@@ -326,16 +349,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         
         % INTERSECTLINE     Line intersection.
         %   [XY,TAU,ERRFLAG] = INTERSECTLINE(OBJ,O,PSI) returns the
-        %   intersection point XY of path OBJ and the line passing through
-        %   O and having the slope PSI, where TAU is the corresponding path
-        %   parameter. Flag ERRFLAG is true if no intersection was found
-        %   and false otherwise.
+        %   intersection points XY of path OBJ and the line passing through
+        %   O and having the slope PSI, where TAU are the corresponding
+        %   path parameters. Flag ERRFLAG is true if no intersection was
+        %   found and false otherwise.
         [xy,tau,errFlag] = intersectLine(obj, O, psi)
         
         % INTERSECTCIRCLE     Circle intersection.
         %   [XY,TAU,ERRFLAG] = INTERSECTCIRCLE(OBJ,C,R) returns the
         %   intersection points XY of path OBJ and the circle with center C
-        %   and radius R, where TAU is the corresponding path parameter.
+        %   and radius R, where TAU are the corresponding path parameters.
         %   Flag ERRFLAG is true if no intersection was found and false
         %   otherwise.
         [xy,tau,errFlag] = intersectCircle(obj, C, r)
@@ -370,13 +393,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         N = numel(obj)
         
         % RESTRICT  Restrict domain.
-        %   OBJ = RESTRICT(OBJ,TAU0,TAUF) returns the path with restricted
-        %   domain to the interval [TAU0, TAUF]. If TAU0/TAUF exceeds the
+        %   OBJ = RESTRICT(OBJ,TAU0,TAU1) returns the path with restricted
+        %   domain to the interval [TAU0, TAU1]. If TAU0/TAU1 exceeds the
         %   lower/upper domain or are empty, the respective bound is kept.
-        obj = restrict(obj, tau0, tauF)
+        obj = restrict(obj, tau0, tau1)
         
         % REVERSE   Reverse path.
-        %   OBJ = REVERSE(OBJ) reverses the path's direction.
+        %   OBJ = REVERSE(OBJ) reverses the order of path elements.
         obj = reverse(obj)
         
         % ROTATE    Rotate path.
@@ -399,8 +422,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         obj = shift(obj, P)
         
         % TERMPOINTS  Get terminal points.
-        %   [P0,P1] = TERMPOINTS(OBJ) returns the terminal points
-        %   P0 (initial point) and P1 (end point).
+        %   [P0,P1] = TERMPOINTS(OBJ) returns the terminal points P0
+        %   (initial point) and P1 (end point) of size 2-by-1. For empty
+        %   paths NaNs are returned.
         [P0,P1] = termPoints(obj)
         
     end%methods
@@ -409,17 +433,20 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
     methods (Abstract, Static)
         
         % LL2PATH    Path object from LAT/LON coordinates.
-        %   OBJ = LL2PATH(LAT, LON)
+        %   OBJ = <ClassName>.LL2PATH(LAT, LON) instantiates the path OBJ
+        %   from latitude/longitude data.
         obj = ll2Path(lat, lon)
         
         % PP2PATH    Path object from piecewise polynomial.
-        %    OBJ = PP2PATH(PP,TAU)
+        %    OBJ = <ClassName>.PP2PATH(PP,TAU) instantiates the path OBJ
+        %   from piecewise polynomial struct PP.
         %
         %    See also MKPP.
         obj = pp2Path(pp, tay, polyDeg)
         
         % XY2PATH    Path object from cartesian coordinates.
-        %    OBJ = XY2PATH(X,Y)
+        %    OBJ = <ClassName>.XY2PATH(X,Y) instantiates the path OBJ
+        %   from x/y data.
         obj = xy2Path(x, y)
         
     end%methods

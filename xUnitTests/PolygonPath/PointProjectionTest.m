@@ -30,7 +30,7 @@ classdef PointProjectionTest < matlab.unittest.TestCase
             obj = PolygonPath.circle(3, [-pi pi]/2, 10);
             [Q,idx,tau] = pointProjection(obj, [0 0], false);
             
-            N = 9; % Number of solutions
+            N = 9; % One solution per path segment
             testCase.verifySize(Q, [N 2]);
             testCase.verifyEqual(idx, (1:N)');
             testCase.verifyEqual(tau, 0.5*ones(N,1), 'AbsTol',1e-10);
@@ -42,6 +42,20 @@ classdef PointProjectionTest < matlab.unittest.TestCase
             testCase.verifyEqual(Q, zeros(0,2));
             testCase.verifyEqual(idx, zeros(0,1));
             testCase.verifyEqual(tau, zeros(0,1));
+        end%fcn
+        
+        function testCurcuitPath(testCase)
+            obj = PolygonPath.circle(3, [0 2*pi], 15);
+            assert(obj.IsCircuit)
+            [Q,idx,tau] = pointProjection(obj, [0 0], false);
+            
+            % One solution per path segment, at the center of each segment
+            N = 14;
+            testCase.verifySize(Q, [N 2]);
+            testCase.verifySize(idx, [N 1]);
+            testCase.verifySize(tau, [N 1]);
+            testCase.verifyEqual(idx, (1:N)');
+            testCase.verifyEqual(tau, .5*ones(N,1), 'AbsTol',1e-15);
         end%fcn
     end
     
