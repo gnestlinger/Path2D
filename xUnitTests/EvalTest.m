@@ -2,9 +2,11 @@ classdef EvalTest < matlab.unittest.TestCase
     
     properties (TestParameter)
         obj = struct(...
-            'emptyPath', PolygonPath([], [], [], []), ...
-            'oneElmPath', PolygonPath(1, 2, pi/4, 0), ...
-            'nonEmptyPath', PolygonPath.xy2Path(0:10, zeros(1,11)));
+            'PolygonPathEmpty', PolygonPath([], [], [], []), ...
+            'PolygonPathOneElm', PolygonPath(1, 2, pi/4, 0), ...
+            'PolygonPathNonEmpty', PolygonPath.xy2Path(0:10, zeros(1,11)), ...
+            'SplinePathEmpty', SplinePath(), ...
+            'SplinePathNonEmpty', SplinePath([0 1 2], reshape([1 0; 0 0; 1 1; 1 0], 2,2,2)));
         
         tau = struct(...
             'empty', zeros(0,1), ...
@@ -17,15 +19,15 @@ classdef EvalTest < matlab.unittest.TestCase
     methods (Test)
         
         function testReturnSizeNoArg(testCase, obj)
-
+            
 			[x,y,tauO,head,curv] = obj.eval();
             
-            N = numel(obj);
-			testCase.verifySize(x, [N 1]);
-            testCase.verifySize(y, [N 1]);
-            testCase.verifySize(tauO, [N 1]);
-            testCase.verifySize(head, [N 1]);
-            testCase.verifySize(curv, [N 1]);
+            testCase.verifyTrue(iscolumn(tauO));
+            sz = size(tauO);
+			testCase.verifySize(x, sz);
+            testCase.verifySize(y, sz);
+            testCase.verifySize(head, sz);
+            testCase.verifySize(curv, sz);
 		end%fcn
         
         function testReturnSize(testCase, obj, tau)
@@ -33,7 +35,7 @@ classdef EvalTest < matlab.unittest.TestCase
 			[x,y,tauO,head,curv] = obj.eval(tau);
             
             N = numel(tau);
-			testCase.verifySize(x, [N 1]);
+            testCase.verifySize(x, [N 1]);
             testCase.verifySize(y, [N 1]);
             testCase.verifySize(tauO, [N 1]);
             testCase.verifySize(head, [N 1]);

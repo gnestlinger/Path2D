@@ -2,7 +2,8 @@ classdef ConstructorEmptyTest < matlab.unittest.TestCase
     
     properties (TestParameter)
         obj = struct(...
-            'PolygonPath', PolygonPath());
+            'PolygonPath', PolygonPath(), ...
+            'SplinePath', SplinePath());
     end
     
     methods (Test)

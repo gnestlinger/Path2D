@@ -9,11 +9,6 @@ function R = rotmat2D(phi) %#codegen
 %	 (2) inv(R(p)) = R'(p) = R(-p)
 % 
 
-% Subject: Computational Geometry.
-% $Author: georgnestlinger $
-% $LastChangedDate: 2021-04-02 10:27:46 +0200 (Fr., 02 Apr 2021) $
-% $Revision: 1867 $
-
 R = [...
 	cos(phi), -sin(phi); 
 	sin(phi),  cos(phi)];

@@ -1,0 +1,29 @@
+classdef RotateTest < matlab.unittest.TestCase
+    
+    properties (TestParameter)
+        obj = struct(...
+            'PolygonPathEmpty', PolygonPath(), ...
+            'PolygonPathNonEmpty', PolygonPath.xy2Path(1:10, repmat(2, [10,1])), ...
+            'SplinePathEmpty', SplinePath(), ...
+            'SplinePathNonEmpty', SplinePath([0 1 2], reshape([1 0; 0 0; 1 1; 1 0], 2,2,2)));
+    end
+    
+    methods (Test)
+        function testRotate(testCase, obj)
+            
+            % Rotate
+            dphi = pi/2;
+            objr = rotate(obj, dphi);
+            
+            [x,y,tau,h,c] = obj.eval();
+            [xr,yr,taur,hr,cr] = objr.eval();
+            
+            % A point (x,y) rotated by pi/2 moves to (-y,x)
+            verifyEqual(testCase, [x y], [yr -xr], 'AbsTol',1e-12);
+            verifyEqual(testCase, tau, taur, 'AbsTol',1e-15);
+            verifyEqual(testCase, h, hr - dphi);
+            verifyEqual(testCase, c, cr);
+        end%fcn
+    end
+    
+end%class

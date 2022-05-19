@@ -67,14 +67,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             
             if nargin < 4
-                [P0,P1] = obj.termPoints();
-                obj.IsCircuit = (norm(P1 - P0) < 1e-5);
+                obj = obj.setIsCircuit(1e-5);
             else
                 obj.IsCircuit = isCircuit;
             end%if
             
         end%Constructor
-		
+        
         function obj = append(obj, obj2)
             
             breaks = obj.Breaks;
@@ -94,34 +93,51 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             obj.ArcLengths = [arcLen; obj2.ArcLengths(2:end) + arcLen(end) + ds];
             
         end%fcn
-		
-		function [sd,Q,idx,tau] = cart2frenet(obj, xy, doPlot)
+        
+        function [sd,Q,idx,tau] = cart2frenet(obj, xy, doPlot)
             
-		end%fcn
+        end%fcn
         
         function [tauL,tauU] = domain(obj)
-            tauL = obj.Breaks(1);
-            tauU = obj.Breaks(end);
+            if isempty(obj)
+                tauL = NaN;
+                tauU = NaN;
+            else
+                tauL = obj.Breaks(1);
+                tauU = obj.Breaks(end);
+            end
         end%fcn
         
         function [x,y,tau,head,curv] = eval(obj, tau)
             
             if nargin < 2
-                % M samples per spline segment
+                breaks = obj.Breaks;
+                
+                % M samples per spline segment + 1 sample for end point
                 M = 100;
                 N = obj.numel();
-                
-                breaks = obj.Breaks;
-                tau = coder.nullcopy(zeros(N*M , 1));
-                tau(1:M) = linspace(breaks(1), breaks(2), 100);
-                for i = 2:N
+                tau = coder.nullcopy(zeros(N*M + 1, 1));
+                for i = 1:N
                     % To avoid repeated break entries, overwrite end break
                     % of preceeding segment with initial (and equal) break
                     % of current segment
-                    ii = (i-1)*M;
+                    ii = (i-1)*M + 1;
                     jj = ii + M;
                     tau(ii:jj) = linspace(breaks(i), breaks(i+1), M+1);
                 end
+                tau(end) = breaks(end);
+            else
+                tau = tau(:);
+            end%if
+            
+            if isempty(obj)
+                N = numel(tau);
+                tau(:) = NaN;
+                x = NaN(N, 1);
+                y = NaN(N, 1);
+                head = NaN(N, 1);
+                curv = NaN(N, 1);
+                return
             end
             
             pp = obj.mkpp();
@@ -183,6 +199,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         %   path OBJ.
         %
         %   See also PPVAL, MKPP, UNMKPP.
+        
+            assert(~isempty(obj), 'Path must be non-empty!')
             pp = mkpp(obj.Breaks, obj.Coefs, 2);
         end%fcn
         
@@ -296,13 +314,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             if nargin < 2
                 tau0 = obj.domain();
                 [~,~,~,phi] = obj.eval(tau0);
+                phi = -phi;
             end%if
             
-            R = rotmat2D(-phi);
+            R = rotmat2D(phi);
             for i = 1:builtin('numel', obj)
                 obji = obj(i);
                 coefs = obji.Coefs;
-                for ii = 1:obj.numel()
+                for ii = 1:obj.numel() % Loop over segments
                    coefs(:,ii,:) = R*squeeze(coefs(:,ii,:));
                 end
                 obj(i).Coefs = coefs;
