@@ -303,12 +303,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   cartesian coordinates to frenet coordinates SD with respect to
         %   the path OBJ. Point XY is a two-element vector.
         %
-        %   [SD,Q,IDX,TAU] = CART2FRENET(___) returns the corresponding
-        %    - cartesian point Q on the path.
-        %    - index IDX referring to the path segment Q relates to.
-        %    - path parameter TAU.
+        %   [SD,Q,IDX,TAU,DPHI] = CART2FRENET(___) returns results from
+        %   point projection. Additionally, the angular deviation 
+        %       DPHI = pi/2 - psi >= 0
+        %   of the point projection angle psi from the true angle pi/2 is
+        %   returned.
         %
-        %    See also FRENET2CART.
+        %    See also FRENET2CART, POINTPROJECTION.
         [sd,Q,idx,tau] = cart2frenet(obj, xy)
         
         % DOMAIN    Domain of the path.
@@ -385,7 +386,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   Multiple solutions are concatenated vertically, i.e. Q, IDX and
         %   TAU have as many rows as solutions are found.
         [Q,idx,tau] = pointProjection(obj, poi)
-            
+        
         % NUMEL     Number of path elements.
         %   N = NUMEL(OBJ) returns the number of path elements, e.g. 
         %    - The number of waypoints for polygon path.

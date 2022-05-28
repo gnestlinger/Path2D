@@ -76,7 +76,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             obj.curv    = [obj.curv; obj2.curv];
         end%fcn
         
-        function [sd,Q,idx,tau] = cart2frenet(obj, xy, doPlot)
+        function [sd,Q,idx,tau,dphi] = cart2frenet(obj, xy, doPlot)
             
         %   EXAMPLES:
         %   >> sd = cart2frenet(PolygonPath.xy2Path(0:3, [0 0 1 0]), [1; 1])
@@ -89,57 +89,44 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %      1.0000
         %     -3.5355
         %
-        %    See also PATH2D/CART2FRENET.
-
-            [Qs,idxs,taus] = obj.pointProjection(xy);
-            if isempty(Qs)
+        %   See also PATH2D/CART2FRENET.
+        
+            if nargin < 3
+                doPlot = false;
+            end
+            
+            [Q,idx,tau] = obj.pointProjection(xy, doPlot);
+            if isempty(Q)
                 % Take the waypoint closest to point of interest
                 [~,idx] = min(hypot(obj.x - xy(1), obj.y - xy(2)));
                 Q = [obj.x(idx) obj.y(idx)];
                 tau = 0;
-            else
-                Q = Qs(1,:);
-                idx = idxs(1);
-                tau = taus(1);
             end%fcn
-                
             
             % Get the orientation vector related with Q to calculate the
             % sign of distance from point of interest to path
             idx0 = idx;
-            if idx0 == obj.numel()
-                idx1 = idx0;
-                idx0 = idx0 - 1;
-            else
-                idx1 = idx0 + 1;
-            end
-            P0 = [obj.x(idx0); obj.y(idx0)];
-            P1 = [obj.x(idx1); obj.y(idx1)];
-            u = P1 - P0;
+            idx1 = idx + 1;
+            cond = (idx0 == obj.numel());
+            idx1(cond) = idx0(cond);
+            idx0(cond) = idx0(cond) - 1;
+            ux = obj.x(idx1) - obj.x(idx0);
+            uy = obj.y(idx1) - obj.y(idx0);
             
             % Get sign via z-component of cross product u x (Q-poi)
-            qp = Q(:) - xy(:);
-            signD = sign(u(1)*qp(2) - u(2)*qp(1));
+            dx = Q(:,1) - xy(1);
+            dy = Q(:,2) - xy(2);
+            signD = sign(ux.*dy - uy.*dx);
             
-            sd = [...
-                sum(hypot(diff([obj.x(1:idx); Q(1)]), diff([obj.y(1:idx); Q(2)])));
-                signD * norm(qp, 2)
-                ];
-            
-            if nargin < 3
-                doPlot = false;
+            s = coder.nullcopy(zeros(numel(idx0), 1));
+            for i = 1:numel(s)
+                idxi = idx(i);
+                s(i) = sum(hypot(...
+                    diff([obj.x(1:idxi); Q(i,1)]), ...
+                    diff([obj.y(1:idxi); Q(i,2)])));
             end
-            if doPlot
-                plot(obj, 'Marker','.', 'MarkerSize',8, 'DisplayName','RefPath');
-                hold on
-                plot(obj.x(1), obj.y(1), 'g.', 'MarkerSize',18, 'DisplayName','Initial point');
-                plot(xy(1), xy(2), 'o', 'DisplayName','PoI');
-                plot([P0(1),P1(1)], [P0(2),P1(2)], 'r.', 'MarkerSize',8, 'DisplayName','P0/P1');
-                plot(Q(1), Q(2), 'kx', 'DisplayName','Q');
-                plot([xy(1), Q(1)], [xy(2), Q(2)]);
-                hold off
-                legend('-DynamicLegend')
-            end%if
+            sd = [s, signD.*hypot(dx, dy)];
+            dphi = abs(pi/2 - abs(atan2(ux.*dy - uy.*dx, ux.*dx + uy.*dy)));
             
         end%fcn
         
@@ -648,7 +635,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % Initial/terminal points per segment
             X = obj.x;
             Y = obj.y;
-
+            
             % To find Q, two conditions must be satisfied: 
             % https://de.wikipedia.org/wiki/Orthogonalprojektion
             %    (1) Q = P0 + lambda * u, where u := P1-P0
@@ -660,21 +647,28 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             lambdas = dot(bsxfun(@minus, poi(:)', P0), u, 2) ./ sum(u.^2, 2);
             idx = find((lambdas >= 0) & [lambdas(1:end-1) < 1; lambdas(end) <= 1]);
             
-            % Return all potential solutions
-            Q = P0(idx,:) + bsxfun(@times, lambdas(idx), u(idx,:));
-            tau = lambdas(idx);
+            % For paths with 2 elements, find can return an array of size
+            % 0-by-0 which would raise an error in BSXFUN. Avoid by
+            % explicit indexing the column or reshaping find result.
+            idx = idx(:);
+            tau = lambdas(idx); % NOTE: this is with respect to each segment!
+            Q = P0(idx,:) + bsxfun(@times, tau, u(idx,:));
             
             if doPlot
-                plot(obj, 'Marker','.')
+                plot(obj, 'Marker','.', 'MarkerSize',8, 'DisplayName','RefPath');
                 hold on
-                plot(poi(1), poi(2), 'rx', 'DisplayName','PoI')
-                plot(Q(:,1), Q(:,2), 'ro', 'DisplayName','Q')
-                hold off
+                plot(obj.x(1), obj.y(1), 'g.', 'MarkerSize',18, 'DisplayName','Initial point');
+                plot(poi(1), poi(2), 'ro', 'DisplayName','PoI')
+                plot(Q(:,1), Q(:,2), 'kx', 'DisplayName','Q')
                 legend('-DynamicLegend');
+                plot(...
+                    [Q(:,1)'; repmat([poi(1) NaN], size(Q,1),1)'],...
+                    [Q(:,2)'; repmat([poi(2) NaN], size(Q,1),1)'], 'k:'); 
+                hold off
             end%if
             
         end%fcn
-
+        
         function [obj,tau0,tau1] = restrict(obj, tau0, tau1)
             
             if isempty(obj) || isempty([tau0(:); tau1(:)])
