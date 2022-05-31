@@ -372,7 +372,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         flag = isempty(obj)
         
         % LENGTH    Path length.
-        %   S = LENGTH(OBJ) returns the arc length S of the path OBJ.
+        %   S = LENGTH(OBJ) returns the arc length S >= 0 of the path OBJ.
+        %   For empty paths, S = 0.
         s = length(obj)
         
         % POINTPROJECTION    Point projection.
