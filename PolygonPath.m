@@ -104,7 +104,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 doPlot = false;
             end
             
-            [Q,idx,tau] = obj.pointProjection(xy, doPlot);
+            [Q,idx,tau,dphi] = obj.pointProjection(xy, doPlot);
             N = obj.numel();
             assert(all(idx) < N)
             if isempty(Q)
@@ -132,7 +132,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
             S = obj.s;
             sd = [S(idx0) + tau.*(S(idx1) - S(idx0)), signD.*hypot(dx, dy)];
-            dphi = abs(pi/2 - abs(atan2(ux.*dy - uy.*dx, ux.*dx + uy.*dy)));
+            if isempty(dphi)
+                dphi = abs(pi/2 - abs(atan2(ux.*dy - uy.*dx, ux.*dx + uy.*dy)));
+            end
             
         end%fcn
         
@@ -537,7 +539,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function s = length(obj)
-            s = sum(hypot(diff(obj.x), diff(obj.y)));
+            if isempty(obj.s)
+                s = 0;
+            else
+                s = obj.s(end);
+            end
         end%fcn
         
         function n = numel(obj)
@@ -622,7 +628,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function [Q,idx,tau] = pointProjection(obj, poi, doPlot)
+        function [Q,idx,tau,dphi] = pointProjection(obj, poi, doPlot)
             
             if nargin < 3
                 doPlot = false;
@@ -649,6 +655,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             idx = idx(:);
             tau = lambdas(idx); % NOTE: this is with respect to each segment!
             Q = P0(idx,:) + bsxfun(@times, tau, u(idx,:));
+            dphi = zeros(numel(idx), 1);
             
             if doPlot
                 plot(obj, 'Marker','.', 'MarkerSize',8, 'DisplayName','RefPath');
@@ -721,16 +728,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function obj = reverse(obj)
             
-            narginchk(1,1);
-            
-            % Reverse path
             for i = 1:builtin('numel', obj)
                 obji = obj(i);
-                obj(i) = PolygonPath(... % TODO: no constructor call?
-                    +flip(obji.x),...
-                    +flip(obji.y),...
-                    +flip(obji.head) + pi,... 
-                    -flip(obji.curv)); 
+                obji.x = flip(obji.x);
+                obji.y = flip(obji.y);
+                obji.head = flip(obji.head) + pi;
+                obji.curv = -flip(obji.curv);
+                obji.s = -flip(obji.s) + obji.length();
+                obj(i) = obji;
             end%for
             
         end%fcn
@@ -777,7 +782,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         function obj = shift(obj, P)
             
             % Handle input arguments
-            narginchk(2, 2);
+            narginchk(1, 2);
+            
+            if nargin < 2
+                P = -obj(1).termPoints();
+            end%if
             
             if numel(P) ~= 2 || ~isnumeric(P)
                 error(['Method SHIFT requires a numeric input',...

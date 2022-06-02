@@ -304,10 +304,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   the path OBJ. Point XY is a two-element vector.
         %
         %   [SD,Q,IDX,TAU,DPHI] = CART2FRENET(___) returns results from
-        %   point projection. Additionally, the angular deviation 
-        %       DPHI = pi/2 - psi >= 0
-        %   of the point projection angle psi from the true angle pi/2 is
-        %   returned.
+        %   point projection. 
         %
         %    See also FRENET2CART, POINTPROJECTION.
         [sd,Q,idx,tau] = cart2frenet(obj, xy)
@@ -381,8 +378,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   Q of point of interest POI onto the path OBJ. Point POI is a
         %   two-element vector and Q is of size N-by-2.
         %
-        %   [Q,IDX,TAU] = POINTPROJECTION(OBJ,POI) also returns the path
-        %   segment IDX and path parameter TAU related to Q.
+        %   [Q,IDX,TAU,DPHI] = POINTPROJECTION(OBJ,POI) also returns the
+        %   path segment IDX, path parameter TAU related to Q, and the
+        %   angular deviation DPHI = pi/2 - psi >= 0 of the point
+        %   projection angle psi from the true angle pi/2 in radian.
         %
         %   Multiple solutions are concatenated vertically, i.e. Q, IDX and
         %   TAU have as many rows as solutions are found.
@@ -419,8 +418,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         obj = select(obj, idxs)
         
         % SHIFT     Shift path.
-        %   OBJ = SHIFTBY(OBJ,P) shifts the path by P where P is a
+        %   OBJ = SHIFT(OBJ,P) shifts the path by P where P is a
         %   two-element vector.
+        %
+        %   OBJ = SHIFT(OBJ) shifts the path so that its initial point is
+        %   at (0,0).
         obj = shift(obj, P)
         
         % TERMPOINTS  Get terminal points.
