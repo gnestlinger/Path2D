@@ -338,7 +338,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %    - path parameters TAU.
         %
         %   See also CART2FRENET.
-        [xy,Q,idx] = frenet2cart(obj, sd)
+        [xy,Q,idx,tau] = frenet2cart(obj, sd)
         
         % GETPATHLENGTHS    Get path segment lengths.
         %   S = GETPATHLENGTHS(OBJ) get the lengths S of each segment of

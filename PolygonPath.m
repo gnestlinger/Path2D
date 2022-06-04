@@ -63,7 +63,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             obj.y = y(:);
             obj.head = head(:);
             obj.curv = curv(:);
-            if obj.numel() < 1
+            if isempty(x)
                 obj.s = zeros(0,1);
             else
                 obj.s = [0; cumsum(hypot(diff(obj.x), diff(obj.y)))];
@@ -86,7 +86,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function [sd,Q,idx,tau,dphi] = cart2frenet(obj, xy, doPlot)
-            
+        %
+        %   See also PATH2D/CART2FRENET.
+        
         %   EXAMPLES:
         %   >> sd = cart2frenet(PolygonPath.xy2Path(0:3, [0 0 1 0]), [1; 1])
         %   sd = 
@@ -97,8 +99,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %   sd = 
         %      1.0000
         %     -3.5355
-        %
-        %   See also PATH2D/CART2FRENET.
         
             if nargin < 3
                 doPlot = false;
@@ -160,10 +160,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             else
                 
                 tau = tau(:);
-                if numel(obj) > 1 % At least 2 sample points as required by INTERP1
+                if obj.numel() > 1 % At least 2 sample points as required by INTERP1
                     xyhc = interp1(s, [obj.x,obj.y,obj.head,obj.curv], tau, 'linear');
                     
-                elseif numel(obj) > 0 % Just one sample point
+                elseif obj.numel() > 0 % Just one sample point
                     % Create a synthetic point for INTERP1
                     xn = obj.x + cos(obj.head);
                     yn = obj.y + sin(obj.head);
@@ -301,8 +301,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function [xy,Q,idx] = frenet2cart(obj, sd, doPlot)
-            
+        function [xy,Q,idx,tau] = frenet2cart(obj, sd, doPlot)
+        %
+        %   See also PATH2D/FRENET2CART.
+        
         % 
         %   EXAMPLES:
         %   >> s = [-1;sqrt(8);sqrt(8)+sqrt(10);10;sqrt(8)+sqrt(10)+sqrt(41);13];
@@ -333,25 +335,30 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % Get the indexes referring to the path segments according to
             % frenet coordinates s-values
             sEval = sd(:,1);
+            if obj.IsCircuit
+                sEval = rem(sEval, obj.length());
+            end
             S = obj.s(2:end);
-            Ns = numel(sEval);
-            idx = zeros(Ns, 1, 'uint32');
-            % idx2 = bsxfun(@lt, sEval', S);
-            for i = 1:Ns
-                isLessEqual = sEval(i) < S;
-                if any(isLessEqual)
-                    index = find(isLessEqual, 1, 'first');
-                    idx(i) = index(1);
-                else
+            idx = coder.nullcopy(zeros(size(sEval), 'uint32'));
+            for i = 1:numel(sEval)
+                idxs = find(sEval(i) < S, 1, 'first');
+                if isempty(idxs)
                     idx(i) = numel(S);
+                else
+                    idx(i) = idxs(1);
                 end
             end%for
+%             [isLess,idx] = max(bsxfun(@lt, sEval, S'), [], 2);
+%             idx(~isLess) = numel(S);
+%             idx = uint32(idx);
             
             % The points on the path (i.e. d=0) are given by the segments
             % initial point plus the remaining length along the current
             % segment
-            S = obj.s(1:end-1);
-            Q = Pxy(idx,:) + bsxfun(@times, sEval-S(idx), u(idx,:));
+            S = obj.s;
+            ds = sEval - S(idx);
+            Q = Pxy(idx,:) + bsxfun(@times, ds, u(idx,:));
+            tau = ds./(S(idx+1) - S(idx));
             
             % From Q, go D units along normal vector to U
             xy = Q + bsxfun(@times, sd(:,2), [-u(idx,2), u(idx,1)]);
