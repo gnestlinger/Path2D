@@ -32,6 +32,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         curv = zeros(0, 1)
     end
     
+    properties (Access = private)
+       s = zeros(0, 1) 
+    end
     
     
     methods
@@ -60,6 +63,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             obj.y = y(:);
             obj.head = head(:);
             obj.curv = curv(:);
+            if isempty(x)
+                obj.s = zeros(0,1);
+            else
+                obj.s = [0; cumsum(hypot(diff(obj.x), diff(obj.y)))];
+            end
             
             if nargin < 5
                 obj = obj.setIsCircuit(1e-5);
@@ -70,14 +78,17 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%Constructor
         
         function obj = append(obj, obj2)
-            obj.x       = [obj.x; obj2.x];
-            obj.y       = [obj.y; obj2.y];
-            obj.head    = [obj.head; obj2.head];
-            obj.curv    = [obj.curv; obj2.curv];
+            obj = PolygonPath(...
+                [obj.x; obj2.x], ...
+                [obj.y; obj2.y], ...
+                [obj.head; obj2.head], ...
+                [obj.curv; obj2.curv]);
         end%fcn
         
-        function [sd,Q,idx,tau] = cart2frenet(obj, xy, doPlot)
-            
+        function [sd,Q,idx,tau,dphi] = cart2frenet(obj, xy, doPlot)
+        %
+        %   See also PATH2D/CART2FRENET.
+        
         %   EXAMPLES:
         %   >> sd = cart2frenet(PolygonPath.xy2Path(0:3, [0 0 1 0]), [1; 1])
         %   sd = 
@@ -88,59 +99,47 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %   sd = 
         %      1.0000
         %     -3.5355
-        %
-        %    See also PATH2D/CART2FRENET.
-
-            [Qs,idxs,taus] = obj.pointProjection(xy);
-            if isempty(Qs)
+        
+            if nargin < 3
+                doPlot = false;
+            end
+            
+            [Q,idx,tau,dphi] = obj.pointProjection(xy, doPlot);
+            N = obj.numel();
+            assert(all(idx) < N)
+            if isempty(Q)
                 % Take the waypoint closest to point of interest
                 [~,idx] = min(hypot(obj.x - xy(1), obj.y - xy(2)));
                 Q = [obj.x(idx) obj.y(idx)];
                 tau = 0;
-            else
-                Q = Qs(1,:);
-                idx = idxs(1);
-                tau = taus(1);
+                if idx == N
+                    idx = idx - 1; % index refers to path segment!
+                    tau = 1;
+                end
             end%fcn
-                
             
             % Get the orientation vector related with Q to calculate the
             % sign of distance from point of interest to path
             idx0 = idx;
-            if idx0 == obj.numel()
-                idx1 = idx0;
-                idx0 = idx0 - 1;
-            else
-                idx1 = idx0 + 1;
-            end
-            P0 = [obj.x(idx0); obj.y(idx0)];
-            P1 = [obj.x(idx1); obj.y(idx1)];
-            u = P1 - P0;
+            idx1 = idx + 1;
+            ux = obj.x(idx1) - obj.x(idx0);
+            uy = obj.y(idx1) - obj.y(idx0);
             
             % Get sign via z-component of cross product u x (Q-poi)
-            qp = Q(:) - xy(:);
-            signD = sign(u(1)*qp(2) - u(2)*qp(1));
+            dx = Q(:,1) - xy(1);
+            dy = Q(:,2) - xy(2);
+            signD = sign(ux.*dy - uy.*dx);
             
-            sd = [...
-                sum(hypot(diff([obj.x(1:idx); Q(1)]), diff([obj.y(1:idx); Q(2)])));
-                signD * norm(qp, 2)
-                ];
-            
-            if nargin < 3
-                doPlot = false;
+            S = obj.s;
+            sd = [S(idx0) + tau.*(S(idx1) - S(idx0)), signD.*hypot(dx, dy)];
+            if isempty(dphi)
+                dphi = abs(pi/2 - abs(atan2(ux.*dy - uy.*dx, ux.*dx + uy.*dy)));
             end
-            if doPlot
-                plot(obj, 'Marker','.', 'MarkerSize',8, 'DisplayName','RefPath');
-                hold on
-                plot(obj.x(1), obj.y(1), 'g.', 'MarkerSize',18, 'DisplayName','Initial point');
-                plot(xy(1), xy(2), 'o', 'DisplayName','PoI');
-                plot([P0(1),P1(1)], [P0(2),P1(2)], 'r.', 'MarkerSize',8, 'DisplayName','P0/P1');
-                plot(Q(1), Q(2), 'kx', 'DisplayName','Q');
-                plot([xy(1), Q(1)], [xy(2), Q(2)]);
-                hold off
-                legend('-DynamicLegend')
-            end%if
             
+        end%fcn
+        
+        function s = cumlengths(obj)
+            s = obj.s;
         end%fcn
         
         function [tauL,tauU] = domain(obj)
@@ -155,7 +154,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function [x,y,tau,head,curv] = eval(obj, tau)
             
-            s = obj.getPathLengths();
+            s = obj.s;
             if nargin < 2
                 x = obj.x;
                 y = obj.y;
@@ -165,10 +164,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             else
                 
                 tau = tau(:);
-                if numel(obj) > 1 % At least 2 sample points as required by INTERP1
+                if obj.numel() > 1 % At least 2 sample points as required by INTERP1
                     xyhc = interp1(s, [obj.x,obj.y,obj.head,obj.curv], tau, 'linear');
                     
-                elseif numel(obj) > 0 % Just one sample point
+                elseif obj.numel() > 0 % Just one sample point
                     % Create a synthetic point for INTERP1
                     xn = obj.x + cos(obj.head);
                     yn = obj.y + sin(obj.head);
@@ -306,8 +305,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function [xy,Q,idx] = frenet2cart(obj, sd, doPlot)
-            
+        function [xy,Q,idx,tau] = frenet2cart(obj, sd, doPlot)
+        %
+        %   See also PATH2D/FRENET2CART.
+        
         % 
         %   EXAMPLES:
         %   >> s = [-1;sqrt(8);sqrt(8)+sqrt(10);10;sqrt(8)+sqrt(10)+sqrt(41);13];
@@ -329,12 +330,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         % 
         
             Pxy = [obj.x, obj.y]; % Initial/terminal points per path segment
-            u = diff(Pxy, 1, 1); % Orientation vectors/TODO: make use of heading
+            u = diff(Pxy, 1, 1); % Orientation vectors/TODO: make use of heading?
             assert(size(u, 1) > 0, 'Path must have at least two points!');
-            
-            % Inlined calculation of cumulative path length instead of
-            % calling getPathLengths() to avoid repeated call to diff()
-            Ps = cumsum(hypot(u(:,1), u(:,2)));
             
             % Normalize orientation vectors to length 1
             u = bsxfun(@rdivide, u, hypot(u(:,1), u(:,2)));
@@ -342,25 +339,30 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % Get the indexes referring to the path segments according to
             % frenet coordinates s-values
             sEval = sd(:,1);
-            Ns = numel(sEval);
-            idx = zeros(Ns, 1, 'uint32');
-            % idx2 = bsxfun(@lt, sEval', Ps);
-            for i = 1:Ns
-                isLessEqual = sEval(i) < Ps;
-                if any(isLessEqual)
-                    index = find(isLessEqual, 1, 'first');
-                    idx(i) = index(1);
+            if obj.IsCircuit
+                sEval = rem(sEval, obj.length());
+            end
+            S = obj.s(2:end);
+            idx = coder.nullcopy(zeros(size(sEval), 'uint32'));
+            for i = 1:numel(sEval)
+                idxs = find(sEval(i) < S, 1, 'first');
+                if isempty(idxs)
+                    idx(i) = numel(S);
                 else
-                    idx(i) = numel(Ps);
+                    idx(i) = idxs(1);
                 end
             end%for
+%             [isLess,idx] = max(bsxfun(@lt, sEval, S'), [], 2);
+%             idx(~isLess) = numel(S);
+%             idx = uint32(idx);
             
             % The points on the path (i.e. d=0) are given by the segments
             % initial point plus the remaining length along the current
             % segment
-            Ps = circshift(Ps, 1);
-            Ps(1) = 0;
-            Q = Pxy(idx,:) + bsxfun(@times, sEval-Ps(idx), u(idx,:));
+            S = obj.s;
+            ds = sEval - S(idx);
+            Q = Pxy(idx,:) + bsxfun(@times, ds, u(idx,:));
+            tau = ds./(S(idx+1) - S(idx));
             
             % From Q, go D units along normal vector to U
             xy = Q + bsxfun(@times, sd(:,2), [-u(idx,2), u(idx,1)]);
@@ -375,17 +377,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 plot(Q(:,1), Q(:,2), 'kx', 'DisplayName','Q');
                 hold off
                 legend('-DynamicLegend')
-                title(mfilename)
             end%if
             
         end%fcn
         
         function s = getPathLengths(obj)
-            if isempty(obj)
-                s = zeros(0,1);
-            else
-                s = [0; cumsum(hypot(diff(obj.x), diff(obj.y)))];
-            end
+            s = obj.cumlengths();
         end%fcn
         
         function obj = interp(obj, tau, varargin)
@@ -401,8 +398,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % INTERP1 requires at least two samples
             assert(obj.numel() > 1)
             
-            sAct = obj.getPathLengths();
-            xyhc = interp1(sAct, [obj.x,obj.y,obj.head,obj.curv], tau(:), ...
+            xyhc = interp1(obj.s, [obj.x,obj.y,obj.head,obj.curv], tau(:), ...
                 varargin{:});
             obj = PolygonPath(xyhc(:,1), xyhc(:,2), xyhc(:,3), xyhc(:,4));
             
@@ -462,7 +458,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 tauS = zeros(0,1);
                 errFlag = true;
             else
-                s = obj.getPathLengths();
+                s = obj.s;
                 tauS = sort(s(segIdx) + (s(segIdx+1)-s(segIdx)).*tauLoc);
                 [x,y] = obj.eval(tauS);
                 xy = [x,y];
@@ -527,7 +523,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 % or y
 %                 tauLocal = (x - x0F(1))/diff(x0F);
                 tauLocal = -yPath(idxs0)./y0Fd;
-                s = obj.getPathLengths();
+                s = obj.s;
                 tauS = s(idxs0);
                 tauS = tauS + (s(idxsE) - tauS).*tauLocal;
                 
@@ -554,7 +550,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function s = length(obj)
-            s = sum(hypot(diff(obj.x), diff(obj.y)));
+            if isempty(obj.s)
+                s = 0;
+            else
+                s = obj.s(end);
+            end
         end%fcn
         
         function n = numel(obj)
@@ -639,7 +639,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function [Q,idx,tau] = pointProjection(obj, poi, doPlot)
+        function [Q,idx,tau,dphi] = pointProjection(obj, poi, doPlot)
             
             if nargin < 3
                 doPlot = false;
@@ -648,7 +648,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % Initial/terminal points per segment
             X = obj.x;
             Y = obj.y;
-
+            
             % To find Q, two conditions must be satisfied: 
             % https://de.wikipedia.org/wiki/Orthogonalprojektion
             %    (1) Q = P0 + lambda * u, where u := P1-P0
@@ -660,21 +660,29 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             lambdas = dot(bsxfun(@minus, poi(:)', P0), u, 2) ./ sum(u.^2, 2);
             idx = find((lambdas >= 0) & [lambdas(1:end-1) < 1; lambdas(end) <= 1]);
             
-            % Return all potential solutions
-            Q = P0(idx,:) + bsxfun(@times, lambdas(idx), u(idx,:));
-            tau = lambdas(idx);
+            % For paths with 2 elements, find can return an array of size
+            % 0-by-0 which would raise an error in BSXFUN. Avoid by
+            % explicit indexing the column or reshaping find result.
+            idx = idx(:);
+            tau = lambdas(idx); % NOTE: this is with respect to each segment!
+            Q = P0(idx,:) + bsxfun(@times, tau, u(idx,:));
+            dphi = zeros(numel(idx), 1);
             
             if doPlot
-                plot(obj, 'Marker','.')
+                plot(obj, 'Marker','.', 'MarkerSize',8, 'DisplayName','RefPath');
                 hold on
-                plot(poi(1), poi(2), 'rx', 'DisplayName','PoI')
-                plot(Q(:,1), Q(:,2), 'ro', 'DisplayName','Q')
-                hold off
+                plot(obj.x(1), obj.y(1), 'g.', 'MarkerSize',18, 'DisplayName','Initial point');
+                plot(poi(1), poi(2), 'ro', 'DisplayName','PoI')
+                plot(Q(:,1), Q(:,2), 'kx', 'DisplayName','Q')
                 legend('-DynamicLegend');
+                plot(...
+                    [Q(:,1)'; repmat([poi(1) NaN], size(Q,1),1)'],...
+                    [Q(:,2)'; repmat([poi(2) NaN], size(Q,1),1)'], 'k:'); 
+                hold off
             end%if
             
         end%fcn
-
+        
         function [obj,tau0,tau1] = restrict(obj, tau0, tau1)
             
             if isempty(obj) || isempty([tau0(:); tau1(:)])
@@ -684,7 +692,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % Find the lower/upper index so that restricted domain is
             % covered
             [tauL,tauU] = obj.domain();
-            tauS = obj.getPathLengths();
+            tauS = obj.s;
             if isempty(tau0) || (tau0 < tauL) || (tau0 > tauU)
                 tau0 = tauL;
                 idx0 = 1;
@@ -731,16 +739,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function obj = reverse(obj)
             
-            narginchk(1,1);
-            
-            % Reverse path
             for i = 1:builtin('numel', obj)
                 obji = obj(i);
-                obj(i) = PolygonPath(...
-                    +flip(obji.x),...
-                    +flip(obji.y),...
-                    +flip(obji.head) + pi,... 
-                    -flip(obji.curv)); 
+                obji.x = flip(obji.x);
+                obji.y = flip(obji.y);
+                obji.head = flip(obji.head) + pi;
+                obji.curv = -flip(obji.curv);
+                obji.s = -flip(obji.s) + obji.length();
+                obj(i) = obji;
             end%for
             
         end%fcn
@@ -787,7 +793,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         function obj = shift(obj, P)
             
             % Handle input arguments
-            narginchk(2, 2);
+            narginchk(1, 2);
+            
+            if nargin < 2
+                P = -obj(1).termPoints();
+            end%if
             
             if numel(P) ~= 2 || ~isnumeric(P)
                 error(['Method SHIFT requires a numeric input',...
@@ -812,29 +822,29 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             end
         end%fcn
         
-		function write2file(obj, fn)
-		%WRITE2FILE		Write path to file.
-		%	WRITE2FILE(OBJ,FN) writes waypoints OBJ to file with filename
-		%	FN (specify extension!).
-		%	
-			
-			% Open file with write-permission
-			[~,~,fileExt] = fileparts(fn);
-			assert(~isempty(fileExt), 'Specify file name extension!');
-			fid = fopen(fn, 'w');
-			
-			doubleFmt = '%+15.5e ';
-			fprintf(fid,...
-				'%15s %15s %15s %15s %15s\n', ...
-				'x (m)', 'y (m)', 'head (rad)', 'curv (1/m)', 's (m)');
-			fprintf(fid,...
-				[repmat(doubleFmt, [1,5]), '\n'], ...
-				[obj.x, obj.y, obj.head, obj.curv, obj.getPathLengths()]');
-			
-			% Close file
-			fclose(fid);
-			
-		end%fcn
+        function write2file(obj, fn)
+        %WRITE2FILE		Write path to file.
+        %	WRITE2FILE(OBJ,FN) writes waypoints OBJ to file with filename
+        %	FN (specify extension!).
+        %	
+            
+            % Open file with write-permission
+            [~,~,fileExt] = fileparts(fn);
+            assert(~isempty(fileExt), 'Specify file name extension!');
+            fid = fopen(fn, 'w');
+            
+            doubleFmt = '%+15.5e ';
+            fprintf(fid,...
+                '%15s %15s %15s %15s %15s\n', ...
+                'x (m)', 'y (m)', 'head (rad)', 'curv (1/m)', 's (m)');
+            fprintf(fid,...
+                [repmat(doubleFmt, [1,5]), '\n'], ...
+                [obj.x, obj.y, obj.head, obj.curv, obj.s]');
+            
+            % Close file
+            fclose(fid);
+            
+        end%fcn
         
         function s = toStruct(obj)
             s = struct('x',obj.x, 'y',obj.y, 'head',obj.head, 'curv',obj.curv);

@@ -20,12 +20,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   setIsCircuit - Set property IsCircuit.
 %   shift - Shift path.
 % 
-%   Path2D path operation:
+%   Path2D path operations:
 %   cart2frenet - Convert cartesian point to frenet coordinates.
+%   cumlengths - Cumulative path segment lengths.
 %   domain - Domain of the path.
 %   eval - Evaluate path at path parameter.
 %   frenet2cart - Convert frenet point to cartesian coordinates.
-%   getPathLengths - Get lengths of path segments.
 %   intersectCircle - Circle intersection.
 %   intersectLine - Line intersection.
 %   isempty - Check if path is empty.
@@ -303,13 +303,18 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   cartesian coordinates to frenet coordinates SD with respect to
         %   the path OBJ. Point XY is a two-element vector.
         %
-        %   [SD,Q,IDX,TAU] = CART2FRENET(___) returns the corresponding
-        %    - cartesian point Q on the path.
-        %    - index IDX referring to the path segment Q relates to.
-        %    - path parameter TAU.
+        %   [SD,Q,IDX,TAU,DPHI] = CART2FRENET(___) returns results from
+        %   point projection. 
         %
-        %    See also FRENET2CART.
+        %    See also FRENET2CART, POINTPROJECTION.
         [sd,Q,idx,tau] = cart2frenet(obj, xy)
+        
+        % CUMLENGTHS    Cumulative path segment lengths.
+        %   S = CUMLENGTHS(OBJ) returns the vector S of cumulative path
+        %   segment lengths.
+        %
+        %   See also LENGTH.
+        s = cumlengths(obj)
         
         % DOMAIN    Domain of the path.
         %   [TAUL,TAUU] = DOMAIN(OBJ) returns the lower and upper domain
@@ -340,12 +345,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %    - path parameters TAU.
         %
         %   See also CART2FRENET.
-        [xy,Q,idx] = frenet2cart(obj, sd)
-        
-        % GETPATHLENGTHS    Get path segment lengths.
-        %   S = GETPATHLENGTHS(OBJ) get the lengths S of each segment of
-        %   path OBJ.
-        s = getPathLengths(obj)
+        [xy,Q,idx,tau] = frenet2cart(obj, sd)
         
         % INTERSECTLINE     Line intersection.
         %   [XY,TAU,ERRFLAG] = INTERSECTLINE(OBJ,O,PSI) returns the
@@ -371,7 +371,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         flag = isempty(obj)
         
         % LENGTH    Path length.
-        %   S = LENGTH(OBJ) returns the arc length S of the path OBJ.
+        %   S = LENGTH(OBJ) returns the arc length S >= 0 of the path OBJ.
+        %   For empty paths, S = 0.
+        %
+        %   See also CUMLENGTHS.
         s = length(obj)
         
         % POINTPROJECTION    Point projection.
@@ -379,13 +382,15 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   Q of point of interest POI onto the path OBJ. Point POI is a
         %   two-element vector and Q is of size N-by-2.
         %
-        %   [Q,IDX,TAU] = POINTPROJECTION(OBJ,POI) also returns the path
-        %   segment IDX and path parameter TAU related to Q.
+        %   [Q,IDX,TAU,DPHI] = POINTPROJECTION(OBJ,POI) also returns the
+        %   path segment IDX, path parameter TAU related to Q, and the
+        %   angular deviation DPHI = pi/2 - psi >= 0 of the point
+        %   projection angle psi from the true angle pi/2 in radian.
         %
         %   Multiple solutions are concatenated vertically, i.e. Q, IDX and
         %   TAU have as many rows as solutions are found.
         [Q,idx,tau] = pointProjection(obj, poi)
-            
+        
         % NUMEL     Number of path elements.
         %   N = NUMEL(OBJ) returns the number of path elements, e.g. 
         %    - The number of waypoints for polygon path.
@@ -417,8 +422,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         obj = select(obj, idxs)
         
         % SHIFT     Shift path.
-        %   OBJ = SHIFTBY(OBJ,P) shifts the path by P where P is a
+        %   OBJ = SHIFT(OBJ,P) shifts the path by P where P is a
         %   two-element vector.
+        %
+        %   OBJ = SHIFT(OBJ) shifts the path so that its initial point is
+        %   at (0,0).
         obj = shift(obj, P)
         
         % TERMPOINTS  Get terminal points.
