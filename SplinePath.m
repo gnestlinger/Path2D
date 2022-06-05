@@ -25,21 +25,21 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         % ArcLengths - Cumulative length of spline segments
         ArcLengths = 0;
     end
-	
-	
-	methods
-		
+    
+    
+    methods
+        
         function obj = SplinePath(breaks, coefs, s, isCircuit)
-		%SPLINEPATH     Create spline path object.
-		%	OBJ = SPLINEPATH(BREAKS,COEFS) creates a spline path OBJ with
-		%	breaks BREAKS of size 1-by-(N+1) and coefficients COEFS of size
-		%	2-by-N-by-K, where N is the number of spline segments and K-1
-		%	the polynomial degree.
-		%
-		%	OBJ = SPLINEPATH(___,ISCIRCUIT) set to true if the path is a
-		%	circuit.
-		%
-		
+        %SPLINEPATH     Create spline path object.
+        %	OBJ = SPLINEPATH(BREAKS,COEFS) creates a spline path OBJ with
+        %	breaks BREAKS of size 1-by-(N+1) and coefficients COEFS of size
+        %	2-by-N-by-K, where N is the number of spline segments and K-1
+        %	the polynomial degree.
+        %
+        %	OBJ = SPLINEPATH(___,ISCIRCUIT) set to true if the path is a
+        %	circuit.
+        %
+        
             if nargin < 1
                 % Return with default values
                 return
@@ -99,7 +99,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         end%fcn
         
         function [tauL,tauU] = domain(obj)
-            if isempty(obj)
+            if obj.isempty()
                 tauL = NaN;
                 tauU = NaN;
             else
@@ -130,7 +130,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 tau = tau(:);
             end%if
             
-            if isempty(obj)
+            if obj.isempty()
                 N = numel(tau);
                 tau(:) = NaN;
                 x = NaN(N, 1);
@@ -165,10 +165,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         function [xy,Q,idx] = frenet2cart(obj, sd)
             
         end%fcn
-		
-		function s = getPathLengths(obj, idx0, idx1)
+        
+        function s = cumlengths(obj, idx0, idx1)
             s = obj.ArcLengths;
-		end%fcn
+        end%fcn
         
         function [xy,tau,errFlag] = intersectLine(obj, O, psi)
         end%fcn
@@ -180,7 +180,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             flag = (obj.numel() < 1);
         end%fcn
         
-		function s = length(obj, tau)
+        function s = length(obj, tau)
             
             if nargin < 1
                 s = obj.ArcLengths(end);
@@ -191,8 +191,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 s = obj.ArcLengths(idx) + hypot(xy(1,:), xy(2,:));
             end%if
             
-		end%fcn
-		
+        end%fcn
+        
         function pp = mkpp(obj)
         %MKPP   Create piecewise polynomial struct.
         %   PP = MKPP(OBJ) creates piecewise polynomial structure PP from
@@ -200,7 +200,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         %
         %   See also PPVAL, MKPP, UNMKPP.
         
-            assert(~isempty(obj), 'Path must be non-empty!')
+            assert(~obj.isempty(), 'Path must be non-empty!')
             pp = mkpp(obj.Breaks, obj.Coefs, 2);
         end%fcn
         
@@ -229,11 +229,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function [Q,idx,tau] = pointProjectionAll(obj, poi, doPlot)
             
-            pp = mkpp(obj);
+            pp = obj.mkpp();
             ppd = ppdiff(pp);
             fh = @(tau) abs(ppIncAngle(pp, ppd, poi, tau) - pi/2);
             
-            N = numel(obj);
+            N = obj.numel();
             taus = coder.nullcopy(zeros(N,1));
             fvals = coder.nullcopy(zeros(N,1));
             flags = coder.nullcopy(zeros(N,1));
@@ -304,8 +304,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         end%fcn
         
         function obj = reverse(obj)
-			
-		end%fcn
+            
+        end%fcn
         
         function obj = rotate(obj, phi)
             
