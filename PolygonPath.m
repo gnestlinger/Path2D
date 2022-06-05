@@ -138,6 +138,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
+        function s = cumlengths(obj)
+            s = obj.s;
+        end%fcn
+        
         function [tauL,tauU] = domain(obj)
             if isempty(obj)
                 tauL = NaN;
@@ -378,7 +382,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function s = getPathLengths(obj)
-            s = obj.s;
+            s = obj.cumlengths();
         end%fcn
         
         function obj = interp(obj, tau, varargin)

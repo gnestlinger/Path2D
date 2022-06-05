@@ -20,12 +20,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   setIsCircuit - Set property IsCircuit.
 %   shift - Shift path.
 % 
-%   Path2D path operation:
+%   Path2D path operations:
 %   cart2frenet - Convert cartesian point to frenet coordinates.
+%   cumlengths - Cumulative path segment lengths.
 %   domain - Domain of the path.
 %   eval - Evaluate path at path parameter.
 %   frenet2cart - Convert frenet point to cartesian coordinates.
-%   getPathLengths - Get lengths of path segments.
 %   intersectCircle - Circle intersection.
 %   intersectLine - Line intersection.
 %   isempty - Check if path is empty.
@@ -309,6 +309,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %    See also FRENET2CART, POINTPROJECTION.
         [sd,Q,idx,tau] = cart2frenet(obj, xy)
         
+        % CUMLENGTHS    Cumulative path segment lengths.
+        %   S = CUMLENGTHS(OBJ) returns the vector S of cumulative path
+        %   segment lengths.
+        %
+        %   See also LENGTH.
+        s = cumlengths(obj)
+        
         % DOMAIN    Domain of the path.
         %   [TAUL,TAUU] = DOMAIN(OBJ) returns the lower and upper domain
         %   value TAUL and TAUU respectively. For empty paths NaNs are
@@ -340,11 +347,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   See also CART2FRENET.
         [xy,Q,idx,tau] = frenet2cart(obj, sd)
         
-        % GETPATHLENGTHS    Get path segment lengths.
-        %   S = GETPATHLENGTHS(OBJ) get the lengths S of each segment of
-        %   path OBJ.
-        s = getPathLengths(obj)
-        
         % INTERSECTLINE     Line intersection.
         %   [XY,TAU,ERRFLAG] = INTERSECTLINE(OBJ,O,PSI) returns the
         %   intersection points XY of path OBJ and the line passing through
@@ -371,6 +373,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         % LENGTH    Path length.
         %   S = LENGTH(OBJ) returns the arc length S >= 0 of the path OBJ.
         %   For empty paths, S = 0.
+        %
+        %   See also CUMLENGTHS.
         s = length(obj)
         
         % POINTPROJECTION    Point projection.
