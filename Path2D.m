@@ -299,7 +299,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         obj = append(obj0, varargin)
         
         % CART2FRENET    Cartesian point to frenet with respect to path.
-        %   SD = CART2FRENET(OBJ,XY) converts point of interest XY in
+        %   SD = CART2FRENET(OBJ,XY,PHIMAX) converts point of interest XY in
         %   cartesian coordinates to frenet coordinates SD with respect to
         %   the path OBJ. Point XY is a two-element vector.
         %
@@ -307,7 +307,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   point projection. 
         %
         %    See also FRENET2CART, POINTPROJECTION.
-        [sd,Q,idx,tau] = cart2frenet(obj, xy)
+        [sd,Q,idx,tau] = cart2frenet(obj, xy, phiMax)
         
         % CUMLENGTHS    Cumulative path segment lengths.
         %   S = CUMLENGTHS(OBJ) returns the vector S of cumulative path
@@ -378,18 +378,21 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         s = length(obj)
         
         % POINTPROJECTION    Point projection.
-        %   Q = POINTPROJECTION(OBJ,POI) returns the orthogonal projection
-        %   Q of point of interest POI onto the path OBJ. Point POI is a
-        %   two-element vector and Q is of size N-by-2.
+        %   Q = POINTPROJECTION(OBJ,POI,PHIMAX) returns the orthogonal
+        %   projection Q of point of interest POI onto the path OBJ. Point
+        %   POI is a two-element vector and Q is of size N-by-2. If the
+        %   path representation does not allow for analytical solutions,
+        %   only solutions with an angular error DPHI < PHIMAX are
+        %   returned.
         %
-        %   [Q,IDX,TAU,DPHI] = POINTPROJECTION(OBJ,POI) also returns the
-        %   path segment IDX, path parameter TAU related to Q, and the
-        %   angular deviation DPHI = pi/2 - psi >= 0 of the point
-        %   projection angle psi from the true angle pi/2 in radian.
+        %   [Q,IDX,TAU,DPHI] = POINTPROJECTION(___) also returns the path
+        %   segment IDX, path parameter TAU related to Q, and the angular
+        %   deviation DPHI = pi/2 - psi >= 0 of the point projection angle
+        %   psi from the true angle pi/2 in radian.
         %
         %   Multiple solutions are concatenated vertically, i.e. Q, IDX and
         %   TAU have as many rows as solutions are found.
-        [Q,idx,tau] = pointProjection(obj, poi)
+        [Q,idx,tau,dphi] = pointProjection(obj, poi, phiMax)
         
         % NUMEL     Number of path elements.
         %   N = NUMEL(OBJ) returns the number of path elements, e.g. 

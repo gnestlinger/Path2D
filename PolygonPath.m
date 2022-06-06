@@ -85,7 +85,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 [obj.curv; obj2.curv]);
         end%fcn
         
-        function [sd,Q,idx,tau,dphi] = cart2frenet(obj, xy, doPlot)
+        function [sd,Q,idx,tau,dphi] = cart2frenet(obj, xy, ~, doPlot)
         %
         %   See also PATH2D/CART2FRENET.
         
@@ -100,11 +100,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %      1.0000
         %     -3.5355
         
-            if nargin < 3
+            if nargin < 4
                 doPlot = false;
             end
             
-            [Q,idx,tau,dphi] = obj.pointProjection(xy, doPlot);
+            [Q,idx,tau,dphi] = obj.pointProjection(xy, [], doPlot);
             N = obj.numel();
             assert(all(idx) < N)
             if isempty(Q)
@@ -639,9 +639,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function [Q,idx,tau,dphi] = pointProjection(obj, poi, doPlot)
+        function [Q,idx,tau,dphi] = pointProjection(obj, poi, ~, doPlot)
             
-            if nargin < 3
+            if nargin < 4
                 doPlot = false;
             end
             
