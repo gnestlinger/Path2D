@@ -94,7 +94,32 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
         end%fcn
         
-        function [sd,Q,idx,tau] = cart2frenet(obj, xy, doPlot)
+        function [sd,Q,idx,tau,dphi] = cart2frenet(obj, xy, phiMax, doPlot)
+            
+            if nargin < 4
+                doPlot = false;
+                if nargin < 3
+                    phiMax = [];
+                end
+            end
+            
+            [Q,idx,tau,dphi] = obj.pointProjection(xy, phiMax, doPlot);
+            if isempty(Q)
+                % Find the waypoint closest to point of interest
+                error('Not implemented!')
+            end%if
+            
+            % Get the orientation vector related with Q to calculate the
+            % sign of distance from point of interest to path
+            ppd = ppdiff(obj.mkpp());
+            u = ppval(ppd, tau)' - Q;
+            
+            % Get sign via z-component of cross product U x (Q-XY)
+            qp = bsxfun(@minus, Q, xy(:)');
+            signD = sign(u(:,1).*qp(:,2) - u(:,2).*qp(:,1));
+            
+            sd = [obj.lengthIdxTau(idx, tau), ...
+                signD.*hypot(qp(:,1), qp(:,2))];
             
         end%fcn
         
@@ -204,34 +229,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             pp = mkpp(obj.Breaks, obj.Coefs, 2);
         end%fcn
         
-        function [Q,idx,tau] = pointProjection(obj, poi, doPlot)
+        function [Q,idx,tau,fval] = pointProjection(obj, poi, phiMax, doPlot)
             
             pp = obj.mkpp();
             ppd = ppdiff(pp);
-            fh = @(tau) abs(ppIncAngle(pp, ppd, poi, tau) - pi/2);
-            [tau0,tau1] = obj.domain();
-            [tau,fval,exitflag,output] = fminbnd(fh, tau0, tau1);
-            
-            [x,y] = obj.eval(tau);
-            Q = [x y];
-            
-            idx = find(tau > obj.Breaks, 1, 'last');
-            
-            if (nargin > 2) && doPlot
-                plot(obj, 'Marker','.')
-                hold on
-                plot(poi(1), poi(2), 'rx')
-                plot(Q(1), Q(2), 'ro')
-                hold off
-            end%if
-            
-        end%fcn
-        
-        function [Q,idx,tau] = pointProjectionAll(obj, poi, doPlot)
-            
-            pp = obj.mkpp();
-            ppd = ppdiff(pp);
-            fh = @(tau) abs(ppIncAngle(pp, ppd, poi, tau) - pi/2);
+            fh = @(tau) (abs(ppIncAngle(pp,ppd,poi,tau)) - pi/2)^2;
             
             N = obj.numel();
             taus = coder.nullcopy(zeros(N,1));
@@ -241,26 +243,36 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             tau0 = breaks(1);
             for i = 1:N
                 tau1 = breaks(i+1);
-                [taui,fval,exitflag,output] = fminbnd(fh, tau0, tau1);
-                taus(i) = taui;
-                fvals(i) = fval;
-                flags(i) = exitflag;
+                [taus(i),fvals(i),flags(i),output] = fminbnd(fh, tau0, tau1);
                 tau0 = tau1;
             end
             
-            isValid = (fvals < 1);
-            
             % Set return arguments
-            [x,y] = obj.eval(taus(isValid));
+            if (nargin < 3) || isempty(phiMax)
+                [x,y] = obj.eval(taus);
+                idx = (1:N)';
+                tau = taus;
+                fval = fvals;
+            else
+                isValid = (fvals < phiMax);
+                [x,y] = obj.eval(taus(isValid));
+                idx = find(isValid);
+                tau = taus(isValid);
+                fval = fvals(isValid);
+            end
             Q = [x y];
-            idx = find(isValid);
-            tau = taus(isValid);
             
             if (nargin > 2) && doPlot
-                plot(obj, 'Marker','.')
+                plot(obj, 'DisplayName','RefPath');
                 hold on
-                plot(poi(1), poi(2), 'rx')
-                plot(Q(:,1), Q(:,2), 'ro')
+                [x0,y0] = obj.eval(obj.Breaks);
+                plot(x0, y0, 'g.', 'MarkerSize',12, 'DisplayName','Breaks');
+                plot(poi(1), poi(2), 'ro', 'DisplayName','PoI')
+                plot(Q(:,1), Q(:,2), 'kx', 'DisplayName','Q')
+                legend('-DynamicLegend', 'Location','best');
+                plot(...
+                    [Q(:,1)'; repmat([poi(1) NaN], size(Q,1),1)'],...
+                    [Q(:,2)'; repmat([poi(2) NaN], size(Q,1),1)'], 'k:'); 
                 hold off
             end%if
             
@@ -273,10 +285,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             d = hypot(xy(1,:) - P(1), xy(2,:) - P(2));
             
         end%fcn
-		
-		function n = numel(obj)
-			n = size(obj.Coefs, 2); % Return number of spline segments
-		end%fcn
+        
+        function n = numel(obj)
+            n = size(obj.Coefs, 2); % Return number of spline segments
+        end%fcn
         
         function obj = restrict(obj, tau0, tauF)
             
@@ -337,18 +349,18 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             obj = SplinePath(obj.Breaks(tmp), obj.Coefs(:,idxs,:), s - s(1));
             
         end%fcn
-		
+        
         function obj = shift(obj, P)
-			
-			% Handle input arguments
-			narginchk(2, 2);
-			
-			if numel(P) ~= 2 || ~isnumeric(P)
-				error(['Method SHIFTBY requires a numeric input',...
-					' argument with two elements.']);
-			end%if
-			
-		end%fcn
+            
+            % Handle input arguments
+            narginchk(2, 2);
+            
+            if numel(P) ~= 2 || ~isnumeric(P)
+                error(['Method SHIFTBY requires a numeric input',...
+                    ' argument with two elements.']);
+            end%if
+            
+        end%fcn
         
         function [P0,P1] = termPoints(obj)
             
@@ -359,53 +371,65 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
         end%fcn
         
-		function s = toStruct(obj)
-			s = struct(...
+        function s = toStruct(obj)
+            s = struct(...
                 'breaks',obj.Breaks, ...
                 'coefs',obj.Coefs, ...
                 'lengths', obj.ArcLengths);
-		end%fcn
-		
-	end%methods
-	
-	
-    methods (Access = private)
+        end%fcn
         
     end%methods
-	
-	
-	methods (Static)
+    
+    
+    methods (Access = private)
+        
+        function s = lengthIdxTau(obj, idx, tau)
+            tau0 = obj.Breaks(idx)';
+            assert(all(tau0 < tau));
+            
+            s = obj.ArcLengths(idx);
+            for i = 1:numel(tau)
+                taui = linspace(tau0(i), tau(i), 100);
+                xy = diff(ppval(obj.mkpp(), taui), 1, 2);
+                s(i) = s(i) + sum(hypot(xy(1,:), xy(2,:)));
+            end
+        end%fcn
+        
+    end%methods
+    
+    
+    methods (Static)
         
         function obj = ll2Path(lat, lon) %#ok<STOUT,INUSD>
             error('Not implemented!')
-		end%fcn
-		
-		function obj = pp2Path(pp)
+        end%fcn
+        
+        function obj = pp2Path(pp)
             [breaks,coefs,nbrSeg,polyOrd,dim] = unmkpp(pp);
             assert(dim == 2)
-			obj = SplinePath(breaks, reshape(coefs, 2, nbrSeg, polyOrd));
-		end%fcn
-		
-		function obj = xy2Path(x, y) %#ok<STOUT,INUSD>
+            obj = SplinePath(breaks, reshape(coefs, 2, nbrSeg, polyOrd));
+        end%fcn
+        
+        function obj = xy2Path(x, y) %#ok<STOUT,INUSD>
             error('Not implemented!')
-		end%fcn
-		
-		function obj = fromStruct(s)
-			obj = SplinePath(s.breaks, s.coefs, s.lengths);
-		end%fcn
-		
-		function c = getBusDef()
-			BusName = 'SBus_SplinePath';
-			HeaderFile = '';
-			Description = '';
-			BusElements = {...
-				{'breaks',      101, 'double',	-1, 'real', 'Sample', 'Variable', [], [], '', ''},...
-				{'coefs', [2,100,4], 'double',	-1, 'real', 'Sample', 'Variable', [], [], '', ''},...
+        end%fcn
+        
+        function obj = fromStruct(s)
+            obj = SplinePath(s.breaks, s.coefs, s.lengths);
+        end%fcn
+        
+        function c = getBusDef()
+            BusName = 'SBus_SplinePath';
+            HeaderFile = '';
+            Description = '';
+            BusElements = {...
+                {'breaks',      101, 'double',  -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
+                {'coefs', [2,100,4], 'double',	-1, 'real', 'Sample', 'Variable', [], [], '', ''},...
                 {'lengths',     101, 'double',	-1, 'real', 'Sample', 'Variable', [], [], '', ''},...
-				};
-			c = {{BusName,HeaderFile,Description,BusElements}};
-		end%fcn
-		
-	end%methods
-	
+                };
+            c = {{BusName,HeaderFile,Description,BusElements}};
+        end%fcn
+        
+    end%methods
+    
 end%class
