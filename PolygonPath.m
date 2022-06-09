@@ -66,7 +66,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             if isempty(x)
                 obj.s = zeros(0,1);
             else
-                obj.s = [0; cumsum(hypot(diff(obj.x), diff(obj.y)))];
+                obj.s = [0; cumsum(hypot(diff(x(:)), diff(y(:))))];
             end
             
             if nargin < 5
