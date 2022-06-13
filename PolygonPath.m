@@ -109,12 +109,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             assert(all(idx) < N)
             if isempty(Q)
                 % Take the waypoint closest to point of interest
-                [~,idx] = min(hypot(obj.x - xy(1), obj.y - xy(2)));
-                Q = [obj.x(idx) obj.y(idx)];
-                tau = 0;
-                if idx == N
-                    idx = idx - 1; % index refers to path segment!
+                [~,minIdx] = min(hypot(obj.x - xy(1), obj.y - xy(2)));
+                Q = [obj.x(minIdx) obj.y(minIdx)];
+                if minIdx == N
+                    idx = minIdx - 1; % index refers to path segment!
                     tau = 1;
+                else
+                    idx = minIdx;
+                    tau = 0;
                 end
             end%fcn
             
