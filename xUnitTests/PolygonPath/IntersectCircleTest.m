@@ -1,32 +1,36 @@
 classdef IntersectCircleTest < matlab.unittest.TestCase
     
     methods (Test)
-        function testIntersectCircle(testCase)
-            doPlot = false;
-            
+        function testSegmentTransition(testCase)
             % Intersection with end of first/start of second path segment
             obj0 = PolygonPath.xy2Path([-2 0 2], [1 1 2]);
-            [act,s] = intersectCircle(obj0, [0 0], 1, doPlot);
-            exp = [0 1];
-            testCase.verifyEqual(act, exp);
-            
+            [xy,tau] = obj0.intersectCircle([0 0], 1, false);
+            testCase.verifyEqual(xy, [0 1]);
+            testCase.verifyEqual(tau, 1);
+        end%fcn
+        
+        function testTwoIntersectionsPerSegment(testCase)
             % Two intersections with first path segment
             obj0 = PolygonPath.xy2Path([-10 -2 0 4 10], [0 0 0 3 3]);
-            [act,s] = intersectCircle(obj0, [-5 0], 1, doPlot);
-            exp = [-6 0; -4 0];
-            testCase.verifyEqual(act, exp);
-            
+            [xy,tau] = obj0.intersectCircle([-5 0], 1, false);
+            testCase.verifyEqual(xy, [-6 0; -4 0]);
+            testCase.verifyEqual(tau, [0.5; 0.75]);
+        end%fcn
+        
+        function testSingleIntersection(testCase)
             % One intersection with final path segment
-            [act,s] = intersectCircle(obj0, [11 3], 2, doPlot);
-            exp = [9 3];
-            testCase.verifyEqual(act, exp);
-            
+            obj0 = PolygonPath.xy2Path([-10 -2 0 4 10], [0 0 0 3 3]);
+            [xy,tau] = obj0.intersectCircle([11 3], 4, false);
+            testCase.verifyEqual(xy, [7 3], 'AbsTol', 1e-14);
+            testCase.verifyEqual(tau, 3.5);
+        end%fcn
+        
+        function testNoIntersection(testCase)
             % No intersection with path
-            [act,s] = intersectCircle(obj0, [0 4], 2, doPlot);
-            exp = zeros(0,2);
-            testCase.verifyEqual(act, exp);
-            testCase.verifyEqual(size(act,1), size(s,1));
-            
+            obj0 = PolygonPath.xy2Path([-10 -2 0 4 10], [0 0 0 3 3]);
+            [xy,tau] = obj0.intersectCircle([0 4], 2, false);
+            testCase.verifyEqual(xy, zeros(0,2));
+            testCase.verifyEqual(tau, zeros(0,1));
         end%fcn
     end
     

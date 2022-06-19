@@ -8,7 +8,7 @@ classdef Cart2FrenetTest < matlab.unittest.TestCase
             testCase.verifyEqual(sd, [1 2]);
             testCase.verifyEqual(Q, [2 2]);
             testCase.verifyEqual(idx, 2);
-            testCase.verifyEqual(tau, 0);
+            testCase.verifyEqual(tau, 1);
             testCase.verifyEqual(dphi, 0);
         end%fcn
         
@@ -28,7 +28,7 @@ classdef Cart2FrenetTest < matlab.unittest.TestCase
             testCase.verifyEqual(sd, [3 2]);
             testCase.verifyEqual(Q, [4 2]);
             testCase.verifyEqual(idx, 3);
-            testCase.verifyEqual(tau, 1);
+            testCase.verifyEqual(tau, 3);
             testCase.verifyEqual(dphi, 0);
         end%fcn
         
@@ -41,7 +41,7 @@ classdef Cart2FrenetTest < matlab.unittest.TestCase
             testCase.verifySize(Q, [N 2]);
             testCase.verifyEqual(idx, (1:N)');
             testCase.verifyTrue(all(idx <= obj.numel() - 1))
-            testCase.verifyEqual(tau, 0.5*ones(N,1), 'AbsTol',1e-10);
+            testCase.verifyEqual(tau, (0:N-1)'+0.5, 'AbsTol',1e-10);
             testCase.verifyEqual(dphi, zeros(N,1), 'AbsTol',1e-15);
         end%fcn
         
@@ -70,7 +70,7 @@ classdef Cart2FrenetTest < matlab.unittest.TestCase
         function testCircuitPath(testCase)
             obj = PolygonPath.circle(3, [0 2*pi], 15);
             assert(obj.IsCircuit)
-            [sd,Q,idx,tau,dphi] = obj.cart2frenet([0 0], [], 0);
+            [sd,Q,idx,tau,dphi] = obj.cart2frenet([0 0], [], false);
             
             % One solution per path segment, at the center of each segment
             N = numel(obj) - 1;
@@ -78,7 +78,7 @@ classdef Cart2FrenetTest < matlab.unittest.TestCase
             testCase.verifySize(Q, [N 2]);
             testCase.verifyEqual(idx, (1:N)');
             testCase.verifyTrue(all(idx <= obj.numel() - 1))
-            testCase.verifyEqual(tau, 0.5*ones(N,1), 'AbsTol',1e-15);
+            testCase.verifyEqual(tau, (0:N-1)'+0.5, 'AbsTol',1e-15);
             testCase.verifyEqual(dphi, zeros(N,1), 'AbsTol',1e-15);
         end%fcn
         

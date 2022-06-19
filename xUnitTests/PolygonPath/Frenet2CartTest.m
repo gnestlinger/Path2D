@@ -4,11 +4,11 @@ classdef Frenet2CartTest < matlab.unittest.TestCase
         
         function testFrenet2Cart(testCase)
             obj = PolygonPath.xy2Path(0:3, [0 0 0 0]);
-            [xy,Q,idx,tau] = obj.frenet2cart([0 1; 1 -1; 2 2; 3 -2], false);
-            testCase.verifyEqual(xy, [0 1; 1 -1; 2 2; 3 -2]);
-            testCase.verifyEqual(Q, [0 0; 1 0; 2 0; 3 0]);
+            [xy,Q,idx,tau] = obj.frenet2cart([0 1; 1 -1; 2.25 2; 3 -2], false);
+            testCase.verifyEqual(xy, [0 1; 1 -1; 2.25 2; 3 -2]);
+            testCase.verifyEqual(Q, [0 0; 1 0; 2.25 0; 3 0]);
             testCase.verifyEqual(idx, uint32([1 2 3 3])');
-            testCase.verifyEqual(tau, [0 0 0 1]');
+            testCase.verifyEqual(tau, [0 1 2.25 3]');
         end%fcn
         
         function testOutOfBound(testCase)
@@ -26,7 +26,7 @@ classdef Frenet2CartTest < matlab.unittest.TestCase
             testCase.verifyEqual(xy, [6 0], 'AbsTol',1e-15);
             testCase.verifyEqual(Q, [5 1], 'AbsTol',1e-15);
             testCase.verifyEqual(idx, uint32(3));
-            testCase.verifyEqual(tau, 2);
+            testCase.verifyEqual(tau, 4);
         end%fcn
         
         function testCircuit(testCase)
