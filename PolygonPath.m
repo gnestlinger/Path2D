@@ -348,7 +348,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % the frenet coordinates s-values
             sEval = sd(:,1);
             if obj.IsCircuit
-                sEval = rem(sEval, obj.length());
+                sEval = mod(sEval, obj.length());
             end
             S = obj.s(2:end);
             idx = coder.nullcopy(zeros(size(sEval), 'uint32'));
