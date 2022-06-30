@@ -526,12 +526,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 % or y
 %                 tauLocal = (x - x0F(1))/diff(x0F);
                 tauLocal = -yPath(idxs0)./y0Fd;
-                tau = idxs0 + tauLocal;
+                tau = idxs0 - 1 + tauLocal;
                 errFlag = false;
             end%if
             
             if doPlot
-                [~,ax] = plot(obj);
+                [~,ax] = plot(obj, 'Marker','.','MarkerSize',8);
                 hold on
                 
                 [r1,r2] = scaleTangentToAxis(xlim, ylim, O, psi);
