@@ -7,7 +7,7 @@ classdef PointProjectionTest < matlab.unittest.TestCase
             [Q,idx,tau,dphi] = pointProjection(obj, [2 0], [], false);
             testCase.verifyEqual(Q, [2 2]);
             testCase.verifyEqual(idx, 2);
-            testCase.verifyEqual(tau, 0);
+            testCase.verifyEqual(tau, 1);
             testCase.verifySize(dphi, [1 1]);
         end%fcn
         
@@ -25,7 +25,7 @@ classdef PointProjectionTest < matlab.unittest.TestCase
             [Q,idx,tau,dphi] = pointProjection(obj, [4 0], [], false);
             testCase.verifyEqual(Q, [4 2]);
             testCase.verifyEqual(idx, 3);
-            testCase.verifyEqual(tau, 1);
+            testCase.verifyEqual(tau, 3);
             testCase.verifySize(dphi, [1 1]);
         end%fcn
         
@@ -36,7 +36,7 @@ classdef PointProjectionTest < matlab.unittest.TestCase
             N = 9; % One solution per path segment
             testCase.verifySize(Q, [N 2]);
             testCase.verifyEqual(idx, (1:N)');
-            testCase.verifyEqual(tau, 0.5*ones(N,1), 'AbsTol',1e-10);
+            testCase.verifyEqual(tau, (0:N-1)'+0.5, 'AbsTol',1e-10);
             testCase.verifySize(dphi, [N 1]);
         end%fcn
         
@@ -58,7 +58,7 @@ classdef PointProjectionTest < matlab.unittest.TestCase
             N = 14;
             testCase.verifySize(Q, [N 2]);
             testCase.verifyEqual(idx, (1:N)');
-            testCase.verifyEqual(tau, 0.5*ones(N,1), 'AbsTol',1e-15);
+            testCase.verifyEqual(tau, (0:N-1)'+0.5, 'AbsTol',1e-15);
             testCase.verifyEqual(dphi, zeros(N,1));
         end%fcn
     end

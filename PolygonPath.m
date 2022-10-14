@@ -1,6 +1,10 @@
 classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %POLYGONPATH    Polygon path.
-%   Path representation using polygonal chain assuming linear interpolation.
+%   Path representation using polygonal chain assuming linear
+%   interpolation. The path parameter is inherited from the number of
+%   waypoints N, i.e. [0,1,...,N-1]. Therefore, a path parameter of e.g.
+%   2.75 refers to to the path three quarters between the third and fourth
+%   waypoint.
 % 
 %   PolygonPath properties:
 %   x - Cartesian x-coordinate.
@@ -12,7 +16,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %   PolygonPath - Constructor.
 %   fitCircle - Fit circle to path.
 %   fitStraight - Fit straight line to path.
-%   interp - Interpolate path.
+%   interp1 - Interpolate path.
 %   perpendicularDistance - Distance of path waypoints to line.
 %   rdp - Ramer-Douglas-Peucker point reduction.
 %   See superclass for more methods.
@@ -44,8 +48,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %   OBJ = POLYGONPATH() creates an empty path.
         %
         %   OBJ = POLYGONPATH(X,Y,HEAD,CURV) create polygon path OBJ with
-        %   points (X,Y), heading HEAD in radians and curvature CURV in
-        %   1/m.
+        %   points (X,Y), heading HEAD in radians and curvature CURV. The
+        %   path parameter is inherited according to [0,1,...,numel(X)-1].
         %
         %   OBJ = POLYGONPATH(___,ISCIRCUIT) set to true if the path is a
         %   circuit.
@@ -66,7 +70,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             if isempty(x)
                 obj.s = zeros(0,1);
             else
-                obj.s = [0; cumsum(hypot(diff(obj.x), diff(obj.y)))];
+                obj.s = [0; cumsum(hypot(diff(x(:)), diff(y(:))))];
             end
             
             if nargin < 5
@@ -109,12 +113,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             assert(all(idx) < N)
             if isempty(Q)
                 % Take the waypoint closest to point of interest
-                [~,idx] = min(hypot(obj.x - xy(1), obj.y - xy(2)));
-                Q = [obj.x(idx) obj.y(idx)];
-                tau = 0;
-                if idx == N
-                    idx = idx - 1; % index refers to path segment!
-                    tau = 1;
+                [~,minIdx] = min(hypot(obj.x - xy(1), obj.y - xy(2)));
+                Q = [obj.x(minIdx) obj.y(minIdx)];
+                if minIdx == N
+                    idx = minIdx - 1; % index refers to path segment!
+                    tau = N-1;
+                else
+                    idx = minIdx;
+                    tau = 0;
                 end
             end%fcn
             
@@ -131,7 +137,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             signD = sign(ux.*dy - uy.*dx);
             
             S = obj.s;
-            sd = [S(idx0) + tau.*(S(idx1) - S(idx0)), signD.*hypot(dx, dy)];
+            % Go to local path parameter for path length computation
+            sd = [S(idx0) + (tau-idx+1).*(S(idx1)-S(idx0)), signD.*hypot(dx,dy)];
             if isempty(dphi)
                 dphi = abs(pi/2 - abs(atan2(ux.*dy - uy.*dx, ux.*dx + uy.*dy)));
             end
@@ -148,26 +155,27 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 tauU = NaN;
             else
                 tauL = 0;
-                tauU = obj.length();
+                tauU = obj.numel() - 1;
             end
         end%fcn
         
         function [x,y,tau,head,curv] = eval(obj, tau)
             
-            s = obj.s;
             if nargin < 2
                 x = obj.x;
                 y = obj.y;
                 head = obj.head;
                 curv = obj.curv;
-                tau = s;
+                tau = (0:numel(x)-1)';
             else
                 
                 tau = tau(:);
-                if obj.numel() > 1 % At least 2 sample points as required by INTERP1
-                    xyhc = interp1(s, [obj.x,obj.y,obj.head,obj.curv], tau, 'linear');
+                N = obj.numel();
+                if N > 1 % At least 2 sample points as required by INTERP1
+                    xyhc = interp1(0:N-1, ...
+                        [obj.x,obj.y,obj.head,obj.curv], tau, 'linear');
                     
-                elseif obj.numel() > 0 % Just one sample point
+                elseif N > 0 % Just one sample point
                     % Create a synthetic point for INTERP1
                     xn = obj.x + cos(obj.head);
                     yn = obj.y + sin(obj.head);
@@ -176,10 +184,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                         [xn, yn, obj.head, obj.curv];
                         ];
                     
-                    xyhc = interp1([s;s+1], Y, tau, 'linear');
+                    xyhc = interp1([0 1], Y, tau, 'linear');
                     
                     % Set interpolation values outside domain to NaN
-                    xyhc(tau ~= s,:) = NaN;
+                    xyhc(tau ~= 0,:) = NaN;
                     
                 else % Empty path
                     xyhc = NaN(numel(tau), 4);
@@ -337,10 +345,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             u = bsxfun(@rdivide, u, hypot(u(:,1), u(:,2)));
             
             % Get the indexes referring to the path segments according to
-            % frenet coordinates s-values
+            % the frenet coordinates s-values
             sEval = sd(:,1);
             if obj.IsCircuit
-                sEval = rem(sEval, obj.length());
+                sEval = mod(sEval, obj.length());
             end
             S = obj.s(2:end);
             idx = coder.nullcopy(zeros(size(sEval), 'uint32'));
@@ -362,7 +370,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             S = obj.s;
             ds = sEval - S(idx);
             Q = Pxy(idx,:) + bsxfun(@times, ds, u(idx,:));
-            tau = ds./(S(idx+1) - S(idx));
+            tau = double(idx - 1) + ds./(S(idx+1) - S(idx));
             
             % From Q, go D units along normal vector to U
             xy = Q + bsxfun(@times, sd(:,2), [-u(idx,2), u(idx,1)]);
@@ -385,26 +393,27 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             s = obj.cumlengths();
         end%fcn
         
-        function obj = interp(obj, tau, varargin)
+        function obj = interp1(obj, tau, varargin)
         %INTERP     Interpolate path.
-        %   OBJ = INTERP(OBJ,TAU) interpolate path at path parameter TAU.
+        %   OBJ = INTERP1(OBJ,TAU) interpolate path at path parameter TAU.
         %
-        %   OBJ = INTERP(__,ARGS) specify interpolation settings via ARGS.
+        %   OBJ = INTERP1(__,ARGS) specify interpolation settings via ARGS.
         %
         %   See also INTERP1.
             
             narginchk(2, 5)
             
             % INTERP1 requires at least two samples
-            assert(obj.numel() > 1)
+            N = obj.numel();
+            assert(N > 1)
             
-            xyhc = interp1(obj.s, [obj.x,obj.y,obj.head,obj.curv], tau(:), ...
+            xyhc = interp1(0:N-1, [obj.x,obj.y,obj.head,obj.curv], tau(:), ...
                 varargin{:});
             obj = PolygonPath(xyhc(:,1), xyhc(:,2), xyhc(:,3), xyhc(:,4));
             
         end%fcn
         
-        function [xy,tauS,errFlag] = intersectCircle(obj, C, r, doPlot)
+        function [xy,tau,errFlag] = intersectCircle(obj, C, r, doPlot)
             
         %   EXAMPLES:
         %   >> s = PolygonPath.xy2Path([0 0 -3 -2 -4 -3 1 1], [0 1 2 3 4 5 4 0]);
@@ -419,7 +428,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             x0 = obj.x - C(1);
             dx = diff(x0);
             x0(end) = [];
-            y0 =  obj.y - C(2);
+            y0 = obj.y - C(2);
             dy = diff(y0);
             y0(end) = [];
             
@@ -453,21 +462,15 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             tauLoc = [tauSecant(isValidSec); tauTangent(isValidTan)];
             segIdx = [idxSecant(isValidSec); idxTangent(isValidTan)];
             
-            if isempty(tauLoc)
-                xy = zeros(0, 2);
-                tauS = zeros(0,1);
-                errFlag = true;
-            else
-                s = obj.s;
-                tauS = sort(s(segIdx) + (s(segIdx+1)-s(segIdx)).*tauLoc);
-                [x,y] = obj.eval(tauS);
-                xy = [x,y];
-                errFlag = false;
-            end
+            % Set return values
+            tau = sort(segIdx - 1 + tauLoc, 'ascend');
+            [x,y] = obj.eval(tau);
+            xy = [x,y];
+            errFlag = isempty(tau);
             
             % At most two intersections per path segment!
             assert(size(xy, 1) <= (obj.numel()-1)*2)
-            assert(size(xy, 1) == size(tauS, 1))
+            assert(size(xy, 1) == size(tau, 1))
                 
             if doPlot
                 [~,ax] = plot(obj, 'Marker','.');
@@ -480,7 +483,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function [xy,tauS,errFlag] = intersectLine(obj, O, psi, doPlot)
+        function [xy,tau,errFlag] = intersectLine(obj, O, psi, doPlot)
             
             if nargin < 4
                 doPlot = false;
@@ -502,7 +505,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             idxs0 = find(any(diff([signs1,signs2], 1, 1), 2));
             if isempty(idxs0) % No intersection of path/line
                 xy = zeros(0, 2);
-                tauS = zeros(0,1);
+                tau = zeros(0,1);
                 errFlag = true;
             else
                 % End index can not exceed number of path samples since
@@ -523,15 +526,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 % or y
 %                 tauLocal = (x - x0F(1))/diff(x0F);
                 tauLocal = -yPath(idxs0)./y0Fd;
-                s = obj.s;
-                tauS = s(idxs0);
-                tauS = tauS + (s(idxsE) - tauS).*tauLocal;
-                
+                tau = idxs0 - 1 + tauLocal;
                 errFlag = false;
             end%if
             
             if doPlot
-                [~,ax] = plot(obj);
+                [~,ax] = plot(obj, 'Marker','.','MarkerSize',8);
                 hold on
                 
                 [r1,r2] = scaleTangentToAxis(xlim, ylim, O, psi);
@@ -666,6 +666,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             idx = idx(:);
             tau = lambdas(idx); % NOTE: this is with respect to each segment!
             Q = P0(idx,:) + bsxfun(@times, tau, u(idx,:));
+            tau = idx - 1 + tau;
             dphi = zeros(numel(idx), 1);
             
             if doPlot
@@ -692,18 +693,17 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % Find the lower/upper index so that restricted domain is
             % covered
             [tauL,tauU] = obj.domain();
-            tauS = obj.s;
             if isempty(tau0) || (tau0 < tauL) || (tau0 > tauU)
                 tau0 = tauL;
                 idx0 = 1;
             else
-                idx0 = find(tau0 >= tauS, 1, 'last');
+                idx0 = floor(tau0) + 1;
             end
             if isempty(tau1) || (tau1 > tauU) || (tau1 < tauL)
                 tau1 = tauU;
                 idx1 = obj.numel();
             else
-                idx1 = find(tau1 <= tauS, 1, 'first');
+                idx1 = floor(tau1) + 1;
             end%if
             
             assert(tau0 < tau1, 'PolygonPath:restrict:domain', ...
