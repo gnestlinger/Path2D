@@ -353,12 +353,18 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         function obj = shift(obj, P)
             
             % Handle input arguments
-            narginchk(2, 2);
+            narginchk(1, 2);
+            
+            if nargin < 2
+                P = -obj(1).termPoints();
+            end%if
             
             if numel(P) ~= 2 || ~isnumeric(P)
                 error(['Method SHIFTBY requires a numeric input',...
                     ' argument with two elements.']);
             end%if
+            
+            obj.Coefs(:,:,end) = bsxfun(@plus, obj.Coefs(:,:,end), P(:));
             
         end%fcn
         
