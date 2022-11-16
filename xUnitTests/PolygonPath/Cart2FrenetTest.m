@@ -46,7 +46,7 @@ classdef Cart2FrenetTest < matlab.unittest.TestCase
         end%fcn
         
         function testFallbackSolution(testCase)
-            obj = PolygonPath.xy2Path(0:1, [0 0]);
+            obj = PolygonPath.xy2Path([0 0.5 1], [0 0 0]);
             [P0,P1] = obj.termPoints();
             
             % Fallback initial point
@@ -61,7 +61,17 @@ classdef Cart2FrenetTest < matlab.unittest.TestCase
             [sd,Q,idx,tau,dphi] = obj.cart2frenet([2 1], [], false);
             testCase.verifyEqual(sd, [1 -sqrt(2)]);
             testCase.verifyEqual(Q, P1');
-            testCase.verifyEqual(idx, 1);
+            testCase.verifyEqual(idx, 2);
+            testCase.verifyTrue(idx <= obj.numel() - 1);
+            testCase.verifyEqual(tau, 2);
+            testCase.verifyEqual(dphi, pi/4);
+            
+            % Fallback non-terminal point
+            obj = PolygonPath.xy2Path([0 0.5 1], [0 0.5 0]);
+            [sd,Q,idx,tau,dphi] = obj.cart2frenet([0.5 1], [], false);
+            testCase.verifyEqual(sd, [sqrt(0.5) -0.5]);
+            testCase.verifyEqual(Q, [0.5 0.5]);
+            testCase.verifyEqual(idx, 2);
             testCase.verifyTrue(idx <= obj.numel() - 1);
             testCase.verifyEqual(tau, 1);
             testCase.verifyEqual(dphi, pi/4);
