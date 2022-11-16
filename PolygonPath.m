@@ -115,12 +115,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 % Take the waypoint closest to point of interest
                 [~,minIdx] = min(hypot(obj.x - xy(1), obj.y - xy(2)));
                 Q = [obj.x(minIdx) obj.y(minIdx)];
+                tau = minIdx - 1;
                 if minIdx == N
-                    idx = minIdx - 1; % index refers to path segment!
-                    tau = N-1;
+                    % Avoid out of range indexing below (getting the
+                    % orientation vector)
+                    idx = minIdx - 1; 
                 else
                     idx = minIdx;
-                    tau = 0;
                 end
             end%fcn
             
