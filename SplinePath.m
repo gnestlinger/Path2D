@@ -207,7 +207,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function s = length(obj, tau)
             
-            if nargin < 1
+            if nargin < 2
                 s = obj.ArcLengths(end);
             else
                 idx = find(tau > obj.Breaks, 1, 'last');
@@ -229,7 +229,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             pp = mkpp(obj.Breaks, obj.Coefs, 2);
         end%fcn
         
-        function [Q,idx,tau,fval] = pointProjection(obj, poi, phiMax, doPlot)
+        function [Q,idx,tau,fval] = pointProjectionFMinBnd(obj, poi, phiMax, doPlot)
             
             pp = obj.mkpp();
             ppd = ppdiff(pp);
@@ -261,6 +261,54 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 fval = fvals(isValid);
             end
             Q = [x y];
+            
+            if (nargin > 2) && doPlot
+                plot(obj, 'DisplayName','RefPath');
+                hold on
+                [x0,y0] = obj.eval(obj.Breaks);
+                plot(x0, y0, 'g.', 'MarkerSize',12, 'DisplayName','Breaks');
+                plot(poi(1), poi(2), 'ro', 'DisplayName','PoI')
+                plot(Q(:,1), Q(:,2), 'kx', 'DisplayName','Q')
+                legend('-DynamicLegend', 'Location','best');
+                plot(...
+                    [Q(:,1)'; repmat([poi(1) NaN], size(Q,1),1)'],...
+                    [Q(:,2)'; repmat([poi(2) NaN], size(Q,1),1)'], 'k:'); 
+                hold off
+            end%if
+            
+        end%fcn
+        
+        function [Q,idx,tau,fval] = pointProjection(obj, poi, ~, doPlot)
+            
+            Px = poi(1);
+            Py = poi(2);
+            pp = obj.mkpp();
+            b = obj.Breaks;
+            c = obj.Coefs;
+            tau = zeros(0,1);
+            idx = zeros(0,1);
+            N = size(c, 3);
+            for i = 1:obj.numel()
+                ci = squeeze(c(:,i,:));
+                px = ci(1,:);
+                py = ci(2,:);
+                dpx = polyDiff(px);
+                dpy = polyDiff(py);
+                
+                % Convolution returns array of size 2N-2. Therefore,
+                % pad non-convolutional term with zeros.
+                convTerm = conv2(px,dpx) + conv2(py,dpy);
+                tau0C = roots([zeros(1,N-1), Px*dpx + Py*dpy] - convTerm);
+                tau0R = tau0C(imag(tau0C) == 0);
+                isValid = (0 <= tau0R) & (tau0R <= b(i+1) - b(i));
+                if any(isValid)
+                    taui = tau0R(isValid);
+                    tau = [tau; b(i) + taui];
+                    idx = [idx; repmat(i, size(taui))];
+                end
+            end%for
+            Q = ppval(pp, tau)';
+            fval = zeros(size(tau));
             
             if (nargin > 2) && doPlot
                 plot(obj, 'DisplayName','RefPath');
