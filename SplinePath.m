@@ -187,7 +187,51 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
         end%fcn
         
-        function [xy,Q,idx] = frenet2cart(obj, sd)
+        function [xy,Q,idx,tau] = frenet2cart(obj, sd, doPlot)
+            
+            % Get the indexes referring to the path segments according to
+            % the frenet coordinates s-values
+            sEval = sd(:,1);
+            if obj.IsCircuit
+                sEval = mod(sEval, obj.length());
+            end
+            S = obj.ArcLengths;
+            idx = coder.nullcopy(zeros(size(sEval), 'uint32'));
+            for i = 1:numel(sEval)
+                idxs = find(sEval(i) < S, 1, 'first');
+                if isempty(idxs)
+                    idx(i) = numel(S);
+                else
+                    idx(i) = idxs(1) - 1;
+                end
+            end%for
+            
+            % The points on the path (i.e. d=0) are given by the segment's
+            % initial point plus the remaining length along the current
+            % segment
+            ds = sEval - S(idx);
+            breaks = obj.Breaks';
+            tau = breaks(idx);
+            tau = tau + ds./(S(idx+1) - S(idx)).*(breaks(idx+1) - tau);
+            
+            [x,y] = eval(obj, tau);
+            n = ppval(ppdiff(obj.mkpp()), tau)';
+            Q = [x,y];
+            xy = Q + bsxfun(@times, [-n(:,2), n(:,1)], sd(:,2)./sqrt(sum(n.^2, 2)));
+            
+            if nargin < 3
+                doPlot = false;
+            end
+            if doPlot
+                plot(obj, 'DisplayName','SplinePath');
+                hold on
+                [xb,yb] = obj.eval(obj.Breaks);
+                plot(xb, yb, 'b', 'LineStyle','none','Marker','.', 'MarkerSize',15, 'DisplayName','Breaks');
+                plot(xy(:,1), xy(:,2), 'o', 'DisplayName','xy');
+                plot(Q(:,1), Q(:,2), 'kx', 'DisplayName','Q');
+                hold off
+                legend('-DynamicLegend')
+            end%if
             
         end%fcn
         
@@ -196,9 +240,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         end%fcn
         
         function [xy,tau,errFlag] = intersectLine(obj, O, psi)
+            error('Not implemented!')
         end%fcn
         
         function [xy,tau,errFlag] = intersectCircle(obj, C, r)
+            error('Not implemented!')
         end%fcn
         
         function flag = isempty(obj)
@@ -364,7 +410,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         end%fcn
         
         function obj = reverse(obj)
-            
+            error('Not implemented!')
         end%fcn
         
         function obj = rotate(obj, phi)
@@ -427,9 +473,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function s = toStruct(obj)
             s = struct(...
-                'breaks',obj.Breaks, ...
+                'breaks',obj.Breaks', ...
                 'coefs',obj.Coefs, ...
-                'lengths', obj.ArcLengths);
+                'lengths',obj.ArcLengths);
         end%fcn
         
     end%methods
@@ -477,9 +523,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             HeaderFile = '';
             Description = '';
             BusElements = {...
-                {'breaks',      101, 'double',  -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
-                {'coefs', [2,100,4], 'double',	-1, 'real', 'Sample', 'Variable', [], [], '', ''},...
-                {'lengths',     101, 'double',	-1, 'real', 'Sample', 'Variable', [], [], '', ''},...
+                {'breaks',      101, 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
+                {'coefs', [2,100,4], 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
+                {'lengths',     101, 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
                 };
             c = {{BusName,HeaderFile,Description,BusElements}};
         end%fcn
