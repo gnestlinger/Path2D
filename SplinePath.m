@@ -239,8 +239,42 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             s = obj.ArcLengths;
         end%fcn
         
-        function [xy,tau,errFlag] = intersectLine(obj, O, psi)
-            error('Not implemented!')
+        function [xy,tau,errFlag] = intersectLine(obj, O, psi, doPlot)
+            
+            obj1 = obj.shift(-O).rotate(-psi);
+            
+            breaks = obj1.Breaks;
+            coefs = obj1.Coefs;
+            tau = zeros(0,1);
+            b0 = breaks(1);
+            for i = 1:obj1.numel()
+                b1 = breaks(i+1);
+                ri = roots(coefs(2,i,:));
+                ri = ri(imag(ri) == 0);
+                isValid = (-eps < ri) & (ri < b1-b0);
+                tau = [tau; ri(isValid) + b0];
+                b0 = b1;
+            end%for
+            
+            tau = sort(tau, 'ascend');
+            errFlag = isempty(tau);
+            [x,y] = obj.eval(tau);
+            xy = [x,y];
+            
+            if (nargin > 3) && doPlot
+                [~,ax] = plot(obj);
+                hold on
+                
+                [r1,r2] = scaleTangentToAxis(xlim, ylim, O, psi);
+                Pstart  = [O(1) + r2*cos(psi); O(2) + r2*sin(psi)];
+                Pstop   = [O(1) + r1*cos(psi); O(2) + r1*sin(psi)];
+                plot(gca, [Pstart(1) Pstop(1)], [Pstart(2) Pstop(2)], ...
+                    'Displayname','Line')
+                
+                plot(ax, xy(:,1), xy(:,2), 'ko')
+                hold off
+            end%if
+            
         end%fcn
         
         function [xy,tau,errFlag] = intersectCircle(obj, C, r)
@@ -356,7 +390,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             Q = ppval(pp, tau)';
             fval = zeros(size(tau));
             
-            if (nargin > 2) && doPlot
+            if (nargin > 3) && doPlot
                 plot(obj, 'DisplayName','RefPath');
                 hold on
                 [x0,y0] = obj.eval(obj.Breaks);
