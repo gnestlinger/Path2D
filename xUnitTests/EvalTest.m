@@ -6,7 +6,7 @@ classdef EvalTest < matlab.unittest.TestCase
             'PolygonPathOneElm', PolygonPath(1, 2, pi/4, 0), ...
             'PolygonPathNonEmpty', PolygonPath.xy2Path(0:10, zeros(1,11)), ...
             'SplinePathEmpty', SplinePath(), ...
-            'SplinePathNonEmpty', SplinePath([0 1 2], reshape([1 0; 0 0; 1 1; 1 0], 2,2,2)));
+            'SplinePathNonEmpty', SplinePath([0 10], reshape([1 0; 0 0], 2,1,2)));
         
         tau = struct(...
             'empty', zeros(0,1), ...
@@ -47,7 +47,7 @@ classdef EvalTest < matlab.unittest.TestCase
             if isempty(obj)
                 testCase.verifyEqual(x, NaN(N, 1));
                 testCase.verifyEqual(y, NaN(N, 1));
-            elseif obj.numel() < 2
+            elseif obj.length() < eps % Path defined at a single point
                 testCase.verifyEqual(x, [NaN NaN NaN NaN 1 NaN NaN NaN NaN]');
                 testCase.verifyEqual(y, [NaN NaN NaN NaN 2 NaN NaN NaN NaN]');
             else

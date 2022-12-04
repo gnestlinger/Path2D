@@ -152,6 +152,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 end
                 tau(end) = breaks(end);
             else
+                % Avoid PPVAL returning 3D arrays for empty evaluation
+                % sites by applying (:)
                 tau = tau(:);
             end%if
             
@@ -165,11 +167,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 return
             end
             
-            pp = obj.mkpp();
+            % Set tau to NaN outside spline domain so that corresponding
+            % return values are NaN too.
+            tau((tau < obj.Breaks(1)) | (tau > obj.Breaks(end))) = NaN;
             
-            % Avoid PPVAL returning 3D arrays for empty evaluation sites by
-            % applying (:)
-            xy = ppval(pp, tau(:))';
+            % Make use of PPVAL for spline evaluation
+            pp = obj.mkpp();
+            xy = ppval(pp, tau)';
             x = xy(:,1);
             y = xy(:,2);
             
