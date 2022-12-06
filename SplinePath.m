@@ -386,7 +386,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 tau0R = tau0C(imag(tau0C) == 0);
                 isValid = (0 <= tau0R) & (tau0R <= b(i+1) - b(i));
                 if any(isValid)
-                    taui = tau0R(isValid);
+                    taui = sort(tau0R(isValid), 'ascend');
                     tau = [tau; b(i) + taui];
                     idx = [idx; repmat(i, size(taui))];
                 end
