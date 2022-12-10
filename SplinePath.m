@@ -250,15 +250,25 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             breaks = obj1.Breaks;
             coefs = obj1.Coefs;
             tau = zeros(0,1);
+            
+            % The first pieces except the last are defined over half open
+            % intervals [b0,b1)
             b0 = breaks(1);
-            for i = 1:obj1.numel()
+            for i = 1:obj1.numel()-1
                 b1 = breaks(i+1);
                 ri = roots(coefs(2,i,:));
                 ri = ri(imag(ri) == 0);
-                isValid = (-eps < ri) & (ri < b1-b0);
+                isValid = (0 <= ri) & (ri < b1-b0);
                 tau = [tau; ri(isValid) + b0];
                 b0 = b1;
             end%for
+            
+            % The last piece is defined over the closed interval [b0,b1]
+            b1 = breaks(end);
+            ri = roots(coefs(2,end,:));
+            ri = ri(imag(ri) == 0);
+            isValid = (0 <= ri) & (ri <= b1-b0);
+            tau = [tau; ri(isValid) + b0];
             
             tau = sort(tau, 'ascend');
             errFlag = isempty(tau);
