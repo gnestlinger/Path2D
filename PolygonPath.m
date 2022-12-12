@@ -538,7 +538,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 [r1,r2] = scaleTangentToAxis(xlim, ylim, O, psi);
                 Pstart  = [O(1) + r2*cos(psi); O(2) + r2*sin(psi)];
                 Pstop   = [O(1) + r1*cos(psi); O(2) + r1*sin(psi)];
-                plot(gca, [Pstart(1) Pstop(1)], [Pstart(2) Pstop(2)])
+                plot(gca, [Pstart(1) Pstop(1)], [Pstart(2) Pstop(2)], ...
+                    'Displayname','Line')
                 
                 plot(ax, xy(:,1), xy(:,2), 'ko')
                 hold off
