@@ -1,4 +1,4 @@
-classdef PointProjectionTest < matlab.unittest.TestCase
+classdef PointProjectionTestSpline < matlab.unittest.TestCase
     
     methods (Test)
         
