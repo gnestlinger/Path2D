@@ -14,7 +14,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 %   SPLINEPATH static methods:
 %   See superclasses.
 % 
-%   See also PATH2D.
+%   See also PATH2D, MKPP.
 
     properties (SetAccess = private)
         Breaks = 0
@@ -249,6 +249,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             breaks = obj1.Breaks;
             coefsY = permute(obj1.Coefs(2,:,:), [2 3 1]);
+            
+            % There are at most Nc-1 real roots (i.e. solutions) per piece
+            [Ns,Nc] = size(coefsY);
+            coder.varsize('tau', Ns*(Nc-1));
             tau = zeros(0,1);
             
             % The first pieces except the last are defined over half open
@@ -258,14 +262,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 b1 = breaks(i+1);
                 ri = realroots(coefsY(i,:));
                 isValid = (0 <= ri) & (ri < b1-b0);
-                tau = [tau; ri(isValid) + b0];
+                tau = [tau; ri(isValid) + b0]; %#ok<AGROW>
                 b0 = b1;
             end%for
             
             % The last piece is defined over the closed interval [b0,b1]
             b1 = breaks(end);
-            ri = roots(coefsY(end,:));
-            ri = ri(imag(ri) == 0);
+            ri = realroots(coefsY(end,:));
             isValid = (0 <= ri) & (ri <= b1-b0);
             tau = [tau; ri(isValid) + b0];
             
@@ -328,9 +331,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             Py = poi(2);
             breaks = obj.Breaks;
             coefs = obj.Coefs;
+            [~,Ns,Nc] = size(coefs);
+            
+            % There are at most 2Nc-2 solutions per piece
+            coder.varsize('tau', Ns*(2*Nc-2));
+            coder.varsize('idx', Ns*(2*Nc-2));
             tau = zeros(0,1);
             idx = zeros(0,1);
-            N = size(coefs, 3);
             b0 = breaks(1);
             for i = 1:obj.numel()
                 b1 = breaks(i+1);
@@ -343,11 +350,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 % Convolution returns array of size 2N-2. Therefore, pad
                 % non-convolutional term with zeros.
                 convTerm = conv2(px,dpx) + conv2(py,dpy);
-                ri = realroots([zeros(1,N-1), Px*dpx + Py*dpy] - convTerm);
+                ri = realroots([zeros(1,Nc-1), Px*dpx + Py*dpy] - convTerm);
                 isValid = (0 <= ri) & (ri <= b1 - b0);
                 taui = sort(ri(isValid), 'ascend');
-                tau = [tau; b0 + taui];
-                idx = [idx; repmat(i, size(taui))];
+                tau = [tau; b0 + taui]; %#ok<AGROW>
+                idx = [idx; repmat(i, size(taui))]; %#ok<AGROW>
                 
                 b0 = b1;
             end%for
