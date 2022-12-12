@@ -248,7 +248,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             obj1 = obj.shift(-O).rotate(-psi);
             
             breaks = obj1.Breaks;
-            coefs = obj1.Coefs;
+            coefsY = permute(obj1.Coefs(2,:,:), [2 3 1]);
             tau = zeros(0,1);
             
             % The first pieces except the last are defined over half open
@@ -256,8 +256,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             b0 = breaks(1);
             for i = 1:obj1.numel()-1
                 b1 = breaks(i+1);
-                ri = roots(coefs(2,i,:));
-                ri = ri(imag(ri) == 0);
+                ri = realroots(coefsY(i,:));
                 isValid = (0 <= ri) & (ri < b1-b0);
                 tau = [tau; ri(isValid) + b0];
                 b0 = b1;
@@ -265,7 +264,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             % The last piece is defined over the closed interval [b0,b1]
             b1 = breaks(end);
-            ri = roots(coefs(2,end,:));
+            ri = roots(coefsY(end,:));
             ri = ri(imag(ri) == 0);
             isValid = (0 <= ri) & (ri <= b1-b0);
             tau = [tau; ri(isValid) + b0];
@@ -323,85 +322,36 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             pp = mkpp(obj.Breaks, obj.Coefs, 2);
         end%fcn
         
-        function [Q,idx,tau,fval] = pointProjectionFMinBnd(obj, poi, phiMax, doPlot)
-            
-            pp = obj.mkpp();
-            ppd = ppdiff(pp);
-            fh = @(tau) (abs(ppIncAngle(pp,ppd,poi,tau)) - pi/2)^2;
-            
-            N = obj.numel();
-            taus = coder.nullcopy(zeros(N,1));
-            fvals = coder.nullcopy(zeros(N,1));
-            flags = coder.nullcopy(zeros(N,1));
-            breaks = obj.Breaks;
-            tau0 = breaks(1);
-            for i = 1:N
-                tau1 = breaks(i+1);
-                [taus(i),fvals(i),flags(i),output] = fminbnd(fh, tau0, tau1);
-                tau0 = tau1;
-            end
-            
-            % Set return arguments
-            if (nargin < 3) || isempty(phiMax)
-                [x,y] = obj.eval(taus);
-                idx = (1:N)';
-                tau = taus;
-                fval = fvals;
-            else
-                isValid = (fvals < phiMax);
-                [x,y] = obj.eval(taus(isValid));
-                idx = find(isValid);
-                tau = taus(isValid);
-                fval = fvals(isValid);
-            end
-            Q = [x y];
-            
-            if (nargin > 2) && doPlot
-                plot(obj, 'DisplayName','RefPath');
-                hold on
-                [x0,y0] = obj.eval(obj.Breaks);
-                plot(x0, y0, 'g.', 'MarkerSize',12, 'DisplayName','Breaks');
-                plot(poi(1), poi(2), 'ro', 'DisplayName','PoI')
-                plot(Q(:,1), Q(:,2), 'kx', 'DisplayName','Q')
-                legend('-DynamicLegend', 'Location','best');
-                plot(...
-                    [Q(:,1)'; repmat([poi(1) NaN], size(Q,1),1)'],...
-                    [Q(:,2)'; repmat([poi(2) NaN], size(Q,1),1)'], 'k:'); 
-                hold off
-            end%if
-            
-        end%fcn
-        
         function [Q,idx,tau,fval] = pointProjection(obj, poi, ~, doPlot)
             
             Px = poi(1);
             Py = poi(2);
-            pp = obj.mkpp();
-            b = obj.Breaks;
-            c = obj.Coefs;
+            breaks = obj.Breaks;
+            coefs = obj.Coefs;
             tau = zeros(0,1);
             idx = zeros(0,1);
-            N = size(c, 3);
+            N = size(coefs, 3);
+            b0 = breaks(1);
             for i = 1:obj.numel()
-                ci = squeeze(c(:,i,:));
+                b1 = breaks(i+1);
+                ci = squeeze(coefs(:,i,:));
                 px = ci(1,:);
                 py = ci(2,:);
                 dpx = polyDiff(px);
                 dpy = polyDiff(py);
                 
-                % Convolution returns array of size 2N-2. Therefore,
-                % pad non-convolutional term with zeros.
+                % Convolution returns array of size 2N-2. Therefore, pad
+                % non-convolutional term with zeros.
                 convTerm = conv2(px,dpx) + conv2(py,dpy);
-                tau0C = roots([zeros(1,N-1), Px*dpx + Py*dpy] - convTerm);
-                tau0R = tau0C(imag(tau0C) == 0);
-                isValid = (0 <= tau0R) & (tau0R <= b(i+1) - b(i));
-                if any(isValid)
-                    taui = sort(tau0R(isValid), 'ascend');
-                    tau = [tau; b(i) + taui];
-                    idx = [idx; repmat(i, size(taui))];
-                end
+                ri = realroots([zeros(1,N-1), Px*dpx + Py*dpy] - convTerm);
+                isValid = (0 <= ri) & (ri <= b1 - b0);
+                taui = sort(ri(isValid), 'ascend');
+                tau = [tau; b0 + taui];
+                idx = [idx; repmat(i, size(taui))];
+                
+                b0 = b1;
             end%for
-            Q = ppval(pp, tau)';
+            Q = ppval(obj.mkpp(), tau)';
             fval = zeros(size(tau));
             
             if (nargin > 3) && doPlot
@@ -417,14 +367,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                     [Q(:,2)'; repmat([poi(2) NaN], size(Q,1),1)'], 'k:'); 
                 hold off
             end%if
-            
-        end%fcn
-        
-        function d = pathDistance(obj, P, tau)
-            
-            pp = obj.mkpp();
-            xy = ppval(pp, tau);
-            d = hypot(xy(1,:) - P(1), xy(2,:) - P(2));
             
         end%fcn
         
