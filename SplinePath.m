@@ -3,8 +3,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 %   Path representation using splines.
 % 
 %   SPLINEPATH properties:
-%   Breaks - Cartesian x-coordinate.
-%   Coefs - Cartesian y-coordinate.
+%   Breaks - Break points.
+%   Coefs - Polynomial coefficients.
 % 
 %   SPLINEPATH methods:
 %   SplinePath - Constructor.
@@ -17,8 +17,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 %   See also PATH2D, MKPP.
 
     properties (SetAccess = private)
+        % Breaks - Break points
+        %   Specified as a vector of length N+1.
         Breaks = 0
-        Coefs = zeros(2,0,4) % path dimension by # of segments by # order
+        
+        % Coefs - Polynomial coefficients
+        %   Specified as an array of size 2-by-N-by-Np, i.e. x/y-by-number
+        %   of pieces-by-polynomial coefficients in descending order. E.g.
+        %   coefs(1,i,:) contains the local x-coefficients for the interval
+        %   [breaks(i) breaks(i+1)].
+        Coefs = zeros(2,0,4)
     end
     
     properties (Access = private)
@@ -31,13 +39,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function obj = SplinePath(breaks, coefs, s, isCircuit)
         %SPLINEPATH     Create spline path object.
-        %	OBJ = SPLINEPATH(BREAKS,COEFS) creates a spline path OBJ with
-        %	breaks BREAKS of size 1-by-(N+1) and coefficients COEFS of size
-        %	2-by-N-by-K, where N is the number of spline segments and K-1
-        %	the polynomial degree.
+        %   OBJ = SPLINEPATH(BREAKS,COEFS) creates a spline path OBJ with
+        %   breaks BREAKS of size 1-by-(N+1) and coefficients COEFS of size
+        %   2-by-N-by-K, where N is the number of spline segments and K-1
+        %   the polynomial degree.
         %
-        %	OBJ = SPLINEPATH(___,ISCIRCUIT) set to true if the path is a
-        %	circuit.
+        %   OBJ = SPLINEPATH(___,ISCIRCUIT) set to true if the path is a
+        %   circuit.
         %
         
             if nargin < 1
@@ -218,7 +226,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             tau = breaks(idx);
             tau = tau + ds./(S(idx+1) - S(idx)).*(breaks(idx+1) - tau);
             
-            [x,y] = eval(obj, tau);
+            [x,y] = obj.eval(tau);
             n = ppval(ppdiff(obj.mkpp()), tau)';
             Q = [x,y];
             xy = Q + bsxfun(@times, [-n(:,2), n(:,1)], sd(:,2)./sqrt(sum(n.^2, 2)));
@@ -330,8 +338,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             Px = poi(1);
             Py = poi(2);
             breaks = obj.Breaks;
-            coefs = obj.Coefs;
-            [~,Ns,Nc] = size(coefs);
+            coefsX = permute(obj.Coefs(1,:,:), [2 3 1]);
+            coefsY = permute(obj.Coefs(2,:,:), [2 3 1]);
+            [Ns,Nc] = size(coefsX);
             
             % There are at most 2Nc-2 solutions per piece
             coder.varsize('tau', Ns*(2*Nc-2));
@@ -341,9 +350,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             b0 = breaks(1);
             for i = 1:obj.numel()
                 b1 = breaks(i+1);
-                ci = squeeze(coefs(:,i,:));
-                px = ci(1,:);
-                py = ci(2,:);
+                px = coefsX(i,:);
+                py = coefsY(i,:);
                 dpx = polyDiff(px);
                 dpy = polyDiff(py);
                 
@@ -422,10 +430,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             R = rotmat2D(phi);
             for i = 1:builtin('numel', obj)
-                obji = obj(i);
-                coefs = obji.Coefs;
+                coefs = obj(i).Coefs;
                 for ii = 1:obj.numel() % Loop over segments
-                   coefs(:,ii,:) = R*squeeze(coefs(:,ii,:));
+                   coefs(:,ii,:) = R*permute(coefs(:,ii,:), [1 3 2]);
                 end
                 obj(i).Coefs = coefs;
             end%for
@@ -455,7 +462,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                     ' argument with two elements.']);
             end%if
             
-            obj.Coefs(:,:,end) = bsxfun(@plus, obj.Coefs(:,:,end), P(:));
+            % BUILTIN is supported for code-generation starting with R2017b
+            for i = 1:builtin('numel', obj) 
+                obj(i).Coefs(:,:,end) = bsxfun(@plus, obj(i).Coefs(:,:,end), P(:));
+            end%for
             
         end%fcn
         
