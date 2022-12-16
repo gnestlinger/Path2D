@@ -268,17 +268,15 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             b0 = breaks(1);
             for i = 1:obj1.numel()-1
                 b1 = breaks(i+1);
-                ri = realroots(coefsY(i,:));
-                isValid = (0 <= ri) & (ri < b1-b0);
-                tau = [tau; ri(isValid) + b0]; %#ok<AGROW>
+                ri = getRealRootsWithinBounds(coefsY(i,:), @lt, b1-b0);
+                tau = [tau; ri + b0]; %#ok<AGROW>
                 b0 = b1;
             end%for
             
             % The last piece is defined over the closed interval [b0,b1]
             b1 = breaks(end);
-            ri = realroots(coefsY(end,:));
-            isValid = (0 <= ri) & (ri <= b1-b0);
-            tau = [tau; ri(isValid) + b0];
+            ri = getRealRootsWithinBounds(coefsY(end,:), @le, b1-b0);
+            tau = [tau; ri + b0];
             
             tau = sort(tau, 'ascend');
             errFlag = isempty(tau);
@@ -348,7 +346,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             tau = zeros(0,1);
             idx = zeros(0,1);
             b0 = breaks(1);
-            for i = 1:obj.numel()
+            for i = 1:Ns-1
                 b1 = breaks(i+1);
                 px = coefsX(i,:);
                 py = coefsY(i,:);
@@ -358,14 +356,26 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 % Convolution returns array of size 2N-2. Therefore, pad
                 % non-convolutional term with zeros.
                 convTerm = conv2(px,dpx) + conv2(py,dpy);
-                ri = realroots([zeros(1,Nc-1), Px*dpx + Py*dpy] - convTerm);
-                isValid = (0 <= ri) & (ri <= b1 - b0);
-                taui = sort(ri(isValid), 'ascend');
-                tau = [tau; b0 + taui]; %#ok<AGROW>
-                idx = [idx; repmat(i, size(taui))]; %#ok<AGROW>
+                ri = getRealRootsWithinBounds(...
+                    [zeros(1,Nc-1), Px*dpx + Py*dpy] - convTerm, @lt, b1-b0);
+                tau = [tau; sort(ri, 'ascend') + b0]; %#ok<AGROW>
+                idx = [idx; repmat(i, size(ri))]; %#ok<AGROW>
                 
                 b0 = b1;
             end%for
+            
+            % The last piece is defined over the closed interval [b0,b1]
+            b1 = breaks(end);
+            px = coefsX(end,:);
+            py = coefsY(end,:);
+            dpx = polyDiff(px);
+            dpy = polyDiff(py);
+            convTerm = conv2(px,dpx) + conv2(py,dpy);
+            ri = getRealRootsWithinBounds(...
+                [zeros(1,Nc-1), Px*dpx + Py*dpy] - convTerm, @le, b1-b0);
+            tau = [tau; sort(ri, 'ascend') + b0]; 
+            idx = [idx; repmat(Ns, size(ri))]; 
+            
             Q = ppval(obj.mkpp(), tau)';
             fval = zeros(size(tau));
             
@@ -463,7 +473,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             end%if
             
             % BUILTIN is supported for code-generation starting with R2017b
-            for i = 1:builtin('numel', obj) 
+            for i = 1:builtin('numel', obj)
                 obj(i).Coefs(:,:,end) = bsxfun(@plus, obj(i).Coefs(:,:,end), P(:));
             end%for
             
@@ -540,3 +550,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
     end%methods
     
 end%class
+
+
+function r = getRealRootsWithinBounds(c, ubh, ub)
+
+ri = realroots(c);
+isValid = (0 <= ri) & ubh(ri, ub);
+r = ri(isValid);
+
+end%fcn
