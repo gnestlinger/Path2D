@@ -60,6 +60,14 @@ classdef PointProjectionTestSpline < matlab.unittest.TestCase
             testCase.verifyEqual(dphi, zeros(0,1));
         end%fcn
         
+        function testSolutionAtBreak(testCase)
+            sp = SplinePath([0 1 2 3], cat(3, [1 1 1;0 0 0], [0 1 2; 1 1 1]));
+            [Q,idx,tau,dphi] = sp.pointProjection([1 2], [], false);
+            testCase.verifyEqual(Q, [1 1]);
+            testCase.verifyEqual(idx, 2);
+            testCase.verifyEqual(tau, 1);
+            testCase.verifyEqual(dphi, 0);
+        end%fcn
     end
     
 end%class
