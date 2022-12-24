@@ -367,8 +367,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             % There are at most 2Nc-2 solutions per piece
             coder.varsize('tau', Ns*(2*Nc-2));
             coder.varsize('idx', Ns*(2*Nc-2));
+            coder.varsize('pv', Ns*(2*Nc-2));
             tau = zeros(0,1);
             idx = zeros(0,1);
+            pv = zeros(0,1);
             b0 = breaks(1);
             for i = 1:Ns-1
                 b1 = breaks(i+1);
@@ -380,10 +382,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 % Convolution returns array of size 2N-2. Therefore, pad
                 % non-convolutional term with zeros.
                 convTerm = conv2(px,dpx) + conv2(py,dpy);
-                ri = getRealRootsWithinBounds(...
-                    [zeros(1,Nc-1), Px*dpx + Py*dpy] - convTerm, @lt, b1-b0);
-                tau = [tau; sort(ri, 'ascend') + b0]; %#ok<AGROW>
-                idx = [idx; repmat(i, size(ri))]; %#ok<AGROW>
+                poly = [zeros(1,Nc-1), Px*dpx + Py*dpy] - convTerm;
+                ri = getRealRootsWithinBounds(poly, @lt, b1-b0);
+                riSorted = sort(ri, 'ascend');
+                tau = [tau; riSorted + b0]; %#ok<AGROW>
+                idx = [idx; repmat(i, size(ri))]; %#ok<AGROW
+                pv = [pv; polyval(poly, riSorted)]; %#ok<AGROW
                 
                 b0 = b1;
             end%for
@@ -395,10 +399,26 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             dpx = polyDiff(px);
             dpy = polyDiff(py);
             convTerm = conv2(px,dpx) + conv2(py,dpy);
-            ri = getRealRootsWithinBounds(...
-                [zeros(1,Nc-1), Px*dpx + Py*dpy] - convTerm, @le, b1-b0);
-            tau = [tau; sort(ri, 'ascend') + b0]; 
-            idx = [idx; repmat(Ns, size(ri))]; 
+            poly = [zeros(1,Nc-1), Px*dpx + Py*dpy] - convTerm;
+            ri = getRealRootsWithinBounds(poly, @le, b1-b0);
+            riSorted = sort(ri, 'ascend');
+            tau = [tau; riSorted + b0];
+            idx = [idx; repmat(Ns, size(ri))];
+            pv = [pv; polyval(poly, riSorted)]; 
+            
+            % Find repeated solutions based on a magic number
+            isRepeated = (diff(tau) < 1e-5);
+            idxRepeated = find(isRepeated);
+            for i = numel(idxRepeated):-1:1
+                idxi = idxRepeated(i);
+                if pv(idxi) < pv(idxi+1)
+                    tau(idxi+1) = [];
+                    idx(idxi+1) = [];
+                else
+                    tau(idxi) = [];
+                    idx(idxi) = [];
+                end
+            end%for
             
             Q = ppval(obj.mkpp(), tau)';
             fval = zeros(size(tau));
