@@ -60,19 +60,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             obj.Coefs = coefs;
             
             if (nargin < 3) || isempty(s)
-                pp = mkpp(breaks, coefs, 2);
-                N = obj.numel();
-                s = coder.nullcopy(zeros(N+1,1));
-                s(1) = 0;
-                for i = 1:N
-                    tau = linspace(breaks(i), breaks(i+1), 1000);
-                    dxy = diff(ppval(pp, tau), 1, 2);
-                    s(i+1) = s(i) + sum(hypot(dxy(1,:), dxy(2,:)));
-                end
+                s = obj.calcArcLength(breaks, coefs);
             end
             assert(numel(s) == numel(breaks));
             obj.ArcLengths = s - s(1); % Make sure first element is zero!
-            
             
             if nargin < 4
                 obj = obj.setIsCircuit(1e-5);
@@ -120,7 +111,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             % Get the orientation vector related with Q to calculate the
             % sign of distance from point of interest to path
             ppd = ppdiff(obj.mkpp());
-            u = ppval(ppd, tau)' - Q;
+            u = ppval(ppd, tau)';
             
             % Get sign via z-component of cross product U x (Q-XY)
             qp = bsxfun(@minus, Q, xy(:)');
@@ -128,6 +119,39 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             sd = [obj.lengthIdxTau(idx, tau), ...
                 signD.*hypot(qp(:,1), qp(:,2))];
+            
+        end%fcn
+        
+        function obj = derivative(obj, n)
+            
+            if nargin < 2
+                n = 1;
+            end
+            
+            c = obj.Coefs;
+            [~,Ns,Np] = size(c); % Number of pieces and polynomial order
+            
+            if n < 1
+                return;
+            elseif ~(n < Np)
+                obj.Coefs = zeros(2,Ns,1);
+            else
+                % Remove polynomial coefficiens due to derivative
+                cd = c(:,:,1:end-n);
+                
+                % Initilize powers for first derivative; additional derivatives
+                % are added in the for-loop
+                powers = Np-1:-1:n;
+                for i = 2:n
+                    powers = powers .* (Np-i:-1:n-i+1);
+                end%for
+                cd = bsxfun(@times, cd, reshape(powers, [1 1 Np-n]));
+                obj.Coefs = cd;
+            end%if
+            
+            % Update the path length after setting derivative coefficients
+            s = calcArcLength(obj);
+            obj.ArcLengths = s;
             
         end%fcn
         
@@ -214,7 +238,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 if isempty(idxs)
                     idx(i) = numel(S);
                 else
-                    idx(i) = idxs(1) - 1;
+                    idx(i) = idxs(1);
                 end
             end%for
             
@@ -502,7 +526,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function s = lengthIdxTau(obj, idx, tau)
             tau0 = obj.Breaks(idx)';
-            assert(all(tau0 < tau));
+%             assert(all(tau0 < tau));
             
             s = obj.ArcLengths(idx);
             for i = 1:numel(tau)
@@ -510,6 +534,25 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 xy = diff(ppval(obj.mkpp(), taui), 1, 2);
                 s(i) = s(i) + sum(hypot(xy(1,:), xy(2,:)));
             end
+        end%fcn
+        
+        function s = calcArcLength(obj, breaks, coefs)
+            
+            if nargin < 2
+                breaks = obj.Breaks;
+                coefs = obj.Coefs;
+            end
+            
+            N = size(coefs,2);
+            pp = mkpp(breaks, coefs, 2);
+            s = coder.nullcopy(zeros(N+1,1));
+            s(1) = 0;
+            for i = 1:N
+                tau = linspace(breaks(i), breaks(i+1), 1000);
+                dxy = diff(ppval(pp, tau), 1, 2);
+                s(i+1) = s(i) + sum(hypot(dxy(1,:), dxy(2,:)));
+            end
+            
         end%fcn
         
     end%methods
@@ -523,7 +566,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function obj = pp2Path(pp)
             [breaks,coefs,nbrSeg,polyOrd,dim] = unmkpp(pp);
-            assert(dim == 2)
+            assert(dim == 2, 'Spline must be 2D valued!')
             obj = SplinePath(breaks, reshape(coefs, 2, nbrSeg, polyOrd));
         end%fcn
         
