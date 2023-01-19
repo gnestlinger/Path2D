@@ -165,7 +165,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             end
         end%fcn
         
-        function [x,y,tau,head,curv] = eval(obj, tau)
+        function [x,y,tau,head,curv] = eval(obj, tau, extrapolate)
+            
+            if nargin < 3
+                extrapolate = false;
+            end
             
             if nargin < 2
                 breaks = obj.Breaks;
@@ -201,7 +205,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             % Set tau to NaN outside spline domain so that corresponding
             % return values are NaN too.
-            tau((tau < obj.Breaks(1)) | (tau > obj.Breaks(end))) = NaN;
+            if ~extrapolate
+                tau((tau < obj.Breaks(1)) | (tau > obj.Breaks(end))) = NaN;
+            end
             
             % Make use of PPVAL for spline evaluation
             pp = obj.mkpp();
@@ -236,7 +242,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             for i = 1:numel(sEval)
                 idxs = find(sEval(i) < S, 1, 'first');
                 if isempty(idxs)
-                    idx(i) = numel(S);
+                    idx(i) = obj.numel();
                 else
                     idx(i) = idxs(1);
                 end
@@ -250,7 +256,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             tau = breaks(idx);
             tau = tau + ds./(S(idx+1) - S(idx)).*(breaks(idx+1) - tau);
             
-            [x,y] = obj.eval(tau);
+            [x,y] = obj.eval(tau, true);
             n = ppval(ppdiff(obj.mkpp()), tau)';
             Q = [x,y];
             xy = Q + bsxfun(@times, [-n(:,2), n(:,1)], sd(:,2)./sqrt(sum(n.^2, 2)));

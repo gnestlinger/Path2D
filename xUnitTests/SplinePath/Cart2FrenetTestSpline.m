@@ -33,7 +33,7 @@ classdef Cart2FrenetTestSpline < matlab.unittest.TestCase
             
             % End point solution and others
             % TODO: This call returns one repeated solution
-            [sd,Q,idx,tau,dphi] = obj.cart2frenet([3 1], [], true);
+            [sd,Q,idx,tau,dphi] = obj.cart2frenet([3 1], [], false);
             testCase.verifyEqual(sd(:,1), [2.2956 3.4434 4.5912]', 'AbsTol',5e-5);
             testCase.verifyEqual(sd(:,2), [-sqrt(2) -1.5 -sqrt(2)]');
             testCase.verifyEqual(Q, [2 0; 3 -0.5; 4 0]);
