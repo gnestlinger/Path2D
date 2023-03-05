@@ -8,6 +8,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 % 
 %   SPLINEPATH methods:
 %   SplinePath - Constructor.
+%   derivative - Derivative of path.
 %   mkpp - Create piecewise polynomial structure.
 %   See superclasses.
 % 
@@ -123,6 +124,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         end%fcn
         
         function obj = derivative(obj, n)
+        %DERIVATIVE     Derivative of path.
+        %   OBJ = DERIVATIVE(OBJ) returns the derivative of path OBJ.
+        %
+        %   OBJ = DERIVATIVE(OBJ,N) returns the N-th derivative of path
+        %   OBJ.
+        %
             
             if nargin < 2
                 n = 1;
@@ -136,11 +143,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             elseif ~(n < Np)
                 obj.Coefs = zeros(2,Ns,1);
             else
-                % Remove polynomial coefficiens due to derivative
+                % Remove polynomial coefficients due to derivative
                 cd = c(:,:,1:end-n);
                 
-                % Initilize powers for first derivative; additional derivatives
-                % are added in the for-loop
+                % Initialize powers for first derivative; additional
+                % derivatives are added in the for-loop
                 powers = Np-1:-1:n;
                 for i = 2:n
                     powers = powers .* (Np-i:-1:n-i+1);
@@ -148,6 +155,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 cd = bsxfun(@times, cd, reshape(powers, [1 1 Np-n]));
                 obj.Coefs = cd;
             end%if
+            
+            obj = obj.setIsCircuit(1e-5);
             
             % Update the path length after setting derivative coefficients
             s = calcArcLength(obj);
