@@ -305,7 +305,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             % The first pieces except the last are defined over half open
             % intervals [b0,b1)
             b0 = breaks(1);
-            for i = 1:obj1.numel()-1
+            for i = 1:Ns-1
                 b1 = breaks(i+1);
                 ri = getRealRootsWithinBounds(coefsY(i,:), @lt, b1-b0);
                 tau = [tau; ri + b0]; %#ok<AGROW>
@@ -313,8 +313,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             end%for
             
             % The last piece is defined over the closed interval [b0,b1]
-            b1 = breaks(end);
-            ri = getRealRootsWithinBounds(coefsY(end,:), @le, b1-b0);
+            ri = getRealRootsWithinBounds(coefsY(end,:), @le, breaks(end)-b0);
             tau = [tau; ri + b0];
             
             tau = sort(tau, 'ascend');
@@ -338,8 +337,53 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
         end%fcn
         
-        function [xy,tau,errFlag] = intersectCircle(obj, C, r)
-            error('Not implemented!')
+        function [xy,tau,errFlag] = intersectCircle(obj, C, r, doPlot)
+            
+            obj = obj.shift(-C);
+            breaks = obj.Breaks;
+            coefs = obj.Coefs;
+            
+            % There are at most 2*(Nc-1) real roots (i.e. solutions) per
+            % piece
+            [~,Ns,Nc] = size(coefs);
+            coder.varsize('tau', 2*Ns*(Nc-1));
+            tau = zeros(0,1);
+            
+            b0 = breaks(1);
+            for i = 1:Ns-1
+                coef = permute(coefs(:,i,:), [1 3 2]);
+                equi = conv2(coef(1,:), coef(1,:)) + conv2(coef(2,:), coef(2,:));
+                equi(end) = equi(end) - r^2;
+                
+                b1 = breaks(i+1);
+                ri = getRealRootsWithinBounds(equi, @lt, b1-b0);
+                tau = [tau; ri + b0]; %#ok<AGROW>
+                b0 = b1;
+            end%for
+            
+            % The last piece is defined over the closed interval [b0,b1]
+            coef = permute(coefs(:,end,:), [1 3 2]);
+            equi = conv2(coef(1,:), coef(1,:)) + conv2(coef(2,:), coef(2,:));
+            equi(end) = equi(end) - r^2;
+            ri = getRealRootsWithinBounds(equi, @le, breaks(end)-b0);
+            tau = [tau; ri + b0];
+            
+            tau = sort(tau, 'ascend');
+            errFlag = isempty(tau);
+            [x,y] = obj.eval(tau);
+            xy = [x+C(1) y+C(2)];
+            
+            if (nargin > 3) && doPlot
+                [~,ax] = plot(obj.shift(C));
+                hold on
+                
+                phi = 0:pi/1000:2*pi;
+                plot(ax, r*cos(phi)+C(1), r*sin(phi)+C(2), 'Displayname','Circle')
+                
+                plot(ax, xy(:,1), xy(:,2), 'ko')
+                hold off
+            end%if
+            
         end%fcn
         
         function flag = isempty(obj)
