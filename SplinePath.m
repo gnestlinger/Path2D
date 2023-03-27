@@ -8,6 +8,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 % 
 %   SPLINEPATH methods:
 %   SplinePath - Constructor.
+%   derivative - Derivative of path.
 %   mkpp - Create piecewise polynomial structure.
 %   See superclasses.
 % 
@@ -60,19 +61,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             obj.Coefs = coefs;
             
             if (nargin < 3) || isempty(s)
-                pp = mkpp(breaks, coefs, 2);
-                N = obj.numel();
-                s = coder.nullcopy(zeros(N+1,1));
-                s(1) = 0;
-                for i = 1:N
-                    tau = linspace(breaks(i), breaks(i+1), 1000);
-                    dxy = diff(ppval(pp, tau), 1, 2);
-                    s(i+1) = s(i) + sum(hypot(dxy(1,:), dxy(2,:)));
-                end
+                s = obj.calcArcLength(breaks, coefs);
             end
             assert(numel(s) == numel(breaks));
             obj.ArcLengths = s - s(1); % Make sure first element is zero!
-            
             
             if nargin < 4
                 obj = obj.setIsCircuit(1e-5);
@@ -120,7 +112,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             % Get the orientation vector related with Q to calculate the
             % sign of distance from point of interest to path
             ppd = ppdiff(obj.mkpp());
-            u = ppval(ppd, tau)' - Q;
+            u = ppval(ppd, tau)';
             
             % Get sign via z-component of cross product U x (Q-XY)
             qp = bsxfun(@minus, Q, xy(:)');
@@ -128,6 +120,47 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             sd = [obj.lengthIdxTau(idx, tau), ...
                 signD.*hypot(qp(:,1), qp(:,2))];
+            
+        end%fcn
+        
+        function obj = derivative(obj, n)
+        %DERIVATIVE     Derivative of path.
+        %   OBJ = DERIVATIVE(OBJ) returns the derivative of path OBJ.
+        %
+        %   OBJ = DERIVATIVE(OBJ,N) returns the N-th derivative of path
+        %   OBJ.
+        %
+            
+            if nargin < 2
+                n = 1;
+            end
+            
+            c = obj.Coefs;
+            [~,Ns,Np] = size(c); % Number of pieces and polynomial order
+            
+            if n < 1
+                return;
+            elseif ~(n < Np)
+                obj.Coefs = zeros(2,Ns,1);
+            else
+                % Remove polynomial coefficients due to derivative
+                cd = c(:,:,1:end-n);
+                
+                % Initialize powers for first derivative; additional
+                % derivatives are added in the for-loop
+                powers = Np-1:-1:n;
+                for i = 2:n
+                    powers = powers .* (Np-i:-1:n-i+1);
+                end%for
+                cd = bsxfun(@times, cd, reshape(powers, [1 1 Np-n]));
+                obj.Coefs = cd;
+            end%if
+            
+            obj = obj.setIsCircuit(1e-5);
+            
+            % Update the path length after setting derivative coefficients
+            s = calcArcLength(obj);
+            obj.ArcLengths = s;
             
         end%fcn
         
@@ -141,7 +174,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             end
         end%fcn
         
-        function [x,y,tau,head,curv] = eval(obj, tau)
+        function [x,y,tau,head,curv] = eval(obj, tau, extrapolate)
+            
+            if nargin < 3
+                extrapolate = false;
+            end
             
             if nargin < 2
                 breaks = obj.Breaks;
@@ -177,7 +214,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             % Set tau to NaN outside spline domain so that corresponding
             % return values are NaN too.
+            if ~extrapolate
             tau((tau < obj.Breaks(1)) | (tau > obj.Breaks(end))) = NaN;
+            end
             
             % Make use of PPVAL for spline evaluation
             pp = obj.mkpp();
@@ -212,9 +251,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             for i = 1:numel(sEval)
                 idxs = find(sEval(i) < S, 1, 'first');
                 if isempty(idxs)
-                    idx(i) = numel(S);
+                    idx(i) = obj.numel();
                 else
-                    idx(i) = idxs(1) - 1;
+                    idx(i) = idxs(1);
                 end
             end%for
             
@@ -226,7 +265,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             tau = breaks(idx);
             tau = tau + ds./(S(idx+1) - S(idx)).*(breaks(idx+1) - tau);
             
-            [x,y] = obj.eval(tau);
+            [x,y] = obj.eval(tau, true);
             n = ppval(ppdiff(obj.mkpp()), tau)';
             Q = [x,y];
             xy = Q + bsxfun(@times, [-n(:,2), n(:,1)], sd(:,2)./sqrt(sum(n.^2, 2)));
@@ -266,7 +305,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             % The first pieces except the last are defined over half open
             % intervals [b0,b1)
             b0 = breaks(1);
-            for i = 1:obj1.numel()-1
+            for i = 1:Ns-1
                 b1 = breaks(i+1);
                 ri = getRealRootsWithinBounds(coefsY(i,:), @lt, b1-b0);
                 tau = [tau; ri + b0]; %#ok<AGROW>
@@ -274,8 +313,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             end%for
             
             % The last piece is defined over the closed interval [b0,b1]
-            b1 = breaks(end);
-            ri = getRealRootsWithinBounds(coefsY(end,:), @le, b1-b0);
+            ri = getRealRootsWithinBounds(coefsY(end,:), @le, breaks(end)-b0);
             tau = [tau; ri + b0];
             
             tau = sort(tau, 'ascend');
@@ -299,8 +337,53 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
         end%fcn
         
-        function [xy,tau,errFlag] = intersectCircle(obj, C, r)
-            error('Not implemented!')
+        function [xy,tau,errFlag] = intersectCircle(obj, C, r, doPlot)
+            
+            obj = obj.shift(-C);
+            breaks = obj.Breaks;
+            coefs = obj.Coefs;
+            
+            % There are at most 2*(Nc-1) real roots (i.e. solutions) per
+            % piece
+            [~,Ns,Nc] = size(coefs);
+            coder.varsize('tau', 2*Ns*(Nc-1));
+            tau = zeros(0,1);
+            
+            b0 = breaks(1);
+            for i = 1:Ns-1
+                coef = permute(coefs(:,i,:), [1 3 2]);
+                equi = conv2(coef(1,:), coef(1,:)) + conv2(coef(2,:), coef(2,:));
+                equi(end) = equi(end) - r^2;
+                
+                b1 = breaks(i+1);
+                ri = getRealRootsWithinBounds(equi, @lt, b1-b0);
+                tau = [tau; ri + b0]; %#ok<AGROW>
+                b0 = b1;
+            end%for
+            
+            % The last piece is defined over the closed interval [b0,b1]
+            coef = permute(coefs(:,end,:), [1 3 2]);
+            equi = conv2(coef(1,:), coef(1,:)) + conv2(coef(2,:), coef(2,:));
+            equi(end) = equi(end) - r^2;
+            ri = getRealRootsWithinBounds(equi, @le, breaks(end)-b0);
+            tau = [tau; ri + b0];
+            
+            tau = sort(tau, 'ascend');
+            errFlag = isempty(tau);
+            [x,y] = obj.eval(tau);
+            xy = [x+C(1) y+C(2)];
+            
+            if (nargin > 3) && doPlot
+                [~,ax] = plot(obj.shift(C));
+                hold on
+                
+                phi = 0:pi/1000:2*pi;
+                plot(ax, r*cos(phi)+C(1), r*sin(phi)+C(2), 'Displayname','Circle')
+                
+                plot(ax, xy(:,1), xy(:,2), 'ko')
+                hold off
+            end%if
+            
         end%fcn
         
         function flag = isempty(obj)
@@ -332,6 +415,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         end%fcn
         
         function [Q,idx,tau,fval] = pointProjection(obj, poi, ~, doPlot)
+        %POINTPROJECTION    Finds the orthogonal projection on the path.
+        %   POINTPROJECTION finds the orthogonal projection of a point POI
+        %   with respect the spline path by calculating the roots of a
+        %   polynomial of order 2N-2, where N is the order of the spline. 
+        %
+        %   See also PATH2D/POINTPROJECTION, ROOTS.
             
             Px = poi(1);
             Py = poi(2);
@@ -343,38 +432,47 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             % There are at most 2Nc-2 solutions per piece
             coder.varsize('tau', Ns*(2*Nc-2));
             coder.varsize('idx', Ns*(2*Nc-2));
+            coder.varsize('pv', Ns*(2*Nc-2));
             tau = zeros(0,1);
             idx = zeros(0,1);
+            pv = zeros(0,1);
             b0 = breaks(1);
             for i = 1:Ns-1
                 b1 = breaks(i+1);
-                px = coefsX(i,:);
-                py = coefsY(i,:);
-                dpx = polyDiff(px);
-                dpy = polyDiff(py);
                 
-                % Convolution returns array of size 2N-2. Therefore, pad
-                % non-convolutional term with zeros.
-                convTerm = conv2(px,dpx) + conv2(py,dpy);
-                ri = getRealRootsWithinBounds(...
-                    [zeros(1,Nc-1), Px*dpx + Py*dpy] - convTerm, @lt, b1-b0);
-                tau = [tau; sort(ri, 'ascend') + b0]; %#ok<AGROW>
-                idx = [idx; repmat(i, size(ri))]; %#ok<AGROW>
+                poly = calcPointProjPolynomial(Px, Py, ...
+                    coefsX(i,:), coefsY(i,:), Nc);
+                ri = getRealRootsWithinBounds(poly, @lt, b1-b0);
+                riSorted = sort(ri, 'ascend');
+                tau = [tau; riSorted + b0]; %#ok<AGROW>
+                idx = [idx; repmat(i, size(ri))]; %#ok<AGROW
+                pv = [pv; polyval(poly, riSorted)]; %#ok<AGROW
                 
                 b0 = b1;
             end%for
             
             % The last piece is defined over the closed interval [b0,b1]
             b1 = breaks(end);
-            px = coefsX(end,:);
-            py = coefsY(end,:);
-            dpx = polyDiff(px);
-            dpy = polyDiff(py);
-            convTerm = conv2(px,dpx) + conv2(py,dpy);
-            ri = getRealRootsWithinBounds(...
-                [zeros(1,Nc-1), Px*dpx + Py*dpy] - convTerm, @le, b1-b0);
-            tau = [tau; sort(ri, 'ascend') + b0]; 
-            idx = [idx; repmat(Ns, size(ri))]; 
+            poly = calcPointProjPolynomial(Px, Py, ...
+                coefsX(end,:), coefsY(end,:), Nc);
+            ri = getRealRootsWithinBounds(poly, @le, b1-b0);
+            riSorted = sort(ri, 'ascend');
+            tau = [tau; riSorted + b0];
+            idx = [idx; repmat(Ns, size(ri))];
+            pv = [pv; polyval(poly, riSorted)]; 
+            
+            % Find and remove repeated solutions based on a magic number
+            idxRepeated = find(diff(tau) < 1e-5);
+            for i = numel(idxRepeated):-1:1
+                idxi = idxRepeated(i);
+                if pv(idxi) < pv(idxi+1)
+                    tau(idxi+1) = [];
+                    idx(idxi+1) = [];
+                else
+                    tau(idxi) = [];
+                    idx(idxi) = [];
+                end
+            end%for
             
             Q = ppval(obj.mkpp(), tau)';
             fval = zeros(size(tau));
@@ -406,16 +504,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             % Find the lower/upper index so that restricted domain is
             % covered
             [tauL,tauU] = obj.domain();
-            taus = obj.Breaks;
+            breaks = obj.Breaks;
             if isempty(tau0) || (tau0 < tauL)
                 idx0 = 1;
             else
-                idx0 = find(tau0 >= taus, 1, 'last');
+                idx0 = find(tau0 >= breaks, 1, 'last');
             end
             if isempty(tauF) || (tauF > tauU)
                 idxF = obj.numel();
             else
-                idxF = find(tauF >= taus, 1, 'last');
+                idxF = find(tauF > breaks, 1, 'last');
             end%if
             
             obj = obj.select(idx0:idxF);
@@ -451,10 +549,25 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function obj = select(obj, idxs)
             
-            idxsc = idxs(:);
-            tmp = unique([idxsc, idxsc+1]);
-            s = obj.ArcLengths(tmp);
-            obj = SplinePath(obj.Breaks(tmp), obj.Coefs(:,idxs,:), s - s(1));
+            assert(max(idxs) - 1 < obj.numel(), 'SplinePath:BadSubscript', ...
+                'Path contains only %d pieces!', obj.numel())
+            
+            if isa(idxs, 'logical')
+                idxs_ = find(idxs(:));
+            else
+                idxs_ = idxs(:);
+            end
+            
+            assert(all(diff(idxs_) > 0), 'SplinePath:PiecesReorderingUnsupported', ...
+                'Reordering of pieces is not supported!')
+            assert(all(diff(idxs_) < 2), 'SplinePath:PiecesSkippingUnsupported', ...
+            'Skipping pieces is not supported!')
+            
+            obj.Breaks = obj.Breaks([idxs_; idxs_(end) + 1]);
+            obj.Coefs = obj.Coefs(:,idxs_,:);
+            
+            s = obj.ArcLengths(idxs_);
+            obj.ArcLengths = s - s(1);
             
         end%fcn
         
@@ -502,7 +615,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function s = lengthIdxTau(obj, idx, tau)
             tau0 = obj.Breaks(idx)';
-            assert(all(tau0 < tau));
+%             assert(all(tau0 < tau));
             
             s = obj.ArcLengths(idx);
             for i = 1:numel(tau)
@@ -510,6 +623,25 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 xy = diff(ppval(obj.mkpp(), taui), 1, 2);
                 s(i) = s(i) + sum(hypot(xy(1,:), xy(2,:)));
             end
+        end%fcn
+        
+        function s = calcArcLength(obj, breaks, coefs)
+            
+            if nargin < 2
+                breaks = obj.Breaks;
+                coefs = obj.Coefs;
+            end
+            
+            N = size(coefs,2);
+            pp = mkpp(breaks, coefs, 2);
+            s = coder.nullcopy(zeros(N+1,1));
+            s(1) = 0;
+            for i = 1:N
+                tau = linspace(breaks(i), breaks(i+1), 1000);
+                dxy = diff(ppval(pp, tau), 1, 2);
+                s(i+1) = s(i) + sum(hypot(dxy(1,:), dxy(2,:)));
+            end
+            
         end%fcn
         
     end%methods
@@ -523,7 +655,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function obj = pp2Path(pp)
             [breaks,coefs,nbrSeg,polyOrd,dim] = unmkpp(pp);
-            assert(dim == 2)
+            assert(dim == 2, 'Spline must be 2D valued!')
             obj = SplinePath(breaks, reshape(coefs, 2, nbrSeg, polyOrd));
         end%fcn
         
@@ -551,6 +683,20 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
     
 end%class
 
+
+function poly = calcPointProjPolynomial(poiX, poiY, px, py, Nc)
+% Returns the polynomial coefficients of the polynomial defining the point
+% projection equation.
+
+dpx = polyDiff(px);
+dpy = polyDiff(py);
+
+% Convolution returns array of size 2N-2. Therefore, pad non-convolutional
+% term with zeros.
+convTerm = conv2(px,dpx) + conv2(py,dpy);
+poly = [zeros(1,Nc-1), poiX*dpx + poiY*dpy] - convTerm;
+
+end%fcn
 
 function r = getRealRootsWithinBounds(c, ubh, ub)
 
