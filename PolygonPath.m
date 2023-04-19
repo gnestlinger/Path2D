@@ -856,20 +856,19 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
     end%methods
     
     
-    
     methods (Static)
         
         function obj = circle(r, phi01, N)
-        %CIRCLE        Create circle.
-        %    OBJ = POLYGONPATH.CIRCLE(R) creates a path object OBJ
-        %    describing a circle of radius R.
-        %
-        %    OBJ = POLYGONPATH.CIRCLE(R, PHI01) sets the inital and final
-        %    angle to PHI01(1) and PHI01(2) respectively. Defalut value is
-        %    [0; 2*pi];
-        %
-        %    OBJ = POLYGONPATH.CIRCLE(R, PHI01, N) creates the circle using
-        %    N samples. Default value is N = 100.
+        %CIRCLE     Create circle.
+        %   OBJ = POLYGONPATH.CIRCLE(R) creates a path object OBJ
+        %   describing a circle of radius R.
+        %   
+        %   OBJ = POLYGONPATH.CIRCLE(R, PHI01) sets the initial and final
+        %   angle to PHI01(1) and PHI01(2) respectively. Default value is
+        %   [0; 2*pi];
+        %   
+        %   OBJ = POLYGONPATH.CIRCLE(R, PHI01, N) creates the circle using
+        %   N samples. Default value is N = 100.
             
             if nargin < 3
                 N = 100;
@@ -879,6 +878,62 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             end
             t = linspace(phi01(1), phi01(2), N);
             obj = PolygonPath(r*cos(t), r*sin(t), t+pi/2, repmat(1/r,N,1));
+        end%fcn
+        
+        function obj = clothoid(A, curv01, N, MODE)
+        %CLOTHOID   Create clothoid path.
+        %   OBJ = POLYGONPATH.CLOTHOID(A, PHI01, N) creates a clothoid with
+        %   parameter A, initial curvature CURV01(1) and end curvature
+        %   CURV01(2) using N samples.
+        %
+        %   OBJ = POLYGONPATH.CLOTHOID(___,MODE) allows to select different
+        %   calculation methods. Possible values are 'Heald', 'Quad'.
+        %   
+        %   Clothoid parameter A: The clothiods curvature K is proportional
+        %   to its length S by K = S/A^2.
+        %
+        %   See also CLOTHOIDHEALD, CLOTHOIDQUAD.
+            
+            assert(numel(curv01) == 2)
+            
+            if nargin < 4
+                MODE = 0;
+            end
+            
+            curv0 = curv01(1);
+            curv1 = curv01(2);
+            signk = sign(curv1 - curv0);
+            
+            % Pre-calculation of path length
+            s = signk * A^2 * linspace(curv0, curv1, N);
+            
+            switch lower(MODE)
+                case {0, 'quad'}
+                    [x,y] = clothoidQuad(s, A);
+                case {1, 'heald'}
+                    [x,y] = clothoidHeald(s/(sqrt(pi)*A), A);
+                otherwise
+                    error('Unknown mode "%s".', num2str(MODE))
+            end%switch
+            
+            head = s.^2/(2*A^2);
+            curv = s/A^2;
+            obj = PolygonPath(x, y, head, curv);
+            
+        end%fcn
+        
+        function obj = straight(P0, P1)
+        % STRAIGHT  Create straight path.
+        %   OBJ = POLYGONPATH.STRAIGHT(P0,P1) creates a straight path from
+        %   point P0 to P1.
+            
+            x0 = P0(1);
+            y0 = P0(2);
+            x1 = P1(1);
+            y1 = P1(2);
+            h = atan2(y1-y0, x1-x0);
+            obj = PolygonPath([x0 x1], [y0 y1], [h h], [0 0], false);
+            
         end%fcn
         
         function obj = ll2Path(lat, lon)
@@ -920,15 +975,15 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             obj = PolygonPath(s.x, s.y, s.head, s.curv);
         end%fcn
         
-        function c = getBusDef()
+        function c = getBusDef(N)
             BusName = 'SBus_PolygonPath';
             HeaderFile = '';
             Description = '';
             BusElements = {...
-                {'x',    100, 'double', -1, 'real', 'Sample', 'Variable', [], [], 'm', ''},...
-                {'y',    100, 'double', -1, 'real', 'Sample', 'Variable', [], [], 'm', ''},...
-                {'head', 100, 'double', -1, 'real', 'Sample', 'Variable', [], [], 'rad', ''},...
-                {'curv', 100, 'double', -1, 'real', 'Sample', 'Variable', [], [], '1/m', ''},...
+                {'x',    N, 'double', -1, 'real', 'Sample', 'Variable', [], [], 'm', ''},...
+                {'y',    N, 'double', -1, 'real', 'Sample', 'Variable', [], [], 'm', ''},...
+                {'head', N, 'double', -1, 'real', 'Sample', 'Variable', [], [], 'rad', ''},...
+                {'curv', N, 'double', -1, 'real', 'Sample', 'Variable', [], [], '1/m', ''},...
                 };
             c = {{BusName,HeaderFile,Description,BusElements}};
         end%fcn
