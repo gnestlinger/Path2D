@@ -328,10 +328,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 [r1,r2] = scaleTangentToAxis(xlim, ylim, O, psi);
                 Pstart  = [O(1) + r2*cos(psi); O(2) + r2*sin(psi)];
                 Pstop   = [O(1) + r1*cos(psi); O(2) + r1*sin(psi)];
-                plot(gca, [Pstart(1) Pstop(1)], [Pstart(2) Pstop(2)], ...
-                    'Displayname','Line')
+                h = plot(gca, [Pstart(1) Pstop(1)], [Pstart(2) Pstop(2)], ...
+                    'DisplayName','Line');
+                plot(O(1), O(2), 'o', 'Color',get(h,'Color'), 'DisplayName','O')
                 
-                plot(ax, xy(:,1), xy(:,2), 'ko')
+                plot(ax, xy(:,1), xy(:,2), 'kx', 'DisplayName','Intersections')
                 hold off
             end%if
             
@@ -378,9 +379,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 hold on
                 
                 phi = 0:pi/1000:2*pi;
-                plot(ax, r*cos(phi)+C(1), r*sin(phi)+C(2), 'Displayname','Circle')
+                plot(ax, r*cos(phi)+C(1), r*sin(phi)+C(2), 'r', 'DisplayName','Circle')
                 
-                plot(ax, xy(:,1), xy(:,2), 'ko')
+                plot(ax, xy(:,1), xy(:,2), 'kx', 'DisplayName','Intersections')
                 hold off
             end%if
             
@@ -478,17 +479,18 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             fval = zeros(size(tau));
             
             if (nargin > 3) && doPlot
-                plot(obj, 'DisplayName','RefPath');
+                plot(obj);
                 hold on
                 [x0,y0] = obj.eval(obj.Breaks);
                 plot(x0, y0, 'g.', 'MarkerSize',12, 'DisplayName','Breaks');
                 plot(poi(1), poi(2), 'ro', 'DisplayName','PoI')
                 plot(Q(:,1), Q(:,2), 'kx', 'DisplayName','Q')
-                legend('-DynamicLegend', 'Location','best');
+%                 legend('-DynamicLegend', 'Location','best');
                 plot(...
                     [Q(:,1)'; repmat([poi(1) NaN], size(Q,1),1)'],...
                     [Q(:,2)'; repmat([poi(2) NaN], size(Q,1),1)'], 'k:'); 
                 hold off
+                legend(get(gca, 'Legend').String(1:4))
             end%if
             
         end%fcn
