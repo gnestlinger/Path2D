@@ -3,7 +3,7 @@ classdef Frenet2CartTestSpline < matlab.unittest.TestCase
     methods (Test)
         
         function testFrenet2Cart(testCase)
-            obj = PolygonPath.xy2Path(0:3, [0 0 0 0]);
+            obj = SplinePath.pp2Path(mkpp([0 1 2 3], [1 0; 0 0; 1 1; 0 0; 1 2; 0 0], 2));
             [xy,Q,idx,tau] = obj.frenet2cart([0 1; 1 -1; 2.25 2; 3 -2], false);
             testCase.verifyEqual(xy, [0 1; 1 -1; 2.25 2; 3 -2]);
             testCase.verifyEqual(Q, [0 0; 1 0; 2.25 0; 3 0]);
@@ -23,7 +23,8 @@ classdef Frenet2CartTestSpline < matlab.unittest.TestCase
         end%fcn
         
         function testCircuit(testCase)
-            obj = PolygonPath.circle(1, [0 2*pi], 23);
+            pp = load('circle.mat');
+            obj = SplinePath.pp2Path(pp);
             assert(obj.IsCircuit)
             s = obj.length();
             [xy1,Q1,idx1,tau1] = obj.frenet2cart([0 1; 0 -1], false);
