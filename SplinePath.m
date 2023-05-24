@@ -479,17 +479,18 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             fval = zeros(size(tau));
             
             if (nargin > 3) && doPlot
-                plot(obj, 'DisplayName','RefPath');
+                plot(obj);
                 hold on
                 [x0,y0] = obj.eval(obj.Breaks);
                 plot(x0, y0, 'g.', 'MarkerSize',12, 'DisplayName','Breaks');
                 plot(poi(1), poi(2), 'ro', 'DisplayName','PoI')
                 plot(Q(:,1), Q(:,2), 'kx', 'DisplayName','Q')
-                legend('-DynamicLegend', 'Location','best');
+%                 legend('-DynamicLegend', 'Location','best');
                 plot(...
                     [Q(:,1)'; repmat([poi(1) NaN], size(Q,1),1)'],...
                     [Q(:,2)'; repmat([poi(2) NaN], size(Q,1),1)'], 'k:'); 
                 hold off
+                legend(get(gca, 'Legend').String(1:4))
             end%if
             
         end%fcn
