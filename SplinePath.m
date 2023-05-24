@@ -379,7 +379,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 hold on
                 
                 phi = 0:pi/1000:2*pi;
-                plot(ax, r*cos(phi)+C(1), r*sin(phi)+C(2), 'r', 'DisplayName','Circle')
+                plot(ax, r*cos(phi)+C(1), r*sin(phi)+C(2), 'DisplayName','Circle')
                 
                 plot(ax, xy(:,1), xy(:,2), 'kx', 'DisplayName','Intersections')
                 hold off
