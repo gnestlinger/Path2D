@@ -246,7 +246,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             if obj.IsCircuit
                 sEval = mod(sEval, obj.length());
             end
-            S = obj.ArcLengths;
+            S = obj.ArcLengths(2:end);
             idx = coder.nullcopy(zeros(size(sEval), 'uint32'));
             for i = 1:numel(sEval)
                 idxs = find(sEval(i) < S, 1, 'first');
@@ -260,6 +260,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             % The points on the path (i.e. d=0) are given by the segment's
             % initial point plus the remaining length along the current
             % segment
+            S = obj.ArcLengths;
             ds = sEval - S(idx);
             breaks = obj.Breaks';
             tau = breaks(idx);
@@ -274,10 +275,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 doPlot = false;
             end
             if doPlot
-                plot(obj, 'DisplayName','SplinePath');
+                obj.plot('DisplayName','SplinePath');
                 hold on
                 [xb,yb] = obj.eval(obj.Breaks);
-                plot(xb, yb, 'b', 'LineStyle','none','Marker','.', 'MarkerSize',15, 'DisplayName','Breaks');
+                plot(xb, yb, 'b.', 'MarkerSize',10, 'DisplayName','Breaks');
                 plot(xy(:,1), xy(:,2), 'o', 'DisplayName','xy');
                 plot(Q(:,1), Q(:,2), 'kx', 'DisplayName','Q');
                 hold off
