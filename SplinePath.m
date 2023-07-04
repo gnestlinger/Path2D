@@ -663,6 +663,20 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             obj = SplinePath(breaks, reshape(coefs, 2, nbrSeg, polyOrd));
         end%fcn
         
+        function obj = straight(P0, P1)
+        % STRAIGHT  Create straight path.
+        %   OBJ = SPLINEPATH.STRAIGHT(P0,P1) creates a straight path from
+        %   point P0 to P1.
+            
+            x0 = P0(1);
+            y0 = P0(2);
+            x1 = P1(1);
+            y1 = P1(2);
+            pp = mkpp([0 1], [x1-x0 x0; y1-y0 y0], 2);
+            obj = SplinePath.pp2Path(pp);
+            
+        end%fcn
+        
         function obj = xy2Path(x, y) %#ok<STOUT,INUSD>
             error('Not implemented!')
         end%fcn
