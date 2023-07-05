@@ -672,8 +672,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             y0 = P0(2);
             x1 = P1(1);
             y1 = P1(2);
-            pp = mkpp([0 1], [x1-x0 x0; y1-y0 y0], 2);
-            obj = SplinePath.pp2Path(pp);
+            obj = SplinePath([0 1], ...
+                cat(3, [x1-x0; y1-y0], [x0; y0]), ...
+                [0 hypot(x1-x0, y1-y0)], ...
+                false);
             
         end%fcn
         
