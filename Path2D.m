@@ -43,8 +43,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   ll2Path - Construct path from latitude/longitude coordinates.
 %   pp2Path - Construct path from piecewise polynomial.
 %   xy2Path - Construct path from cartesian coordinates.
+%   straight - Construct straight path.
 %
-%   See also PolygonPath.
+%   See also PolygonPath, SplinePath.
     
     properties
         % ISCIRCUIT - Logical indicating if path is a circuit.
@@ -56,8 +57,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
     methods
         
         function obj = Path2D()
-        %PATH2D        Construct a PATH2D class instance.
-            
+        %PATH2D     Construct a PATH2D class instance.
         end%Constructor
         
         function [hr,axr] = plot(varargin)
@@ -454,6 +454,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %
         %    See also MKPP.
         obj = pp2Path(pp, tay, polyDeg)
+        
+        % STRAIGHT  Construct straight path object.
+        %   OBJ = <ClassName>.STRAIGHT(P0,P1) creates a straight path from
+        %   point P0 to P1.
+        OBJ = straight(P0, P1)
         
         % XY2PATH    Path object from cartesian coordinates.
         %    OBJ = <ClassName>.XY2PATH(X,Y) instantiates the path OBJ
