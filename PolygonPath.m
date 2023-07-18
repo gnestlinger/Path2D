@@ -315,66 +315,36 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function [xy,Q,idx,tau] = frenet2cart(obj, sd, doPlot)
-        %
-        %   See also PATH2D/FRENET2CART.
-        
-        % 
-        %   EXAMPLES:
-        %   >> s = [-1;sqrt(8);sqrt(8)+sqrt(10);10;sqrt(8)+sqrt(10)+sqrt(41);13];
-        %   >> d = ones(size(s));
-        %   >> xy = frenet2cart(PolygonPath.xy2Path([0 2 5 10], [0 2 3 -1]), [s,d; s,-d], true)
-        %   xy = 
-        %  -1.4142         0
-        %   1.2929    2.7071
-        %   4.6838    3.9487
-        %   8.7554    1.2763
-        %  10.6247   -0.2191
-        %  11.0980   -0.5978
-        %        0   -1.4142
-        %   2.7071    1.2929
-        %   5.3162    2.0513
-        %   7.5060   -0.2855
-        %   9.3753   -1.7809
-        %   9.8486   -2.1595
-        % 
         
             Pxy = [obj.x, obj.y]; % Initial/terminal points per path segment
-            u = diff(Pxy, 1, 1); % Orientation vectors/TODO: make use of heading?
-            assert(size(u, 1) > 0, 'Path must have at least two points!');
-            
-            % Normalize orientation vectors to length 1
-            u = bsxfun(@rdivide, u, hypot(u(:,1), u(:,2)));
+            assert(size(Pxy,1) > 1, 'Path must have at least two points!');
             
             % Get the indexes referring to the path segments according to
-            % the frenet coordinates s-values
+            % the frenet coordinates s-value
             sEval = sd(:,1);
             if obj.IsCircuit
                 sEval = mod(sEval, obj.length());
             end
-            S = obj.s(2:end);
-            idx = coder.nullcopy(zeros(size(sEval), 'uint32'));
-            for i = 1:numel(sEval)
-                idxs = find(sEval(i) < S, 1, 'first');
-                if isempty(idxs)
-                    idx(i) = numel(S);
-                else
-                    idx(i) = idxs(1);
-                end
-            end%for
-%             [isLess,idx] = max(bsxfun(@lt, sEval, S'), [], 2);
-%             idx(~isLess) = numel(S);
-%             idx = uint32(idx);
+            S = obj.s;
+            N = numel(S) - 1;
+            [~,idx] = histc(sEval, [S;inf]); %#ok<HISTC>
+            idx = uint32(idx);
+            idx(idx < 1) = 1;
+            idx(idx > N) = N;
+            
+            % Normalized orientation vectors (TODO: make use of heading?)
+            u = Pxy(idx + 1,:) - Pxy(idx,:);
+            u = bsxfun(@rdivide, u, hypot(u(:,1), u(:,2)));
             
             % The points on the path (i.e. d=0) are given by the segments
             % initial point plus the remaining length along the current
             % segment
-            S = obj.s;
             ds = sEval - S(idx);
-            Q = Pxy(idx,:) + bsxfun(@times, ds, u(idx,:));
+            Q = Pxy(idx,:) + bsxfun(@times, ds, u);
             tau = double(idx - 1) + ds./(S(idx+1) - S(idx));
             
             % From Q, go D units along normal vector to U
-            xy = Q + bsxfun(@times, sd(:,2), [-u(idx,2), u(idx,1)]);
+            xy = Q + bsxfun(@times, sd(:,2), [-u(:,2), u(:,1)]);
             
             if nargin < 3
                 doPlot = false;
@@ -964,10 +934,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function obj = xy2Path(x, y)
-            gx = gradient(x(:));
-            gy = gradient(y(:));
+            [~,g1XY] = gradient([x(:) y(:)]);
+            [~,g2XY] = gradient(g1XY);
+            gx = g1XY(:,1);
+            gy = g1XY(:,2);
+            
             h = cx2Heading(gx, gy);
-            c = cx2Curvature(gx, gy, gradient(gx), gradient(gy));
+            c = cx2Curvature(gx, gy, g2XY(:,1), g2XY(:,2));
             obj = PolygonPath(x, y, h, c);
         end%fcn
         
