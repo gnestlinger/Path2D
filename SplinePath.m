@@ -9,6 +9,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 %   SPLINEPATH methods:
 %   SplinePath - Constructor.
 %   derivative - Derivative of path.
+%   findZeroCurvature - Find path parameter w.r.t. zero path curvature.
 %   mkpp - Create piecewise polynomial structure.
 %   See superclasses.
 % 
@@ -215,7 +216,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             % Set tau to NaN outside spline domain so that corresponding
             % return values are NaN too.
             if ~extrapolate
-            tau((tau < obj.Breaks(1)) | (tau > obj.Breaks(end))) = NaN;
+                tau((tau < obj.Breaks(1)) | (tau > obj.Breaks(end))) = NaN;
             end
             
             % Make use of PPVAL for spline evaluation
@@ -235,6 +236,45 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                     curv = cx2Curvature(xyD1(1,:), xyD1(2,:), xyD2(1,:), xyD2(2,:))';
                 end
             end%if
+            
+        end%fcn
+        
+        function tau = findZeroCurvature(obj)
+        %FINDZEROCURVATURE  Find path parameter w.r.t to zero curvature.
+        %   TAU = FINDZEROCURVATURE(OBJ) returns the path parameters TAU
+        %   for which the path's curvature evaluates to zero (apart from
+        %   rounding errors resulting from polynomial root finding).
+        %
+            
+            breaks = obj.Breaks;
+            
+            objD1 = obj.derivative();
+            objD2 = derivative(objD1);
+            coefsD1x = permute(objD1.Coefs(1,:,:), [2 3 1]);
+            coefsD1y = permute(objD1.Coefs(2,:,:), [2 3 1]);
+            coefsD2x = permute(objD2.Coefs(1,:,:), [2 3 1]);
+            coefsD2y = permute(objD2.Coefs(2,:,:), [2 3 1]);
+            
+            Ns = obj.numel();
+            N1 = size(coefsD1x, 2);
+            N2 = size(coefsD2x, 2);
+            coder.varsize('tau', Ns*(N1+N2-1))
+            tau = [];
+            b0 = breaks(1);
+            for i = 1:Ns % Loop over spline segments
+                b1 = breaks(i+1);
+                
+                % Curvature = (x'*y'' - x''*y')/(x'^2 + y'^2)^1.5
+                dx = coefsD1x(i,:);
+                dy = coefsD1y(i,:);
+                ddx = coefsD2x(i,:);
+                ddy = coefsD2y(i,:);
+                numi = conv2(dx, ddy) - conv2(ddx, dy);
+                taui = getRealRootsWithinBounds(numi, @lt, b1-b0);
+                tau = [tau; sort(taui, 'ascend') + b0]; %#ok<AGROW>
+                
+                b0 = b1;
+            end%for
             
         end%fcn
         
