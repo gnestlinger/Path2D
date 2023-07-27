@@ -3,7 +3,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %   Path representation using polygonal chain assuming linear
 %   interpolation. The path parameter is inherited from the number of
 %   waypoints N, i.e. [0,1,...,N-1]. Therefore, a path parameter of e.g.
-%   2.75 refers to to the path three quarters between the third and fourth
+%   2.75 refers to the path three quarters between the third and fourth
 %   waypoint.
 % 
 %   PolygonPath properties:
@@ -19,6 +19,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %   interp1 - Interpolate path.
 %   perpendicularDistance - Distance of path waypoints to line.
 %   rdp - Ramer-Douglas-Peucker point reduction.
+%   write2file - Write path to file.
 %   See superclass for more methods.
 % 
 %   PolygonPath static methods:
@@ -177,17 +178,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                         [obj.x,obj.y,obj.head,obj.curv], tau, 'linear');
                     
                 elseif N > 0 % Just one sample point
-                    % Create a synthetic point for INTERP1
-                    xn = obj.x + cos(obj.head);
-                    yn = obj.y + sin(obj.head);
-                    Y = [...
-                        [obj.x, obj.y, obj.head, obj.curv]; 
-                        [xn, yn, obj.head, obj.curv];
-                        ];
+                    xyhc = repmat([obj.x obj.y obj.head obj.curv], numel(tau), 1);
                     
-                    xyhc = interp1([0 1], Y, tau, 'linear');
-                    
-                    % Set interpolation values outside domain to NaN
+                    % Set rows corresponding to interpolation values
+                    % outside domain to NaN
                     xyhc(tau ~= 0,:) = NaN;
                     
                 else % Empty path
@@ -372,13 +366,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %
         %   See also INTERP1.
             
-            narginchk(2, 5)
+            narginchk(2, 4) % object, query points, method, extrapolation
             
             % INTERP1 requires at least two samples
             N = obj.numel();
             assert(N > 1)
             
-            xyhc = interp1(0:N-1, [obj.x,obj.y,obj.head,obj.curv], tau(:), ...
+            xyhc = interp1(0:N-1, [obj.x obj.y obj.head obj.curv], tau(:), ...
                 varargin{:});
             obj = PolygonPath(xyhc(:,1), xyhc(:,2), xyhc(:,3), xyhc(:,4));
             
