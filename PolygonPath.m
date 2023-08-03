@@ -3,7 +3,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %   Path representation using polygonal chain assuming linear
 %   interpolation. The path parameter is inherited from the number of
 %   waypoints N, i.e. [0,1,...,N-1]. Therefore, a path parameter of e.g.
-%   2.75 refers to to the path three quarters between the third and fourth
+%   2.75 refers to the path three quarters between the third and fourth
 %   waypoint.
 % 
 %   PolygonPath properties:
@@ -19,6 +19,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %   interp1 - Interpolate path.
 %   perpendicularDistance - Distance of path waypoints to line.
 %   rdp - Ramer-Douglas-Peucker point reduction.
+%   write2file - Write path to file.
 %   See superclass for more methods.
 % 
 %   PolygonPath static methods:
@@ -161,6 +162,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function [x,y,tau,head,curv] = eval(obj, tau)
+        %EVAL   Evaluate path at path parameter.
+        %   According to the definition of a polygonal chain, EVAL performs
+        %   linear interpolation between the waypoints (x,y). It also uses
+        %   linear interpoation for the heading as well as curvature. 
+        %
+        %   See also POLYGONPATH/INTERP1.
             
             if nargin < 2
                 x = obj.x;
@@ -168,37 +175,46 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 head = obj.head;
                 curv = obj.curv;
                 tau = (0:numel(x)-1)';
-            else
+                return
+            end
+            
+            N = obj.numel();
+            tau = tau(:);
+            if N > 1 % At least 2 sample points
+                % Initialize return value
+                xyhc = coder.nullcopy(zeros(numel(tau), 4));
                 
-                tau = tau(:);
-                N = obj.numel();
-                if N > 1 % At least 2 sample points as required by INTERP1
-                    xyhc = interp1(0:N-1, ...
-                        [obj.x,obj.y,obj.head,obj.curv], tau, 'linear');
-                    
-                elseif N > 0 % Just one sample point
-                    % Create a synthetic point for INTERP1
-                    xn = obj.x + cos(obj.head);
-                    yn = obj.y + sin(obj.head);
-                    Y = [...
-                        [obj.x, obj.y, obj.head, obj.curv]; 
-                        [xn, yn, obj.head, obj.curv];
-                        ];
-                    
-                    xyhc = interp1([0 1], Y, tau, 'linear');
-                    
-                    % Set interpolation values outside domain to NaN
-                    xyhc(tau ~= 0,:) = NaN;
-                    
-                else % Empty path
-                    xyhc = NaN(numel(tau), 4);
-                end
-                x = xyhc(:,1);
-                y = xyhc(:,2);
-                head = xyhc(:,3);
-                curv = xyhc(:,4);
-                    
+                isValidTau = ~((tau < 0) | (tau > N-1));
+                tauValid = reshape(tau(isValidTau), [], 1);
+                idxValid = floor(tauValid) + 1;
+                idxValidSat = min(idxValid, N-1);
+                
+                % Linear interpolation
+                lin = [obj.x obj.y obj.head obj.curv];
+                xyhc(isValidTau,:) = lin(idxValid,:) + ...
+                    bsxfun(@times, tauValid - floor(tauValid), ...
+                    lin(idxValidSat+1,:) - lin(idxValidSat,:));
+                
+%                 % "Zero-order hold" for curvature
+%                 xyhc(isValidTau,4) = obj.curv(idxValid);
+                
+                % Set rows corresponding to interpolation values outside
+                % domain to NaN
+                xyhc(~isValidTau,:) = NaN;
+                
+            elseif N > 0 % Just one sample point
+                xyhc = repmat([obj.x(1) obj.y(1) obj.head(1) obj.curv(1)], ...
+                    numel(tau), 1);
+                xyhc(tau ~= 0,:) = NaN;
+                
+            else % Empty path
+                xyhc = NaN(numel(tau), 4);
             end%if
+            
+            x = xyhc(:,1);
+            y = xyhc(:,2);
+            head = xyhc(:,3);
+            curv = xyhc(:,4);
             
         end%fcn
         
@@ -315,66 +331,36 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function [xy,Q,idx,tau] = frenet2cart(obj, sd, doPlot)
-        %
-        %   See also PATH2D/FRENET2CART.
-        
-        % 
-        %   EXAMPLES:
-        %   >> s = [-1;sqrt(8);sqrt(8)+sqrt(10);10;sqrt(8)+sqrt(10)+sqrt(41);13];
-        %   >> d = ones(size(s));
-        %   >> xy = frenet2cart(PolygonPath.xy2Path([0 2 5 10], [0 2 3 -1]), [s,d; s,-d], true)
-        %   xy = 
-        %  -1.4142         0
-        %   1.2929    2.7071
-        %   4.6838    3.9487
-        %   8.7554    1.2763
-        %  10.6247   -0.2191
-        %  11.0980   -0.5978
-        %        0   -1.4142
-        %   2.7071    1.2929
-        %   5.3162    2.0513
-        %   7.5060   -0.2855
-        %   9.3753   -1.7809
-        %   9.8486   -2.1595
-        % 
         
             Pxy = [obj.x, obj.y]; % Initial/terminal points per path segment
-            u = diff(Pxy, 1, 1); % Orientation vectors/TODO: make use of heading?
-            assert(size(u, 1) > 0, 'Path must have at least two points!');
-            
-            % Normalize orientation vectors to length 1
-            u = bsxfun(@rdivide, u, hypot(u(:,1), u(:,2)));
+            assert(size(Pxy,1) > 1, 'Path must have at least two points!');
             
             % Get the indexes referring to the path segments according to
-            % the frenet coordinates s-values
+            % the frenet coordinates s-value
             sEval = sd(:,1);
             if obj.IsCircuit
                 sEval = mod(sEval, obj.length());
             end
-            S = obj.s(2:end);
-            idx = coder.nullcopy(zeros(size(sEval), 'uint32'));
-            for i = 1:numel(sEval)
-                idxs = find(sEval(i) < S, 1, 'first');
-                if isempty(idxs)
-                    idx(i) = numel(S);
-                else
-                    idx(i) = idxs(1);
-                end
-            end%for
-%             [isLess,idx] = max(bsxfun(@lt, sEval, S'), [], 2);
-%             idx(~isLess) = numel(S);
-%             idx = uint32(idx);
+            S = obj.s;
+            N = numel(S) - 1;
+            [~,idx] = histc(sEval, [S;inf]); %#ok<HISTC>
+            idx = uint32(idx);
+            idx(idx < 1) = 1;
+            idx(idx > N) = N;
+            
+            % Normalized orientation vectors (TODO: make use of heading?)
+            u = Pxy(idx + 1,:) - Pxy(idx,:);
+            u = bsxfun(@rdivide, u, hypot(u(:,1), u(:,2)));
             
             % The points on the path (i.e. d=0) are given by the segments
             % initial point plus the remaining length along the current
             % segment
-            S = obj.s;
             ds = sEval - S(idx);
-            Q = Pxy(idx,:) + bsxfun(@times, ds, u(idx,:));
+            Q = Pxy(idx,:) + bsxfun(@times, ds, u);
             tau = double(idx - 1) + ds./(S(idx+1) - S(idx));
             
             % From Q, go D units along normal vector to U
-            xy = Q + bsxfun(@times, sd(:,2), [-u(idx,2), u(idx,1)]);
+            xy = Q + bsxfun(@times, sd(:,2), [-u(:,2), u(:,1)]);
             
             if nargin < 3
                 doPlot = false;
@@ -396,19 +382,20 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function obj = interp1(obj, tau, varargin)
         %INTERP     Interpolate path.
-        %   OBJ = INTERP1(OBJ,TAU) interpolate path at path parameter TAU.
+        %   OBJ = INTERP1(OBJ,TAU) interpolate path OBJ at path parameter
+        %   TAU.
         %
         %   OBJ = INTERP1(__,ARGS) specify interpolation settings via ARGS.
         %
         %   See also INTERP1.
             
-            narginchk(2, 5)
+            narginchk(2, 4) % object, query points, method, extrapolation
             
             % INTERP1 requires at least two samples
             N = obj.numel();
             assert(N > 1)
             
-            xyhc = interp1(0:N-1, [obj.x,obj.y,obj.head,obj.curv], tau(:), ...
+            xyhc = interp1(0:N-1, [obj.x obj.y obj.head obj.curv], tau(:), ...
                 varargin{:});
             obj = PolygonPath(xyhc(:,1), xyhc(:,2), xyhc(:,3), xyhc(:,4));
             
@@ -964,10 +951,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function obj = xy2Path(x, y)
-            gx = gradient(x(:));
-            gy = gradient(y(:));
+            [~,g1XY] = gradient([x(:) y(:)]);
+            [~,g2XY] = gradient(g1XY);
+            gx = g1XY(:,1);
+            gy = g1XY(:,2);
+            
             h = cx2Heading(gx, gy);
-            c = cx2Curvature(gx, gy, gradient(gx), gradient(gy));
+            c = cx2Curvature(gx, gy, g2XY(:,1), g2XY(:,2));
             obj = PolygonPath(x, y, h, c);
         end%fcn
         
