@@ -162,6 +162,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function [x,y,tau,head,curv] = eval(obj, tau)
+        %EVAL   Evaluate path at path parameter.
+        %   According to the definition of a polygonal chain, EVAL performs
+        %   linear interpolation between the waypoints (x,y). It also uses
+        %   linear interpoation for the heading as well as curvature. 
+        %
+        %   See also POLYGONPATH/INTERP1.
             
             if nargin < 2
                 x = obj.x;
@@ -169,30 +175,46 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 head = obj.head;
                 curv = obj.curv;
                 tau = (0:numel(x)-1)';
-            else
+                return
+            end
+            
+            N = obj.numel();
+            tau = tau(:);
+            if N > 1 % At least 2 sample points
+                % Initialize return value
+                xyhc = coder.nullcopy(zeros(numel(tau), 4));
                 
-                tau = tau(:);
-                N = obj.numel();
-                if N > 1 % At least 2 sample points as required by INTERP1
-                    xyhc = interp1(0:N-1, ...
-                        [obj.x,obj.y,obj.head,obj.curv], tau, 'linear');
-                    
-                elseif N > 0 % Just one sample point
-                    xyhc = repmat([obj.x obj.y obj.head obj.curv], numel(tau), 1);
-                    
-                    % Set rows corresponding to interpolation values
-                    % outside domain to NaN
-                    xyhc(tau ~= 0,:) = NaN;
-                    
-                else % Empty path
-                    xyhc = NaN(numel(tau), 4);
-                end
-                x = xyhc(:,1);
-                y = xyhc(:,2);
-                head = xyhc(:,3);
-                curv = xyhc(:,4);
-                    
+                isValidTau = ~((tau < 0) | (tau > N-1));
+                tauValid = reshape(tau(isValidTau), [], 1);
+                idxValid = floor(tauValid) + 1;
+                idxValidSat = min(idxValid, N-1);
+                
+                % Linear interpolation
+                lin = [obj.x obj.y obj.head obj.curv];
+                xyhc(isValidTau,:) = lin(idxValid,:) + ...
+                    bsxfun(@times, tauValid - floor(tauValid), ...
+                    lin(idxValidSat+1,:) - lin(idxValidSat,:));
+                
+%                 % "Zero-order hold" for curvature
+%                 xyhc(isValidTau,4) = obj.curv(idxValid);
+                
+                % Set rows corresponding to interpolation values outside
+                % domain to NaN
+                xyhc(~isValidTau,:) = NaN;
+                
+            elseif N > 0 % Just one sample point
+                xyhc = repmat([obj.x(1) obj.y(1) obj.head(1) obj.curv(1)], ...
+                    numel(tau), 1);
+                xyhc(tau ~= 0,:) = NaN;
+                
+            else % Empty path
+                xyhc = NaN(numel(tau), 4);
             end%if
+            
+            x = xyhc(:,1);
+            y = xyhc(:,2);
+            head = xyhc(:,3);
+            curv = xyhc(:,4);
             
         end%fcn
         
@@ -360,7 +382,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function obj = interp1(obj, tau, varargin)
         %INTERP     Interpolate path.
-        %   OBJ = INTERP1(OBJ,TAU) interpolate path at path parameter TAU.
+        %   OBJ = INTERP1(OBJ,TAU) interpolate path OBJ at path parameter
+        %   TAU.
         %
         %   OBJ = INTERP1(__,ARGS) specify interpolation settings via ARGS.
         %
