@@ -8,7 +8,7 @@ classdef SelectTest < matlab.unittest.TestCase
 			obj1 = obj0.select(numel(obj0):-1:1);
 			
 			% Path length can not decrease
-			verifyTrue(testCase, ~any(diff(obj1.getPathLengths()) < 0));
+			verifyTrue(testCase, ~any(diff(obj1.cumlengths()) < 0));
 			
 			verifyEqual(testCase, max(abs(obj1.head-flip(obj0.head))), 0);
             

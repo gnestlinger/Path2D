@@ -16,7 +16,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %   PolygonPath - Constructor.
 %   fitCircle - Fit circle to path.
 %   fitStraight - Fit straight line to path.
-%   interp1 - Interpolate path.
+%   interp - Interpolate path.
 %   perpendicularDistance - Distance of path waypoints to line.
 %   rdp - Ramer-Douglas-Peucker point reduction.
 %   write2file - Write path to file.
@@ -235,10 +235,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %    
         %   See also POLYGONPATH/FITSTRAIGHT.
             
-            if nargin < 3
-                doPlot = false;
-            end%if
-            
             % Extract x/y data
             xsub = obj.x;
             ysub = obj.y;
@@ -261,7 +257,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 phi + pi/2);
             
             % Plot if requested
-            if doPlot
+            if (nargin > 2) && doPlot
                 plot(obj, 'b-', 'MarkerSize',10, 'DisplayName','PolygonPath');
                 hold on
                 plot(objc, 'Color','k', 'DisplayName','Circle');
@@ -289,11 +285,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %      i
         %    
         %   See also POLYGONPATH/FITCIRCLE.
-                    
-            if nargin < 2
-                doPlot = false;
-            end%if
-            
+        
             % Extract x/y data
             objX = obj.x;
             objY = obj.y;
@@ -320,7 +312,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             e = 1/N*sum((objY - ys).^2);
             
             % Plot if requested
-            if doPlot
+            if (nargin > 1) && doPlot
                 plot(obj, 'r', 'Marker','.', 'DisplayName','PolygonPath');
                 hold on
                 plot(objs, 'b', 'Marker','.', 'DisplayName','Straight');
@@ -337,16 +329,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
             % Get the indexes referring to the path segments according to
             % the frenet coordinates s-value
-            sEval = sd(:,1);
-            if obj.IsCircuit
-                sEval = mod(sEval, obj.length());
-            end
-            S = obj.s;
-            N = numel(S) - 1;
-            [~,idx] = histc(sEval, [S;inf]); %#ok<HISTC>
-            idx = uint32(idx);
-            idx(idx < 1) = 1;
-            idx(idx > N) = N;
+            [tau,idx,ds] = obj.s2tau(sd(:,1));
             
             % Normalized orientation vectors (TODO: make use of heading?)
             u = Pxy(idx + 1,:) - Pxy(idx,:);
@@ -355,17 +338,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % The points on the path (i.e. d=0) are given by the segments
             % initial point plus the remaining length along the current
             % segment
-            ds = sEval - S(idx);
             Q = Pxy(idx,:) + bsxfun(@times, ds, u);
-            tau = double(idx - 1) + ds./(S(idx+1) - S(idx));
             
-            % From Q, go D units along normal vector to U
+            % From Q, go D units along normal vector of U
             xy = Q + bsxfun(@times, sd(:,2), [-u(:,2), u(:,1)]);
             
-            if nargin < 3
-                doPlot = false;
-            end
-            if doPlot
+            if (nargin > 2) && doPlot
                 plot(obj, 'Marker','.', 'MarkerSize',15, 'DisplayName','PolygonPath');
                 hold on
                 plot(xy(:,1), xy(:,2), 'o', 'DisplayName','xy');
@@ -376,16 +354,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function s = getPathLengths(obj)
-            s = obj.cumlengths();
-        end%fcn
-        
-        function obj = interp1(obj, tau, varargin)
+        function obj = interp(obj, tau, varargin)
         %INTERP     Interpolate path.
-        %   OBJ = INTERP1(OBJ,TAU) interpolate path OBJ at path parameter
-        %   TAU.
+        %   OBJ = INTERP(OBJ,TAU) interpolate path OBJ w.r.t. path
+        %   parameter TAU.
         %
-        %   OBJ = INTERP1(__,ARGS) specify interpolation settings via ARGS.
+        %   OBJ = INTERP(__,ARGS) specify interpolation settings via ARGS.
         %
         %   See also INTERP1.
             
@@ -406,10 +380,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %   EXAMPLES:
         %   >> s = PolygonPath.xy2Path([0 0 -3 -2 -4 -3 1 1], [0 1 2 3 4 5 4 0]);
         %   >> intersectCircle(s, [-1 3], 2, true)
-            
-            if nargin < 4
-                doPlot = false;
-            end
             
             % Brute force approach: check every path segment
             idxs = (1:obj.numel()-1)';
@@ -460,7 +430,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             assert(size(xy, 1) <= (obj.numel()-1)*2)
             assert(size(xy, 1) == size(tau, 1))
                 
-            if doPlot
+            if (nargin > 3) && doPlot
                 [~,ax] = plot(obj, 'Marker','.');
                 hold on
                 phi = 0:pi/100:2*pi;
@@ -472,10 +442,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function [xy,tau,errFlag] = intersectLine(obj, O, psi, doPlot)
-            
-            if nargin < 4
-                doPlot = false;
-            end
             
             % Shift by line origin O and rotate so that the line is
             % horizontal
@@ -518,7 +484,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 errFlag = false;
             end%if
             
-            if doPlot
+            if (nargin > 3) && doPlot
                 [~,ax] = plot(obj, 'Marker','.','MarkerSize',8);
                 hold on
                 
@@ -579,10 +545,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             assert(~isequal(P0(:), P1(:)), ...
                 'POLYGONPATH:perpendicularDistance', 'Points are equal!');
             
-            if nargin < 4
-                doPlot = false;
-            end%if
-            
             
             % Calculate the perpendicular distance for all waypoints of
             % OBJ. See:
@@ -595,7 +557,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
             
             %%% Visualization
-            if doPlot
+            if (nargin > 3) && doPlot
                 % plot the path
                 plot(obj, 'b.', 'MarkerSize',10);
                 hold all
@@ -631,10 +593,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function [Q,idx,tau,dphi] = pointProjection(obj, poi, ~, doPlot)
             
-            if nargin < 4
-                doPlot = false;
-            end
-            
             % Initial/terminal points per segment
             X = obj.x;
             Y = obj.y;
@@ -659,7 +617,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             tau = idx - 1 + tau;
             dphi = zeros(numel(idx), 1);
             
-            if doPlot
+            if (nargin > 3) && doPlot
                 plot(obj, 'Marker','.', 'MarkerSize',8, 'DisplayName','RefPath');
                 hold on
                 plot(obj.x(1), obj.y(1), 'g.', 'MarkerSize',18, 'DisplayName','Initial point');
@@ -799,6 +757,30 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 obj(i).x = obj(i).x + P(1);
                 obj(i).y = obj(i).y + P(2);
             end%for
+            
+        end%fcn
+        
+        function [tau,idx,ds] = s2tau(obj, s)
+            
+            if obj.numel() < 2
+                % Paths with less than 2 waypoints have length 0
+                tau = nan(size(s));
+                idx = zeros(size(s), 'uint32');
+                return
+            end
+            
+            if obj.IsCircuit
+                s = mod(s, obj.length());
+            end
+            sObj = obj.s;
+            N = numel(sObj) - 1;
+            [~,idx] = histc(s, [sObj;inf]); %#ok<HISTC>
+            idx = uint32(idx);
+            idx(idx < 1) = 1;
+            idx(idx > N) = N;
+            
+            ds = s - reshape(sObj(idx), size(s));
+            tau = double(idx-1) + ds./reshape(sObj(idx+1) - sObj(idx), size(s));
             
         end%fcn
         
