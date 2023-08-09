@@ -762,22 +762,21 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function [tau,idx,ds] = s2tau(obj, s)
             
-            if obj.numel() < 2
+            sObj = obj.s;
+            N = numel(sObj);
+            if N < 2
                 % Paths with less than 2 waypoints have length 0
                 tau = nan(size(s));
                 idx = zeros(size(s), 'uint32');
+                ds = nan(size(s));
                 return
             end
             
             if obj.IsCircuit
                 s = mod(s, obj.length());
             end
-            sObj = obj.s;
-            N = numel(sObj) - 1;
             [~,idx] = histc(s, [sObj;inf]); %#ok<HISTC>
-            idx = uint32(idx);
-            idx(idx < 1) = 1;
-            idx(idx > N) = N;
+            idx = min(max(uint32(idx), 1), N-1);
             
             ds = s - reshape(sObj(idx), size(s));
             tau = double(idx-1) + ds./reshape(sObj(idx+1) - sObj(idx), size(s));

@@ -14,32 +14,41 @@ classdef S2TauTestPolygon < matlab.unittest.TestCase
     
     methods (Test)
         function testReturnSize(testCase, Path, s)
-            [tau,idx] = Path.s2tau(s);
+            [tau,idx,ds] = Path.s2tau(s);
             
 			testCase.verifySize(tau, size(s));
             testCase.verifySize(idx, size(s));
+            testCase.verifySize(ds, size(s));
 		end%fcn
         
         function testReturnValuesZeroLengthPath(testCase, s)
             % Empty path
             obj = PolygonPath();
-            [tau,idx] = obj.s2tau(s);
+            [tau,idx,ds] = obj.s2tau(s);
             testCase.verifyEqual(tau, nan(size(s)));
+            testCase.verifyEqual(idx, zeros(size(s), 'uint32'));
+            testCase.verifyEqual(ds, nan(size(s)));
             
             % One-element path
             obj = PolygonPath(1,2,3,4);
-            [tau,idx] = obj.s2tau(s);
+            [tau,idx,ds] = obj.s2tau(s);
             testCase.verifyEqual(tau, nan(size(s)));
+            testCase.verifyEqual(idx, zeros(size(s), 'uint32'));
+            testCase.verifyEqual(ds, nan(size(s)));
         end%fcn
         
         function testReturnValues(testCase)
             obj = PolygonPath.xy2Path([-3 1 8 34], [3 1 0 6]);
-            s = [-1 0.1 100 2]; %#ok<*PROP>
-            [tau,idx] = obj.s2tau(s);
+            s = [-1 -0.2 0 0.1 100 2 4 5 9 20]; %#ok<*PROP>
+            [tau,idx,ds] = obj.s2tau(s);
+            
             [tau0,tau1] = obj.domain();
-            tauSet = interp1(obj.cumlengths(), tau0:tau1, s, 'linear','extrap');
+            cl = obj.cumlengths()';
+            tauSet = interp1(cl, tau0:tau1, s, 'linear','extrap');
+            dsSet  = s - cl(idx);
             
             testCase.verifyEqual(tau, tauSet, 'AbsTol',1e-15)
+            testCase.verifyEqual(ds, dsSet)
         end%fcn
     end
     
