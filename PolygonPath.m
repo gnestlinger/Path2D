@@ -201,14 +201,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 % Set rows corresponding to interpolation values outside
                 % domain to NaN
                 xyhc(~isValidTau,:) = NaN;
+                tau(~isValidTau) = NaN;
                 
             elseif N > 0 % Just one sample point
                 xyhc = repmat([obj.x(1) obj.y(1) obj.head(1) obj.curv(1)], ...
                     numel(tau), 1);
                 xyhc(tau ~= 0,:) = NaN;
-                
+                tau(tau ~= 0) = NaN;
             else % Empty path
                 xyhc = NaN(numel(tau), 4);
+                tau(:) = NaN;
             end%if
             
             x = xyhc(:,1);

@@ -229,11 +229,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 ppD1 = ppdiff(pp);
                 xyD1 = ppval(ppD1, tau);
                 head = cx2Heading(xyD1(1,:), xyD1(2,:))';
+                % Evaluation of a piecewise constant with only one piece at
+                % NaN, ppval returns the constant. Therefore, set to NaN
+                % manually.
+                head(isnan(tau)) = NaN; 
                 
                 if nargout > 4
                     ppD2 = ppdiff(ppD1);
                     xyD2 = ppval(ppD2, tau);
                     curv = cx2Curvature(xyD1(1,:), xyD1(2,:), xyD2(1,:), xyD2(2,:))';
+                    curv(isnan(tau)) = NaN;
                 end
             end%if
             

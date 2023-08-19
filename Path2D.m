@@ -299,9 +299,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         obj = append(obj0, varargin)
         
         % CART2FRENET    Cartesian point to frenet with respect to path.
-        %   SD = CART2FRENET(OBJ,XY,PHIMAX) converts point of interest XY in
-        %   cartesian coordinates to frenet coordinates SD with respect to
-        %   the path OBJ. Point XY is a two-element vector.
+        %   SD = CART2FRENET(OBJ,XY,PHIMAX) converts point of interest XY
+        %   in cartesian coordinates to frenet coordinates SD with respect
+        %   to the path OBJ. Point XY is a two-element vector.
         %
         %   [SD,Q,IDX,TAU,DPHI] = CART2FRENET(___) returns results from
         %   point projection. 
@@ -323,15 +323,15 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         [tauL,tauU] = domain(obj);
         
         % EVAL  Evaluate path at path parameters.
-        %   [X,Y,TAU,HEAD,CURV] = EVAL(OBJ,TAU) evaluates analytical path
-        %   definition at path parameters TAU to return the corresponding
-        %   waypoints (X,Y), path parameter TAU, heading HEAD and curvature
-        %   CURV. All return values are of size numel(TAU)-by-1.
-        %
+        %   [X,Y,TAUO,HEAD,CURV] = EVAL(OBJ,TAU) evaluates the path at path
+        %   parameter TAU to return the corresponding waypoints (X,Y), path
+        %   parameter TAUO, heading HEAD and curvature CURV. All return
+        %   values
+        %    - are of size numel(TAU)-by-1,
+        %    - are NaN for values of TAU outside the path's domain.
+        %   
         %   [___] = EVAL(OBJ) evaluates path OBJ according to subclass
         %   specific implementation.
-        %
-        %   Note: Evaluation outside the path's domain will return NaN!
         [x,y,tau,head,curv] = eval(obj, tau)
         
         % FRENET2CART    Frenet point to cartesian with respect to path.
