@@ -2,8 +2,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %PATH2D     Represent 2D paths.
 %   This class is abstract and can not be instantiated!
 %   
-%   Represent paths in the planar x/y coordinate frame utilizing an
-%   analytical representation [x(tau); y(tau)]. It provides path operations
+%   Represent paths in the planar x/y coordinate frame utilizing a
+%   parametric representation [x(tau); y(tau)]. It provides path operations
 %   that can be especially usefull for automated driving and robotics
 %   applications.
 % 
@@ -323,16 +323,17 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         [tauL,tauU] = domain(obj);
         
         % EVAL  Evaluate path at path parameters.
-        %   [X,Y,TAUO,HEAD,CURV] = EVAL(OBJ,TAU) evaluates the path at path
-        %   parameter TAU to return the corresponding waypoints (X,Y), path
-        %   parameter TAUO, heading HEAD and curvature CURV. All return
+        %   [X,Y,TAUO,HEAD,CURV,CURVDS] = EVAL(OBJ,TAU) evaluates the path
+        %   at path parameter TAU to return the corresponding waypoints
+        %   (X,Y), path parameter TAUO, heading HEAD, curvature CURV and
+        %   derivative CURVDS of curvature w.r.t. path length. All return
         %   values
         %    - are of size numel(TAU)-by-1,
         %    - are NaN for values of TAU outside the path's domain.
         %   
         %   [___] = EVAL(OBJ) evaluates path OBJ according to subclass
         %   specific implementation.
-        [x,y,tau,head,curv] = eval(obj, tau)
+        [x,y,tau,head,curv,curvDs] = eval(obj, tau)
         
         % FRENET2CART    Frenet point to cartesian with respect to path.
         %   XY = FRENET2CART(OBJ,SD) converts points of interest SD in

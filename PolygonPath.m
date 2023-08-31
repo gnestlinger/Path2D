@@ -161,11 +161,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             end
         end%fcn
         
-        function [x,y,tau,head,curv] = eval(obj, tau)
+        function [x,y,tau,head,curv,curvDs] = eval(obj, tau)
         %EVAL   Evaluate path at path parameter.
         %   According to the definition of a polygonal chain, EVAL performs
         %   linear interpolation between the waypoints (x,y). It also uses
-        %   linear interpoation for the heading as well as curvature. 
+        %   linear interpoation for the heading as well as curvature. The
+        %   derivative of the curvature w.r.t. path length is estimated via
+        %   gradients.
         %
         %   See also POLYGONPATH/INTERP1.
             
@@ -174,6 +176,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 y = obj.y;
                 head = obj.head;
                 curv = obj.curv;
+                curvDs = estiamteCurvDs(curv, obj.s);
                 tau = (0:numel(x)-1)';
                 return
             end
@@ -182,7 +185,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             tau = tau(:);
             if N > 1 % At least 2 sample points
                 % Initialize return value
-                xyhc = coder.nullcopy(zeros(numel(tau), 4));
+                xyhc = coder.nullcopy(zeros(numel(tau), 5));
                 
                 isValidTau = ~((tau < 0) | (tau > N-1));
                 tauValid = reshape(tau(isValidTau), [], 1);
@@ -190,7 +193,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 idxValidSat = min(idxValid, N-1);
                 
                 % Linear interpolation
-                lin = [obj.x obj.y obj.head obj.curv];
+                lin = [obj.x obj.y obj.head obj.curv estiamteCurvDs(obj.curv, obj.s)];
                 xyhc(isValidTau,:) = lin(idxValid,:) + ...
                     bsxfun(@times, tauValid - floor(tauValid), ...
                     lin(idxValidSat+1,:) - lin(idxValidSat,:));
@@ -204,12 +207,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 tau(~isValidTau) = NaN;
                 
             elseif N > 0 % Just one sample point
-                xyhc = repmat([obj.x(1) obj.y(1) obj.head(1) obj.curv(1)], ...
+                xyhc = repmat([obj.x(1) obj.y(1) obj.head(1) obj.curv(1) 0], ...
                     numel(tau), 1);
                 xyhc(tau ~= 0,:) = NaN;
                 tau(tau ~= 0) = NaN;
             else % Empty path
-                xyhc = NaN(numel(tau), 4);
+                xyhc = NaN(numel(tau), 5);
                 tau(:) = NaN;
             end%if
             
@@ -217,6 +220,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             y = xyhc(:,2);
             head = xyhc(:,3);
             curv = xyhc(:,4);
+            curvDs = xyhc(:, 5);
             
         end%fcn
         
@@ -964,3 +968,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
     end%methods
     
 end%class
+
+
+function curvDs = estiamteCurvDs(curv, s)
+
+curvDs = gradient(curv)./gradient(s);
+
+end%fcn
