@@ -175,7 +175,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             end
         end%fcn
         
-        function [x,y,tau,head,curv] = eval(obj, tau, extrapolate)
+        function [x,y,tau,head,curv,curvDs] = eval(obj, tau, extrapolate)
             
             if nargin < 3
                 extrapolate = false;
@@ -210,6 +210,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 y = NaN(N, 1);
                 head = NaN(N, 1);
                 curv = NaN(N, 1);
+                curvDs = NaN(N, 1);
                 return
             end
             
@@ -227,8 +228,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             if nargout > 3
                 ppD1 = ppdiff(pp);
-                xyD1 = ppval(ppD1, tau);
-                head = cx2Heading(xyD1(1,:), xyD1(2,:))';
+                xyD1 = ppval(ppD1, tau)';
+                xD1 = xyD1(:,1);
+                yD1 = xyD1(:,2);
+                head = cx2Heading(xD1, yD1);
                 % Evaluation of a piecewise constant with only one piece at
                 % NaN, ppval returns the constant. Therefore, set to NaN
                 % manually.
@@ -236,9 +239,18 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 
                 if nargout > 4
                     ppD2 = ppdiff(ppD1);
-                    xyD2 = ppval(ppD2, tau);
-                    curv = cx2Curvature(xyD1(1,:), xyD1(2,:), xyD2(1,:), xyD2(2,:))';
+                    xyD2 = ppval(ppD2, tau)';
+                    [curv,hyp] = cx2Curvature(xD1, yD1, xyD2(:,1), xyD2(:,2));
                     curv(isnan(tau)) = NaN;
+                    
+                    if nargout > 5
+                        xyD3 = ppval(ppdiff(ppD2), tau)';
+                        hyp3  = hyp.*hyp.*hyp;
+                        curvDs = (xD1.*xyD3(:,2) - xyD3(:,1).*yD1)./(hyp3.*hyp) ...
+                            + 3*(xD1.*xyD2(:,1) + yD1.*xyD2(:,2)).*curv./hyp3;
+                        % Nan values are propagated from curvature result
+%                         curvDs(isnan(tau)) = NaN; 
+                    end
                 end
             end%if
             
