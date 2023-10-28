@@ -25,6 +25,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   cumlengths - Cumulative path segment lengths.
 %   domain - Domain of the path.
 %   eval - Evaluate path at path parameter.
+%   findZeroCurvature - Find path parameters where curvature vanishes.
 %   frenet2cart - Convert frenet point to cartesian coordinates.
 %   intersectCircle - Circle intersection.
 %   intersectLine - Line intersection.
@@ -330,10 +331,21 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   values
         %    - are of size numel(TAU)-by-1,
         %    - are NaN for values of TAU outside the path's domain.
+        %
+        %   [___] = EVAL(OBJ,TAU,EXTRAP) performs extrapolation for values
+        %   of TAU outside the path's domain if EXTRAP evaluates to true.
         %   
         %   [___] = EVAL(OBJ) evaluates path OBJ according to subclass
         %   specific implementation.
-        [x,y,tau,head,curv,curvDs] = eval(obj, tau)
+        [x,y,tau,head,curv,curvDs] = eval(obj, tau, extrap)
+        
+        % FINDZEROCURVATURE     Find zero curvatures.
+        %   TAU = FINDZEROCURVATURE(OBJ) returns all path parameters TAU
+        %   for which the path's curvature vanishes.
+        %
+        %   TAU = FINDZEROCURVATURE(OBJ,THS) returns all path parameters
+        %   TAU for which the path's curvature is within (-THS,THS).
+        tau = findZeroCurvature(obj, ths)
         
         % FRENET2CART    Frenet point to cartesian with respect to path.
         %   XY = FRENET2CART(OBJ,SD) converts points of interest SD in

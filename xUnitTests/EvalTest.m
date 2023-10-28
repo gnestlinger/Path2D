@@ -80,6 +80,107 @@ classdef EvalTest < matlab.unittest.TestCase
             testCase.verifyEqual(tauOut, tSet);
         end%fcn
         
+        function testExtrapolationPolygon(testCase, obj)
+            
+            if ~isa(obj, 'PolygonPath')
+                return
+            end
+            
+            % Evaluate inside and outside of the path's domain
+            [tau0,tau1] = obj.domain();
+            tauEval = [tau0-3 tau0-1 tau0:1:tau1 tau1+1 tau1+3];
+            isTauExtrap = (tauEval < tau0) | (tauEval > tau1);
+            N = numel(tauEval);
+            
+            [x,y,t,h,c,d] = obj.eval(tauEval, true);
+            if obj.isempty() % Nothing to extrapolate
+                xSet = NaN(N, 1);
+                ySet = NaN(N, 1);
+                tSet = NaN(N, 1);
+                hSet = NaN(N, 1);
+                cSet = NaN(N, 1);
+                dSet = NaN(N, 1);
+                
+            elseif (obj.length() < eps)
+                % A single point PolygonPath is not extrapolated
+                xSet = NaN(N, 1);
+                ySet = NaN(N, 1);
+                tSet = NaN(N, 1);
+                hSet = NaN(N, 1);
+                cSet = NaN(N, 1);
+                dSet = NaN(N, 1);
+                
+                xSet(~isTauExtrap) = obj.x;
+                ySet(~isTauExtrap) = obj.y;
+                tSet(~isTauExtrap) = tauEval(~isTauExtrap);
+                hSet(~isTauExtrap) = obj.head;
+                cSet(~isTauExtrap) = obj.curv;
+                dSet(~isTauExtrap) = 0; % Zero path length -> set dCurv/dS to 0
+                
+            else
+                xyhcdSet = interp1(0:obj.numel()-1, ...
+                    [obj.x obj.y obj.head obj.curv gradient(obj.curv)./gradient(obj.cumlengths())], ...
+                    tauEval, 'linear', 'extrap');
+                xSet = xyhcdSet(:,1);
+                ySet = xyhcdSet(:,2);
+                tSet = tauEval(:);
+                hSet = xyhcdSet(:,3);
+                cSet = xyhcdSet(:,4);
+                dSet = xyhcdSet(:,5);
+            end
+            
+            %%% Checks
+            testCase.verifyEqual(x, xSet);
+            testCase.verifyEqual(y, ySet);
+            testCase.verifyEqual(t, tSet);
+            testCase.verifyEqual(h, hSet);
+            testCase.verifyEqual(c, cSet);
+            testCase.verifyEqual(d, dSet);
+            
+        end%fcn
+        
+        function testExtrapolationSpline(testCase, obj)
+            
+            if ~isa(obj, 'SplinePath')
+                return
+            end
+            
+            % Evaluate inside and outside of the path's domain
+            [tau0,tau1] = obj.domain();
+            tauEval = [tau0-3 tau0-1 tau0:1:tau1 tau1+1 tau1+3];
+            N = numel(tauEval);
+            
+            [x,y,t,h,c,d] = obj.eval(tauEval, true);
+            if obj.isempty() % Nothing to extrapolate
+                xSet = NaN(N, 1);
+                ySet = NaN(N, 1);
+                tSet = NaN(N, 1);
+                hSet = NaN(N, 1);
+                cSet = NaN(N, 1);
+                dSet = NaN(N, 1);
+                
+            else
+                xySet = ppval(obj.mkpp(), tauEval)';
+                xSet = xySet(:,1);
+                ySet = xySet(:,2);
+                tSet = tauEval(:);
+                % Test path is a straight line, therefore we can get the
+                % heading from x/y values and curvature/curvDs are zero
+                hSet = atan2(gradient(ySet), gradient(xSet));
+                cSet = zeros(numel(tauEval), 1);
+                dSet = zeros(numel(tauEval), 1);
+            end
+            
+            %%% Checks
+            testCase.verifyEqual(x, xSet);
+            testCase.verifyEqual(y, ySet);
+            testCase.verifyEqual(t, tSet);
+            testCase.verifyEqual(h, hSet);
+            testCase.verifyEqual(c, cSet);
+            testCase.verifyEqual(d, dSet);
+            
+        end%fcn
+        
     end
     
 end%class

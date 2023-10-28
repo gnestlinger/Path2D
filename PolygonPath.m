@@ -161,7 +161,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             end
         end%fcn
         
-        function [x,y,tau,head,curv,curvDs] = eval(obj, tau)
+        function [x,y,tau,head,curv,curvDs] = eval(obj, tau, extrap)
         %EVAL   Evaluate path at path parameter.
         %   According to the definition of a polygonal chain, EVAL performs
         %   linear interpolation between the waypoints (x,y). It also uses
@@ -169,8 +169,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %   derivative of the curvature w.r.t. path length is estimated via
         %   gradients.
         %
-        %   See also POLYGONPATH/INTERP1.
+        %   See also POLYGONPATH/INTERP.
             
+            if nargin < 3
+                extrap = false;
+            end
             if nargin < 2
                 x = obj.x;
                 y = obj.y;
@@ -184,34 +187,30 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             N = obj.numel();
             tau = tau(:);
             if N > 1 % At least 2 sample points
-                % Initialize return value
-                xyhc = coder.nullcopy(zeros(numel(tau), 5));
-                
-                isValidTau = ~((tau < 0) | (tau > N-1));
-                tauValid = reshape(tau(isValidTau), [], 1);
-                idxValid = floor(tauValid) + 1;
-                idxValidSat = min(idxValid, N-1);
+                tauAct = (0:N-1)';
+                [~,binIdx] = histc(tau, [-inf; tauAct; inf]); %#ok<HISTC>
+                binIdxSat = max(min(binIdx-1, N-1), 1);
                 
                 % Linear interpolation
                 lin = [obj.x obj.y obj.head obj.curv estiamteCurvDs(obj.curv, obj.s)];
-                xyhc(isValidTau,:) = lin(idxValid,:) + ...
-                    bsxfun(@times, tauValid - floor(tauValid), ...
-                    lin(idxValidSat+1,:) - lin(idxValidSat,:));
+                xyhc = lin(binIdxSat,:) + bsxfun(@times, ...
+                    tau - tauAct(binIdxSat), ...
+                    lin(binIdxSat+1,:) - lin(binIdxSat,:));
                 
-%                 % "Zero-order hold" for curvature
-%                 xyhc(isValidTau,4) = obj.curv(idxValid);
+                if ~extrap
+                    % Set rows corresponding to interpolation values
+                    % outside domain to NaN
+                    isOutsideDomain = (tau < 0) | (tau > N-1);
+                    xyhc(isOutsideDomain,:) = NaN;
+                    tau(isOutsideDomain) = NaN;
+                end
                 
-                % Set rows corresponding to interpolation values outside
-                % domain to NaN
-                xyhc(~isValidTau,:) = NaN;
-                tau(~isValidTau) = NaN;
-                
-            elseif N > 0 % Just one sample point
+            elseif N > 0 % Just one sample point (no extrapolation)
                 xyhc = repmat([obj.x(1) obj.y(1) obj.head(1) obj.curv(1) 0], ...
                     numel(tau), 1);
                 xyhc(tau ~= 0,:) = NaN;
                 tau(tau ~= 0) = NaN;
-            else % Empty path
+            else % Empty path (no extrapolation)
                 xyhc = NaN(numel(tau), 5);
                 tau(:) = NaN;
             end%if
@@ -221,6 +220,15 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             head = xyhc(:,3);
             curv = xyhc(:,4);
             curvDs = xyhc(:, 5);
+            
+        end%fcn
+        
+        function tau = findZeroCurvature(obj, ths)
+            
+            if nargin < 2
+                ths = eps;
+            end
+            tau = find(abs(obj.curv) < ths) - 1;
             
         end%fcn
         
@@ -254,13 +262,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             end%switch
             
             % Create POLYGONPATH object
-            phi = linspace(0, 2*pi, N);
-            objc = PolygonPath(...
-                R*cos(phi) + xc, ...
-                R*sin(phi) + yc, ...
-                2*R*phi, ...
-                1/R*ones(N,1), ...
-                phi + pi/2);
+            objc = PolygonPath.circle(R, [0 2*pi], N);
+            objc.x = objc.x + xc;
+            objc.y = objc.y + yc;
             
             % Plot if requested
             if (nargin > 2) && doPlot
@@ -850,8 +854,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             if nargin < 2
                 phi01 = [0; 2*pi];
             end
-            t = linspace(phi01(1), phi01(2), N);
+            t = linspace(phi01(1), phi01(2), N)';
             obj = PolygonPath(r*cos(t), r*sin(t), t+pi/2, repmat(1/r,N,1));
+            
+            % Set exact path length
+            obj.s = (t - t(1))*r; % r*phi where phi=0,...,2*pi
         end%fcn
         
         function obj = clothoid(A, curv01, N, MODE)
@@ -972,6 +979,22 @@ end%class
 
 function curvDs = estiamteCurvDs(curv, s)
 
-curvDs = gradient(curv)./gradient(s);
+curvDs = gradient1D(curv)./gradient1D(s);
+
+end%fcn
+
+function g = gradient1D(f)
+
+n = numel(f);
+g = coder.nullcopy(zeros(size(f), 'like',f));
+
+if n > 1
+    % Take forward differences on left and right edges
+    g(1) = f(2) - f(1);
+    g(end) = f(end) - f(end-1);
+    
+    % Take centered differences on interior points
+    g(2:end-1) = 0.5*(f(3:end) - f(1:end-2));
+end
 
 end%fcn
