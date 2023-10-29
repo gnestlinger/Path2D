@@ -9,7 +9,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 %   SPLINEPATH methods:
 %   SplinePath - Constructor.
 %   derivative - Derivative of path.
-%   findZeroCurvature - Find path parameter w.r.t. zero path curvature.
 %   mkpp - Create piecewise polynomial structure.
 %   See superclasses.
 % 
@@ -256,7 +255,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
         end%fcn
         
-        function tau = findZeroCurvature(obj)
+        function tau = findZeroCurvature(obj, ~)
         %FINDZEROCURVATURE  Find path parameter w.r.t to zero curvature.
         %   TAU = FINDZEROCURVATURE(OBJ) returns the path parameters TAU
         %   for which the path's curvature evaluates to zero (apart from
