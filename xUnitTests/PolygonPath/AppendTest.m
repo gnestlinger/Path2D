@@ -6,7 +6,7 @@ classdef AppendTest < matlab.unittest.TestCase
             obj = PolygonPath.xy2Path(x, x);
             objA = obj.append(obj);
             
-            testCase.verifyTrue(~any(diff(objA.cumlengths() < 0)))
+            testCase.verifyTrue(~any(diff(objA.cumlengths()) < 0))
         end%fcn
         
     end

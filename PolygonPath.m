@@ -855,10 +855,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 phi01 = [0; 2*pi];
             end
             t = linspace(phi01(1), phi01(2), N)';
-            obj = PolygonPath(r*cos(t), r*sin(t), t+pi/2, repmat(1/r,N,1));
+            signPhi = sign(phi01(2) - phi01(1));
+            obj = PolygonPath(r*cos(t), r*sin(t), t+signPhi*pi/2, signPhi*repmat(1/r,N,1));
             
             % Set exact path length
-            obj.s = (t - t(1))*r; % r*phi where phi=0,...,2*pi
+            obj.s = abs(t - t(1))*r; % r*phi where phi=0,...,2*pi
         end%fcn
         
         function obj = clothoid(A, curv01, N, MODE)
@@ -886,7 +887,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             signk = sign(curv1 - curv0);
             
             % Pre-calculation of path length
-            s = signk * A^2 * linspace(curv0, curv1, N);
+            s = signk*A^2*linspace(curv0, curv1, N)';
             
             switch lower(MODE)
                 case {0, 'quad'}
@@ -900,6 +901,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             head = s.^2/(2*A^2);
             curv = s/A^2;
             obj = PolygonPath(x, y, head, curv);
+            obj.s = s;
             
         end%fcn
         

@@ -5,19 +5,18 @@ function [x,y] = clothoidQuad(s, A)
 % 
 
 % Check input arguments
-s = s(:);
 if any(diff(s) == 0)
     error('Input argument S must not contain repeated elements!');
-elseif abs(sum(sign(diff(s)))) ~= length(s)-1
+elseif abs(sum(sign(diff(s(:))))) ~= length(s)-1
     error('Input argument S must be strictly monotonically decreasing/increasing!');
 end%if
 assert(A > 0, 'Clothoid parameter A has to be positive!');
 
 
 % Pre-allocation
-N = length(s);
-x(1,N) = 0;
-y(1,N) = 0;
+N = numel(s);
+x = coder.nullcopy(zeros(size(s)));
+y = coder.nullcopy(zeros(size(s)));
 % xy(2,N) = 0;
 
 % Clothoid integrands
