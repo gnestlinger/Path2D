@@ -321,7 +321,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   [TAUL,TAUU] = DOMAIN(OBJ) returns the lower and upper domain
         %   value TAUL and TAUU respectively. For empty paths NaNs are
         %   returned.
-        [tauL,tauU] = domain(obj);
+        [tauL,tauU] = domain(obj)
         
         % EVAL  Evaluate path at path parameters.
         %   [X,Y,TAUO,HEAD,CURV,CURVDS] = EVAL(OBJ,TAU) evaluates the path

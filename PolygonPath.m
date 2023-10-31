@@ -277,55 +277,45 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function [objs,e,k,d] = fitStraight(obj, doPlot)
+        function [objs,e] = fitStraight(obj, doPlot)
         %FITSTRAIGHT    Fit a straight line to PolygonPath.
-        %   [OBJS,E,K,D] = FITSTRAIGHT(OBJ) fits a straight line OBJS
-        %   with slope K and offset D to a set of given waypoints (OBJ.X,
-        %   OBJ.Y) minimizing the error E.
+        %   [OBJS,E] = FITSTRAIGHT(OBJ) fits a straight line OBJS to the
+        %   path OBJ minimizing the error E.
         %   
         %   [___] = FITSTRAIGHT(OBJ,DOPLOT) allows to enable the plot for
         %   checking the fitting result visually.
         %   
-        %   Parameters C and D model the fitted line according to
-        %     y_fit = C*OBJ.X + D
-        %    
         %   Minimization is performed in the least-squares sense minimizing
         %   the sum of squared errors:
-        %     SUM[(Y(i)-C*X(i) - D)^2]
-        %      i
+        %     SUM[(OBJ.Y - YFIT)^2]
         %    
         %   See also POLYGONPATH/FITCIRCLE.
         
             % Extract x/y data
             objX = obj.x;
             objY = obj.y;
-            N = obj.numel();
+            N = numel(objX);
             
-            % Create (overdetermined) system of equations
-            A = [objX, ones(N, 1)];
-            b = obj.y;
+            % Create (overdetermined) system of equations for the unknowns
+            % y0 and y1, where 
+            %   y(tau) = y0 + tau/(N-1)*(y1 - y0)
+            tmp = linspace(0, N-1, N)'/(N-1);
+            A = [1 - tmp, tmp];
             
-            % Solve system of equations: A*[c;d] = b, where y = c*x+d
-            cd = (A'*A)\A'*b;
-            k = cd(1);
-            d = cd(2);
+            % Solve system of equations: A*x = b, where x = [y(0); y(N-1)]
+            y01 = pinv(A)*objY;
+            objs = PolygonPath.straight([objX(1); y01(1)], [objX(end); y01(2)]);
             
-            % The fitted y coordinates
-            ys = objX*k + d; 
+            if nargout > 1
+                % Calculate error
+                ys = interp1([0 N-1], y01, 0:N-1)';
+                e = 1/N*sum((objY - ys).^2);
+            end
             
-            % Create POLYGONPATH object
-            objs = PolygonPath(objX([1 end]), ys([1 end]), ...
-                ones(2,1) * atan2(ys(2)-ys(1), objX(2)-objX(1)), ...
-                zeros(2,1));
-            
-            % Calculate error
-            e = 1/N*sum((objY - ys).^2);
-            
-            % Plot if requested
-            if (nargin > 1) && doPlot
+            if (nargin > 1) && doPlot % Plot if requested
                 plot(obj, 'r', 'Marker','.', 'DisplayName','PolygonPath');
                 hold on
-                plot(objs, 'b', 'Marker','.', 'DisplayName','Straight');
+                plot(objs, 'b', 'Marker','o', 'DisplayName','Straight');
                 hold off
                 legend('-DynamicLegend')
             end%if
@@ -379,9 +369,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             N = obj.numel();
             assert(N > 1)
             
-            xyhc = interp1(0:N-1, [obj.x obj.y obj.head obj.curv], tau(:), ...
-                varargin{:});
-            obj = PolygonPath(xyhc(:,1), xyhc(:,2), xyhc(:,3), xyhc(:,4));
+            % Require tau to be strictly increasing so that path length is
+            % strictly increasing
+            assert(all(diff(tau) > 0))
+            
+            xyhcs = interp1(0:N-1, [obj.x obj.y obj.head obj.curv obj.s], ...
+                tau(:), varargin{:});
+            obj = PolygonPath(xyhcs(:,1), xyhcs(:,2), xyhcs(:,3), xyhcs(:,4));
+            obj.s = xyhcs(:,5);
             
         end%fcn
         
@@ -556,8 +551,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 'POLYGONPATH:perpendicularDistance', 'Points are equal!');
             
             
-            % Calculate the perpendicular distance for all waypoints of
-            % OBJ. See:
+            % Calculate the perpendicular distance for all waypoints. See:
             % https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Line_defined_by_two_points
             % Scale by -1 so that points to the left/right of the line from
             % P0 to P1 have a positive/negative distance value.
