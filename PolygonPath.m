@@ -299,17 +299,19 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % Create (overdetermined) system of equations for the unknowns
             % y0 and y1, where 
             %   y(tau) = y0 + tau/(N-1)*(y1 - y0)
-            tmp = linspace(0, N-1, N)'/(N-1);
+            s = obj.cumlengths();
+%             tmp = linspace(0, 1, N)';
+            tmp = s/s(end);
             A = [1 - tmp, tmp];
             
             % Solve system of equations: A*x = b, where x = [y(0); y(N-1)]
-            y01 = pinv(A)*objY;
-            objs = PolygonPath.straight([objX(1); y01(1)], [objX(end); y01(2)]);
+            xy01 = pinv(A)*[objX objY];
+            objs = PolygonPath.straight(xy01(1,:), xy01(2,:));
             
             if nargout > 1
                 % Calculate error
-                ys = interp1([0 N-1], y01, 0:N-1)';
-                e = 1/N*sum((objY - ys).^2);
+                [xS,yS] = objs.eval(tmp);
+                e = 1/N*sum(([objX-xS objY-yS]).^2, 1)';
             end
             
             if (nargin > 1) && doPlot % Plot if requested

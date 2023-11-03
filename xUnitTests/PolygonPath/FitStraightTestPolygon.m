@@ -35,8 +35,9 @@ classdef FitStraightTestPolygon < matlab.unittest.TestCase
         
         function testNoisyPath(testCase, obj)
             N = obj.numel();
+            dx = randn(N, 1);
             dy = randn(N, 1);
-            objNoisy = PolygonPath(obj.x, obj.y + dy, obj.head, obj.curv);
+            objNoisy = PolygonPath(obj.x + dx, obj.y + dy, obj.head, obj.curv);
             
             [objStraight,e] = objNoisy.fitStraight();
             
@@ -44,12 +45,12 @@ classdef FitStraightTestPolygon < matlab.unittest.TestCase
             
             % Error must be non-negative and "small"
             testCase.verifyGreaterThanOrEqual(e, 0);
-            testCase.verifyLessThanOrEqual(e, 1);
+            testCase.verifyLessThanOrEqual(e, 1.2);
 %             plot([obj objNoisy objStraight])
         end%fcn
         
         function testInfSlope(testCase)
-            obj0 = PolygonPath.xy2Path(repmat(10, 11, 1), 0:10);
+            obj0 = PolygonPath.xy2Path(repmat(10, [11 1]), [0:9 11]);
             [P0set,P1set] = obj0.termPoints();
             
             [objStraight,e] = obj0.fitStraight();
