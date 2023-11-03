@@ -709,10 +709,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
     
     methods (Static)
         
-        function obj = ll2Path(lat, lon) %#ok<STOUT,INUSD>
-            error('Not implemented!')
-        end%fcn
-        
         function obj = pp2Path(pp)
             [breaks,coefs,nbrSeg,polyOrd,dim] = unmkpp(pp);
             assert(dim == 2, 'Spline must be 2D valued!')
@@ -733,10 +729,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 [0 hypot(x1-x0, y1-y0)], ...
                 false);
             
-        end%fcn
-        
-        function obj = xy2Path(x, y) %#ok<STOUT,INUSD>
-            error('Not implemented!')
         end%fcn
         
         function obj = fromStruct(s)
