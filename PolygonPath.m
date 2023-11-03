@@ -23,6 +23,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %   See superclass for more methods.
 % 
 %   PolygonPath static methods:
+%   circle - Circle path.
+%   clothoid - Clothoid path.
+%   omegaTurn - Omega shaped turn path.
 %   See superclasses.
 % 
 %   See also PATH2D.
@@ -901,18 +904,61 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function obj = straight(P0, P1)
-        % STRAIGHT  Create straight path.
-        %   OBJ = POLYGONPATH.STRAIGHT(P0,P1) creates a straight path from
-        %   point P0 to P1.
+        function obj = omegaTurn(r, w, N, phi0)
+        %OMEGATURN  Create omega turn.
+        %   OBJ = OMEGATURN(R,W,N) creates an omega-shaped turn with radius
+        %   R and width W using N sample points.
             
+            signW = sign(w);
+            w = abs(w);
+            assert(w ~= 0);
+            assert(2*r > w, 'Width must be less than diameter!')
+            if nargin < 4
+                phi0 = 0;
+            end
+            
+            % The height and angle of the isosceles triangle
+            h = 0.5*sqrt(12*r^2 - 4*r*w - w^2);
+            a = asin(h/(2*r));
+            
+            % Distribute the number of samples according to the 
+            s13 = r*a;
+            s2 = r*(pi + 2*a); % From pi+a to -a
+            sTotal = 2*s13 + s2;
+            N13 = max(round(N/sTotal*s13), 1);
+            N2 = N - 2*N13;
+            
+            % Create individual circles
+            c1 = PolygonPath.circle(r, signW*[pi/2 pi/2-a] + phi0, N13+1);
+            c2 = PolygonPath.circle(r, signW*[-a-pi/2 pi/2+a] + phi0, N2);
+            c3 = PolygonPath.circle(r, signW*[a-pi/2 -pi/2] + phi0, N13+1);
+            c3.head = c3.head - 2*pi;
+            
+            % Shift before appending
+            c1 = c1.shift(-c1.termPoints() - [0; 0]);
+            [~,dxy] = c1.termPoints();
+            c2 = c2.shift(-c2.termPoints() + dxy);
+            [~,dxy] = c2.termPoints();
+            c3 = c3.shift(-c3.termPoints() + dxy);
+            
+            % Append individual paths to create omega-shape; avoid
+            % overlapping samples
+            obj = c1.append(c2.select(2:N2)).append(c3.select(2:N13+1));
+            
+            % Set exact path length
+            s1 = c1.s;
+            s2 = c2.s(2:N2) + s1(end);
+            obj.s = [s1; s2; c3.s(2:N13+1) + s2(end)];
+            
+        end%fcn
+        
+        function obj = straight(P0, P1)
             x0 = P0(1);
             y0 = P0(2);
             x1 = P1(1);
             y1 = P1(2);
             h = atan2(y1-y0, x1-x0);
             obj = PolygonPath([x0 x1], [y0 y1], [h h], [0 0], false);
-            
         end%fcn
         
         function obj = ll2Path(lat, lon)

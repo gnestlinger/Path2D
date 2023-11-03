@@ -454,29 +454,37 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
     end%methods
     
     
-    methods (Abstract, Static)
+    methods (Static)
         
+        function obj = ll2Path(lat, lon) %#ok<STOUT,INUSD>
         % LL2PATH    Path object from LAT/LON coordinates.
         %   OBJ = <ClassName>.LL2PATH(LAT, LON) instantiates the path OBJ
         %   from latitude/longitude data.
-        obj = ll2Path(lat, lon)
+            error('Not implemented!')
+        end%fcn
         
+        function obj = pp2Path(pp, tay, polyDeg) %#ok<STOUT,INUSD>
         % PP2PATH    Path object from piecewise polynomial.
-        %    OBJ = <ClassName>.PP2PATH(PP,TAU) instantiates the path OBJ
+        %   OBJ = <ClassName>.PP2PATH(PP,TAU) instantiates the path OBJ
         %   from piecewise polynomial struct PP.
-        %
-        %    See also MKPP.
-        obj = pp2Path(pp, tay, polyDeg)
+        %   
+        %   See also MKPP.
+            error('Not implemented!')
+        end%fcn
         
+        function OBJ = straight(P0, P1) %#ok<STOUT,INUSD>
         % STRAIGHT  Construct straight path object.
         %   OBJ = <ClassName>.STRAIGHT(P0,P1) creates a straight path from
         %   point P0 to P1.
-        OBJ = straight(P0, P1)
+            error('Not implemented!')
+        end%fcn
         
+        function obj = xy2Path(x, y) %#ok<STOUT,INUSD>
         % XY2PATH    Path object from cartesian coordinates.
-        %    OBJ = <ClassName>.XY2PATH(X,Y) instantiates the path OBJ
+        %   OBJ = <ClassName>.XY2PATH(X,Y) instantiates the path OBJ
         %   from x/y data.
-        obj = xy2Path(x, y)
+            error('Not implemented!')
+        end%fcn
         
     end%methods
     
