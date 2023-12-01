@@ -13,7 +13,7 @@ if NP > 0
 	% differentiation. Coefficient of order 0 drops out due to
 	% differentiation.
 	dp = p(1:end-1);
-	dp = dp .* reshape(linspace(NP, 1, NP), size(dp));
+	dp = dp .* reshape(NP:-1:1, size(dp));
 else
 	dp = 0;
 end%if

@@ -116,9 +116,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             % Get sign via z-component of cross product U x (Q-XY)
             qp = bsxfun(@minus, Q, xy(:)');
-            signD = sign(u(:,1).*qp(:,2) - u(:,2).*qp(:,1));
+            signD = sign(crossz(u, qp));
             
-            sd = [obj.lengthIdxTau(idx, tau), ...
+            sd = [obj.idxTau2s(idx, tau), ...
                 signD.*hypot(qp(:,1), qp(:,2))];
             
         end%fcn
@@ -673,7 +673,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
     
     methods (Access = private)
         
-        function s = lengthIdxTau(obj, idx, tau)
+        function s = idxTau2s(obj, idx, tau)
+        % IDXTAU2S  Lenghts from path segment IDX and path parameter TAU.
+        
             tau0 = obj.Breaks(idx)';
 %             assert(all(tau0 < tau));
             
