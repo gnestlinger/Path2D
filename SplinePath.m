@@ -1,6 +1,6 @@
 classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 %SPLINEPATH     Spline path.
-%   Path representation using splines.
+%   Path representation using polynomial splines.
 % 
 %   SPLINEPATH properties:
 %   Breaks - Break points.
@@ -121,6 +121,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             sd = [obj.idxTau2s(idx, tau), ...
                 signD.*hypot(qp(:,1), qp(:,2))];
             
+        end%fcn
+        
+        function s = cumlengths(obj)
+            s = obj.ArcLengths;
         end%fcn
         
         function obj = derivative(obj, n)
@@ -341,10 +345,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 legend('-DynamicLegend')
             end%if
             
-        end%fcn
-        
-        function s = cumlengths(obj, idx0, idx1)
-            s = obj.ArcLengths;
         end%fcn
         
         function [xy,tau,errFlag] = intersectLine(obj, O, psi, doPlot)
@@ -758,13 +758,13 @@ function poly = calcPointProjPolynomial(poiX, poiY, px, py, Nc)
 % Returns the polynomial coefficients of the polynomial defining the point
 % projection equation.
 
-dpx = polyDiff(px);
-dpy = polyDiff(py);
+dpx = px(1:end-1).*(Nc-1:-1:1);
+dpy = py(1:end-1).*(Nc-1:-1:1);
 
 % Convolution returns array of size 2N-2. Therefore, pad non-convolutional
 % term with zeros.
-convTerm = conv2(px,dpx) + conv2(py,dpy);
-poly = [zeros(1,Nc-1), poiX*dpx + poiY*dpy] - convTerm;
+poly = -(conv2(px,dpx) + conv2(py,dpy));
+poly(Nc:end) = poly(Nc:end) + poiX*dpx + poiY*dpy;
 
 end%fcn
 
