@@ -9,8 +9,13 @@ Provides methods to
 
 These path types are available:
 - `PolygonPath.m` implements a class to work with a polygonal path representation, i.e. a path defined by waypoints. 
-- `SplinePath.m` implements a class to work with a spline based path representation.
+- `SplinePath.m` implements a class to work with a polynomial spline path representation.
 Both classes are implemented to support code generation, i.e. can be used in Simulink.  
+
+## Motivation
+Two well-known path tracking controllers are the Pure Pursuit [1] and the Stanley controller [2]. Their underlying path tracking error model differs in terms of reference point (rear/front axle), look-ahead (in the direction of the path/none) and lateral error orientation (orthogonal to vehicle heading/path). In literature, you can find several additional path tracking error definitions. As a result, the implementation of a specific path tracking controller not only requires the implementation of the control itself, but also the implementation of the according error model.  
+To generalize the computation of the path tracking error (and therefore the interface of the local path planner and the path tracking controller), [3] has proposed a classification of path tracking error definitions and also listed the required path operations (e.g. intersection of line/circle with path).
+This repository implements these operations (and other such as frenet transformation) for different represenations of 2-dimensional paths.
 
 ## Requirements
 - Just MATLAB. No additional toolboxes!
@@ -35,3 +40,8 @@ Further examples can be found in the test files.
 
 ## Contribution
 Contributers are welcome! Both, by submitting issues and creating pull requests.
+
+## References
+[1] R. Craig Coulter, Implementation of the Pure Pursuit Path Tracking Algorithm, 1992, Carnegie Mellon University.  
+[2] G. M. Hoffmann, C. J. Tomlin, M. Montemerlo and S. Thrun, "Autonomous Automobile Trajectory Tracking for Off-Road Driving: Controller Design, Experimental Validation and Racing," 2007 American Control Conference, New York, NY, USA, 2007, pp. 2296-2301, https://doi.org/10.1109/ACC.2007.4282788.  
+[3] Rumetshofer, J.; Stolz, M.; Watzenig, D. A Generic Interface Enabling Combinations of State-of-the-Art Path Planning and Tracking Algorithms. Electronics 2021, 10, 788. https://doi.org/10.3390/electronics10070788 
