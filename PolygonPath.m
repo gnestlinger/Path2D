@@ -615,7 +615,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             P0 = [X(1:end-1), Y(1:end-1)];
             u = diff([X, Y], 1, 1);
             lambdas = dot(bsxfun(@minus, poi(:)', P0), u, 2) ./ sum(u.^2, 2);
-            idx = find((lambdas >= 0) & [lambdas(1:end-1) < 1; lambdas(end) <= 1]);
+            
+            % Replace (x <= 1) by (x-eps < 1) because of:
+            %   (1) Indexing into lambdas with "1:end-1" causes the
+            %   Simulink error "Code generation assumption about size
+            %   violated. Run-time indexing is scalar(vector), but
+            %   compile-time assumption was vector(vector) indexing." for
+            %   2-element paths (i.e. scalar lambdas).
+            % idx = find((lambdas >= 0) & [lambdas(1:end-1) < 1; lambdas(end) <= 1]);
+            lambdas(end) = lambdas(end) - eps(lambdas(end));
+            idx = find((lambdas >= 0) & (lambdas < 1));
             
             % For paths with 2 elements, find can return an array of size
             % 0-by-0 which would raise an error in BSXFUN. Avoid by
