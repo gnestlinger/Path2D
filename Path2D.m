@@ -1,6 +1,6 @@
 classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %PATH2D     Represent 2D paths.
-%   This class is abstract and can not be instantiated!
+%   This class is abstract and cannot be instantiated!
 %   
 %   Represent paths in the planar x/y coordinate frame utilizing a
 %   parametric representation [x(tau); y(tau)]. It provides path operations
@@ -29,7 +29,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   frenet2cart - Convert frenet point to cartesian coordinates.
 %   intersectCircle - Circle intersection.
 %   intersectLine - Line intersection.
-%   isempty - Check if path is empty.
+%   isempty - Check if path is empty/has zero length.
 %   length - Path length.
 %   numel - Number of path elements.
 %   pointProjection - Point projection on path.
@@ -48,7 +48,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %
 %   See also PolygonPath, SplinePath.
     
-    properties
+    properties (SetAccess = protected)
         % ISCIRCUIT - Logical indicating if path is a circuit.
         IsCircuit = false
     end
