@@ -870,17 +870,17 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             obj.s = abs(t - t(1))*r; % r*phi where phi=0,...,2*pi
         end%fcn
         
-        function obj = clothoid(A, curv01, N, MODE)
+        function obj = clothoid(L, curv01, N, MODE)
         %CLOTHOID   Create clothoid path.
-        %   OBJ = POLYGONPATH.CLOTHOID(A, PHI01, N) creates a clothoid with
-        %   parameter A, initial curvature CURV01(1) and end curvature
-        %   CURV01(2) using N samples.
+        %   OBJ = POLYGONPATH.CLOTHOID(L, PHI01, N) creates a clothoid path
+        %   of length L, initial curvature CURV01(1) and end curvature
+        %   CURV01(2) at N equidistant sample points.
         %
         %   OBJ = POLYGONPATH.CLOTHOID(___,MODE) allows to select different
         %   calculation methods. Possible values are 'Heald', 'Quad'.
         %   
-        %   Clothoid parameter A: The clothiods curvature K is proportional
-        %   to its length S by K = S/A^2.
+        %   The clothoid's curvature K is proportional to its running
+        %   length S by K = S/A^2, where A is the Clothoid parameter.
         %
         %   See also CLOTHOIDHEALD, CLOTHOIDQUAD.
             
@@ -895,7 +895,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             signk = sign(curv1 - curv0);
             
             % Pre-calculation of path length
-            s = signk*A^2*linspace(curv0, curv1, N)';
+            dcurv = (curv1 - curv0)/L;
+            A2 = 1/dcurv; % A^2
+            A = sqrt(A2);
+            s = signk*A2*linspace(curv0, curv1, N)';
             
             switch lower(MODE)
                 case {0, 'quad'}
@@ -906,8 +909,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                     error('Unknown mode "%s".', num2str(MODE))
             end%switch
             
-            head = s.^2/(2*A^2);
-            curv = s/A^2;
+            curv = s/A2;
+%             head = s.^2/(2*A2);
+            head = curv.*s/2; % s.^2/(2*A^2)
             obj = PolygonPath(x, y, head, curv);
             obj.s = s;
             
