@@ -340,14 +340,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   (X,Y), path parameter TAUO, heading HEAD, curvature CURV and
         %   derivative CURVDS of curvature w.r.t. path length. All return
         %   values
-        %    - are of size numel(TAU)-by-1,
+        %    - are of size N-by-1, where N = numel(TAU), 
         %    - are NaN for values of TAU outside the path's domain.
         %
         %   [___] = EVAL(OBJ,TAU,EXTRAP) performs extrapolation for values
         %   of TAU outside the path's domain if EXTRAP evaluates to true.
         %   
         %   [___] = EVAL(OBJ) evaluates path OBJ according to subclass
-        %   specific implementation.
+        %   specific implementation. If path obj is empty, thenall return
+        %   values have size 0-by-1.
+        %   
         [x,y,tau,head,curv,curvDs] = eval(obj, tau, extrap)
         
         % FINDZEROCURVATURE     Find zero curvatures.
