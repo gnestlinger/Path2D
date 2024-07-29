@@ -444,10 +444,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
         end%fcn
         
-        function flag = isempty(obj)
-            flag = (obj.numel() < 1);
-        end%fcn
-        
         function s = length(obj, tau)
             
             if nargin < 2

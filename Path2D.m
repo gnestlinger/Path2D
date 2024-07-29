@@ -60,7 +60,64 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         function obj = Path2D()
         %PATH2D     Construct a PATH2D class instance.
         end%Constructor
+
+        function flag = isempty(obj)
+        % ISEMPTY   Check if path is empty
+        %   FLAG = ISEMPTY(OBJ) returns true if the path contains no path
+        %   elements, i.e. numel(OBJ) == 0, and false otherwise.
+        %
+        %   See also NUMEL.
         
+            flag = (obj.numel() < 1);
+        end%fcn
+        
+        function tau = sampleDomain(obj, arg)
+        %SAMPLEDOMAIN   Sample domain of path.
+        %
+        %   TAU = SAMPLEDOMAIN(OBJ,ARG) returns the path parameter TAU
+        %   sampled over the domain of path OBJ depending on the class of
+        %   ARG: if ARG is 
+        %     - double or single it is interpreted as a step increment,
+        %     - uintx it is interpreted as the number of samples.
+        %   
+        %   In both cases, TAU contains the domain's terminal points and
+        %   OBJ must be a non-empty path!
+        
+            assert(isscalar(arg));
+            assert(~isempty(obj), 'PATH2D:sampleDomain:PathMustBeNonempty', ...
+                'Path mut be non-empty!')
+            
+            [tau0,tau1] = obj.domain();
+            switch class(arg)
+                case {'double','single'} % Interpret as step increment
+                    tmp = (tau0:arg:tau1)';
+                    if tmp(end) < tau1 % Make sure to include the end point
+                        tau = [tmp; tau1];
+                    else
+                        tau = tmp;
+                    end%if
+                    
+                case {'uint8', 'uint16', 'uint32', 'uint64'}
+                        tau = linspace(tau0, tau1, arg)';
+                    
+                otherwise
+                   error('Unsupported data type for argument ARG!')
+            end%switch
+            
+        end%fcn
+        
+        function obj = setIsCircuit(obj, ths)
+        %SETISCIRCUIT   Sets property IsCircuit
+        %   OBJ = SETISCIRCUIT(OBJ, THS) sets property IsCircuit to true if
+        %   the distance between the path's terminal points is smaller than
+        %   THS, and to false otherwise.
+        
+            [P0,P1] = obj.termPoints();
+            obj.IsCircuit = (norm(P1 - P0) < ths);
+            
+        end%fcn
+        
+        %%% Plot methods
         function [hr,axr] = plot(varargin)
         %PLOT   Plot path.
         %    PLOT(OBJ) plots the path OBJ in terms of x over y.
@@ -243,52 +300,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             
         end%fcn
         
-        function tau = sampleDomain(obj, arg)
-        %SAMPLEDOMAIN   Sample domain of path.
-        %
-        %   TAU = SAMPLEDOMAIN(OBJ,ARG) returns the path parameter TAU
-        %   sampled over the domain of path OBJ depending on the class of
-        %   ARG: if ARG is 
-        %     - double or single it is interpreted as a step increment,
-        %     - uintx it is interpreted as the number of samples.
-        %   
-        %   In both cases, TAU contains the domain's terminal points and
-        %   OBJ must be a non-empty path!
-        
-            assert(isscalar(arg));
-            assert(~isempty(obj), 'PATH2D:sampleDomain:PathMustBeNonempty', ...
-                'Path mut be non-empty!')
-            
-            [tau0,tau1] = obj.domain();
-            switch class(arg)
-                case {'double','single'} % Interpret as step increment
-                    tmp = (tau0:arg:tau1)';
-                    if tmp(end) < tau1 % Make sure to include the end point
-                        tau = [tmp; tau1];
-                    else
-                        tau = tmp;
-                    end%if
-                    
-                case {'uint8', 'uint16', 'uint32', 'uint64'}
-                        tau = linspace(tau0, tau1, arg)';
-                    
-                otherwise
-                   error('Unsupported data type for argument ARG!')
-            end%switch
-            
-        end%fcn
-        
-        function obj = setIsCircuit(obj, ths)
-        %SETISCIRCUIT   Sets property IsCircuit
-        %   OBJ = SETISCIRCUIT(OBJ, THS) sets property IsCircuit to true if
-        %   the distance between the path's terminal points is smaller than
-        %   THS, and to false otherwise.
-        
-            [P0,P1] = obj.termPoints();
-            obj.IsCircuit = (norm(P1 - P0) < ths);
-            
-        end%fcn
-        
     end%methods
     
     
@@ -376,13 +387,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   otherwise.
         [xy,tau,errFlag] = intersectCircle(obj, C, r)
         
-        % ISEMPTY   Check if path is empty
-        %   FLAG = ISEMPTY(OBJ) returns true if the path contains no path
-        %   elements, i.e. numel(OBJ) == 0, and false otherwise.
-        %
-        %   See also NUMEL.
-        flag = isempty(obj)
-        
         % LENGTH    Path length.
         %   S = LENGTH(OBJ) returns the arc length S >= 0 of the path OBJ.
         %   For empty paths, S = 0.
@@ -410,7 +414,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         % NUMEL     Number of path elements.
         %   N = NUMEL(OBJ) returns the number of path elements, e.g. 
         %    - The number of waypoints for polygon path.
-        %    - The number of segments for a spline path.
+        %    - The number of path segments otherwise.
         N = numel(obj)
         
         % RESTRICT  Restrict domain.
