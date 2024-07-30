@@ -1,4 +1,4 @@
-classdef ConnectTest < matlab.unittest.TestCase
+classdef ConnectTestDubins < matlab.unittest.TestCase
     
     properties (TestParameter)       
         ConfigsRight = {...
@@ -14,7 +14,7 @@ classdef ConnectTest < matlab.unittest.TestCase
             };
         
         ConfigsXSY = {...
-            {[2 3 pi/4], [-2 3 -pi/4], 1, 'LSL'};
+            {[2 3 pi/4], [-2 3 -pi/4], 2, 'LSL'};
             {[2 3 pi/4], [-2 3 +pi/4], 1, 'LSR'};
             {[-2 3 pi/4], [2 3 +pi/4], 1, 'RSL'};
             {[-2 3 pi/4], [2 3 -pi/4], 1, 'RSR'};
@@ -34,13 +34,15 @@ classdef ConnectTest < matlab.unittest.TestCase
             C1 = ConfigsRight{2};
             R = ConfigsRight{3};
             dub = DubinsPath.connect(C0, C1, R);
+%             [tau0,tau1] = dub.domain();
+%             [x,y,~,h] = dub.eval([tau0 tau1]);
             [x,y,~,h] = dub.eval();
             
 
 %             checkAgainstMatlabImpl(dub, C0, C1, R);
             
             % Check terminal points
-            testCase.verifyEqual([dub.InitialPos dub.InitialAng], C0)
+            testCase.verifyEqual([dub.InitialPos' dub.InitialAng], C0)
             testCase.verifyEqual([x(1) y(1) h(1)], C0);
             testCase.verifyEqual([x(end) y(end) h(end)], C1, 'AbsTol',1e-15);
             
@@ -58,13 +60,15 @@ classdef ConnectTest < matlab.unittest.TestCase
             C1 = ConfigsLeft{2};
             R = ConfigsLeft{3};
             dub = DubinsPath.connect(C0, C1, R);
+%             [tau0,tau1] = dub.domain();
+%             [x,y,~,h] = dub.eval([tau0 tau1]);
             [x,y,~,h] = dub.eval();
             
             % Check against Matlab implementation
 %             checkAgainstMatlabImpl(dub, C0, C1, R);
             
             % Check terminal points
-            testCase.verifyEqual([dub.InitialPos dub.InitialAng], C0)
+            testCase.verifyEqual([dub.InitialPos' dub.InitialAng], C0)
             testCase.verifyEqual([x(1) y(1) h(1)], C0);
             testCase.verifyEqual([x(end) y(end) h(end)], C1, 'AbsTol',1e-15);
             
@@ -83,13 +87,15 @@ classdef ConnectTest < matlab.unittest.TestCase
             R = ConfigsXSY{3};
             T = ConfigsXSY{4};
             dub = DubinsPath.connect(C0, C1, R);
+%             [tau0,tau1] = dub.domain();
+%             [x,y,~,h] = dub.eval([tau0 tau1]);
             [x,y,~,h] = dub.eval();
             
             % Check against Matlab implementation
 %             ml = checkAgainstMatlabImpl(dub, C0, C1, R);
             
             % Check terminal points
-            testCase.verifyEqual([dub.InitialPos dub.InitialAng], C0)
+            testCase.verifyEqual([dub.InitialPos' dub.InitialAng], C0)
             testCase.verifyEqual([x(1) y(1) h(1)], C0);
             testCase.verifyEqual([x(end) y(end)], C1(1:2), 'AbsTol',1e-15);
             testCase.verifyEqual(mod2Pi(h(end)), mod2Pi(C1(end)), 'AbsTol',1e-15);
@@ -107,13 +113,15 @@ classdef ConnectTest < matlab.unittest.TestCase
             C1 = ConfigsLRL{2};
             R = ConfigsLRL{3};
             dub = DubinsPath.connect(C0, C1, R);
+%             [tau0,tau1] = dub.domain();
+%             [x,y,~,h] = dub.eval([tau0 tau1]);
             [x,y,~,h] = dub.eval();
             
             % Check against Matlab implementation
 %             ml = checkAgainstMatlabImpl(dub, C0, C1, R);
             
             % Check terminal points
-            testCase.verifyEqual([dub.InitialPos dub.InitialAng], C0)
+            testCase.verifyEqual([dub.InitialPos' dub.InitialAng], C0)
             testCase.verifyEqual([x(1) y(1) h(1)], C0);
             testCase.verifyEqual([x(end) y(end)], C1(1:2), 'AbsTol',1e-15);
             testCase.verifyEqual(mod2Pi(h(end)), mod2Pi(C1(end)), 'AbsTol',1e-15);
@@ -130,13 +138,15 @@ classdef ConnectTest < matlab.unittest.TestCase
             C1 = ConfigsRLR{2};
             R = ConfigsRLR{3};
             dub = DubinsPath.connect(C0, C1, R);
+%             [tau0,tau1] = dub.domain();
+%             [x,y,~,h] = dub.eval([tau0 tau1]);
             [x,y,~,h] = dub.eval();
             
             % Check against Matlab implementation
 %             ml = checkAgainstMatlabImpl(dub, C0, C1, R);
             
             % Check terminal points
-            testCase.verifyEqual([dub.InitialPos dub.InitialAng], C0)
+            testCase.verifyEqual([dub.InitialPos' dub.InitialAng], C0)
             testCase.verifyEqual([x(1) y(1) h(1)], C0);
             testCase.verifyEqual([x(end) y(end)], C1(1:2), 'AbsTol',1e-15);
             testCase.verifyEqual(mod2Pi(h(end)), mod2Pi(C1(end)), 'AbsTol',1e-15);

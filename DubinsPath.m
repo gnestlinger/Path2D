@@ -10,6 +10,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
 % 
 %   DubinsPath methods:
 %   DubinsPath - Constructor.
+%   convertSegmentType2Char - ...
 % 
 %   DubinsPath static methods:
 %   connect - Create Dubins path from initial/target configuration.
@@ -21,16 +22,17 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
 
     properties (SetAccess = private)
         % TurningRadius - Turning radius
+        %   The radius of circular arc path segments.
         TurningRadius = 1
         
         % SegmentTypes - Segment types
         %   1 ... Left turn
         %   0 ... Straight line
         %  -1 ... Right turn
-        SegmentTypes = zeros(3,1, 'int8')
+        SegmentTypes = zeros(1,0, 'int8')
 
         % SegmentLengths - Segment lengths
-        SegmentLengths = zeros(3,1)
+        SegmentLengths = zeros(1,0)
         
         % InitialPos - Initial position
         InitialPos = zeros(2,1)
@@ -41,7 +43,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
     
     properties (Access = private)
         % ArcLengths - Cumulative length of path segments
-        Arclengths = zeros(0, 1)
+        ArcLengths = zeros(0, 1)
     end
     
     properties (Constant, Hidden)
@@ -55,7 +57,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             -1 0 1;
              1 0 -1;
             -1 1 -1;
-             1 -1 1]);          
+             1 -1 1]);
         
         % MapNum2Char - Segment type map from numeric to character
         %   
@@ -69,11 +71,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
     
     methods
         
-        function obj = DubinsPath(startPose, types, lengths, R)
+        function obj = DubinsPath(startPose, types, lengths, R, isCircuit)
         %DUBINSPATH    Create Dubins path object.
         %   OBJ = DUBINSPATH() creates an empty path.
         %
-        %   OBJ = DUBINSPATH(C0, TYPES, LENGTHS, R) 
+        %   OBJ = DUBINSPATH(C0, T, L, R) creates a Dubins-like path with
+        %   initial pose C0, consisting of path segment types T with
+        %   individual lengths L. Arc segments have a radius R.
         %
         
         %   OBJ = DUBINSPATH(___,ISCIRCUIT) set to true if the path is a
@@ -85,8 +89,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                 return
             end
             
-            obj.InitialPos = startPose(1:2);
-            obj.InitialAng = mod2pi(startPose(3));
+            P0 = startPose(1:2);
+            obj.InitialPos = P0(:);
+            obj.InitialAng = startPose(3);
             
             assert(isequal(numel(types), numel(lengths)), ...
                 'DubinsPath:Constructor:numelTypesLengths', ...
@@ -95,13 +100,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             obj.SegmentLengths = lengths;
             obj.TurningRadius = R;
             
-            obj.Arclengths = [0; cumsum(obj.SegmentLengths)'];
+            obj.ArcLengths = [0; cumsum(obj.SegmentLengths)'];
               
-%             if nargin < 5
-%                 obj = obj.setIsCircuit(1e-5);
-%             else
-%                 obj.IsCircuit = isCircuit;
-%             end%if
+            % if nargin < 5
+            %     obj = obj.setIsCircuit(1e-5);
+            % else
+            %     obj.IsCircuit = isCircuit;
+            % end%if
             
         end%Constructor
         
@@ -114,22 +119,25 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         end%fcn
         
         function c = convertSegmentType2Char(obj)
+        %CONVERTSEGMENTTYPE2CHAR    Convert segment type to character
+        %   C = CONVERTSEGMENTTYPE2CHAR(OBJ) converts numeric property
+        %   SegmentTypes to character representation.
             
             c = obj.MapType2Char(obj.SegmentTypes + 2);
         end%fcn
         
         function s = cumlengths(obj)
-            s = obj.Arclengths;
+            s = obj.ArcLengths;
         end%fcn
         
         function [tauL,tauU] = domain(obj)
-
+            
             if isempty(obj)
                 tauL = NaN;
                 tauU = NaN;
             else
                 tauL = 0;
-                tauU = obj.numel() - 1;
+                tauU = obj.numel();
             end
         end%fcn
         
@@ -144,6 +152,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             N = obj.numel();
             
             if nargin < 2
+                if obj.isempty()
+                    x = zeros(0,1);
+                    y = zeros(0,1);
+                    tau = zeros(0,1);
+                    head = zeros(0,1);
+                    curv = zeros(0,1);
+                    curvDs = zeros(0,1);
+                    return
+                end
+                
                 % M samples per L/R segment; 1 sample per S segment; 1
                 % additional sample for final segment of any type
                 M = 100;
@@ -183,8 +201,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                     else % Straight
                         jj = ii + 1;
                         taui = [0; 1];
-                        xi = [0; si/R*cos(h0)];
-                        yi = [0; si/R*sin(h0)];
+                        xi = [0; si*cos(h0)];
+                        yi = [0; si*sin(h0)];
                         hi = [h0; h0];
                         ci = [0; 0];
                     end
@@ -226,30 +244,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             error('Not implemented!')
         end%fcn
         
-        function obj = interp(obj, tau, varargin)
-        %INTERP     Interpolate path.
-        %   OBJ = INTERP(OBJ,TAU) interpolate path OBJ w.r.t. path
-        %   parameter TAU.
-        %
-        %   OBJ = INTERP(__,ARGS) specify interpolation settings via ARGS.
-        %
-        %   See also INTERP1.
-            
-            narginchk(2, 4) % object, query points, method, extrapolation
-            
-            error('Not implemented!')
-        end%fcn
-        
         function [xy,tau,errFlag] = intersectCircle(obj, C, r, doPlot)
             error('Not implemented!')
         end%fcn
         
         function [xy,tau,errFlag] = intersectLine(obj, O, psi, doPlot)
             error('Not implemented!')
-        end%fcn
-        
-        function flag = isempty(obj)
-            flag = ~any(obj.SegmentLengths ~= 0);
         end%fcn
         
         function s = length(obj)
@@ -261,23 +261,29 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         end%fcn
         
         function [Q,idx,tau,dphi] = pointProjection(obj, poi, ~, doPlot)
-            
             error('Not implemented!')
         end%fcn
         
         function [obj,tau0,tau1] = restrict(obj, tau0, tau1)
-            
             error('Not implemented!')
         end%fcn
         
         function obj = reverse(obj)
-            
             error('Not implemented!')
         end%fcn
         
         function obj = rotate(obj, phi)
             
-            error('Not implemented!')
+            if nargin < 2
+                phi = -obj.InitialAng;
+            end%if
+            
+            R = rotmat2D(phi);
+            for i = 1:builtin('numel', obj)
+                obj(i).InitialPos = R*obj(i).InitialPos;
+                obj(i).InitialAng = obj(i).InitialAng + phi;
+            end%for
+            
         end%fcn
         
         function obj = select(obj, idxs)
@@ -286,7 +292,18 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         
         function obj = shift(obj, P)
             
-            error('Not implemented!')
+            % Handle input arguments
+            narginchk(1, 2);
+            
+            if nargin < 2
+                P = -obj(1).termPoints();
+            end%if
+            
+            % BUILTIN is supported for code-generation starting with R2017b
+            for i = 1:builtin('numel', obj)
+                obj(i).InitialPos = obj(i).InitialPos + P;
+            end%for
+            
         end%fcn
         
         function [tau,idx,ds] = s2tau(obj, s)
@@ -320,6 +337,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         end%fcn
         
         %%% Set methods
+        function obj = set.InitialAng(obj, val)
+            assert(isscalar(val) && isnumeric(val));
+            obj.InitialAng = mod2pi(val);
+        end%fcn
+        
         function obj = set.SegmentLengths(obj, val)
             obj.SegmentLengths = double(val(:)');
         end%fcn
@@ -332,6 +354,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             assert(isscalar(val) && isnumeric(val) && val > 0);
             obj.TurningRadius = double(val);
         end%fcn
+
     end%methods
     
     
@@ -361,10 +384,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             phi0 = mod2pi(C0(3)) - theta;
             phi1 = mod2pi(C1(3)) - theta;
             
+            % Calculate all admissible paths
             T = coder.nullcopy(zeros(3, 6, 'int8'));
             L = coder.nullcopy(zeros(3, 6));
             S = coder.nullcopy(zeros(6, 1));
-            
             [T(:,1),S(1),L(:,1)] = dubinsLRL(d, phi0, phi1);
             [T(:,2),S(2),L(:,2)] = dubinsLSL(d, phi0, phi1);
             [T(:,3),S(3),L(:,3)] = dubinsLSR(d, phi0, phi1);
@@ -372,6 +395,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             [T(:,5),S(5),L(:,5)] = dubinsRSL(d, phi0, phi1);
             [T(:,6),S(6),L(:,6)] = dubinsRSR(d, phi0, phi1);
             
+            % Find the shortest one
             [~,minIdx] = min(S);
             assert(sum(L(:, minIdx)) == S(minIdx))
             obj = DubinsPath(C0, T(:, minIdx), L(:, minIdx)*R, R);

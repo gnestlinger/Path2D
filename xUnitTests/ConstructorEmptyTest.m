@@ -3,12 +3,13 @@ classdef ConstructorEmptyTest < matlab.unittest.TestCase
     properties (TestParameter)
         obj = struct(...
             'PolygonPath', PolygonPath(), ...
-            'SplinePath', SplinePath());
+            'SplinePath', SplinePath(), ...
+            'DubinsPath', DubinsPath());
     end
     
 
     methods (Test)
-
+        
         function testConstructorInputLength(testCase, obj)
             testCase.verifyEqual(obj.numel(), 0)
         end%fcn
