@@ -22,7 +22,11 @@ classdef EvalTest < matlab.unittest.TestCase
         function testReturnSizeNoTau(testCase, obj)
             [x,y,tauO,head,curv,curvDs] = obj.eval();
             
-            N = numel(tauO);
+            if obj.isempty()
+                N = 0;
+            else
+                N = numel(tauO);
+            end
             testCase.verifySize(x, [N 1]);
             testCase.verifySize(y, [N 1]);
             testCase.verifySize(tauO, [N 1]);

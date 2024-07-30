@@ -511,10 +511,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function flag = isempty(obj)
-            flag = (obj.numel() < 1);
-        end%fcn
-        
         function s = length(obj)
             if isempty(obj.s)
                 s = 0;

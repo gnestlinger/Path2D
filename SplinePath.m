@@ -185,21 +185,25 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             end
             
             if nargin < 2
-                breaks = obj.Breaks;
-                
-                % M samples per spline segment + 1 sample for end point
-                M = 100;
-                N = obj.numel();
-                tau = coder.nullcopy(zeros(N*M + 1, 1));
-                for i = 1:N
-                    % To avoid repeated break entries, overwrite end break
-                    % of preceeding segment with initial (and equal) break
-                    % of current segment
-                    ii = (i-1)*M + 1;
-                    jj = ii + M;
-                    tau(ii:jj) = linspace(breaks(i), breaks(i+1), M+1);
+                if obj.isempty()
+                    tau = zeros(0,1);
+                else
+                    breaks = obj.Breaks;
+                    
+                    % M samples per spline segment + 1 sample for end point
+                    M = 100;
+                    N = obj.numel();
+                    tau = coder.nullcopy(zeros(N*M + 1, 1));
+                    for i = 1:N
+                        % To avoid repeated break entries, overwrite end break
+                        % of preceeding segment with initial (and equal) break
+                        % of current segment
+                        ii = (i-1)*M + 1;
+                        jj = ii + M;
+                        tau(ii:jj) = linspace(breaks(i), breaks(i+1), M+1);
+                    end
+                    tau(end) = breaks(end);
                 end
-                tau(end) = breaks(end);
             else
                 % Avoid PPVAL returning 3D arrays for empty evaluation
                 % sites by applying (:)
@@ -442,10 +446,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 hold off
             end%if
             
-        end%fcn
-        
-        function flag = isempty(obj)
-            flag = (obj.numel() < 1);
         end%fcn
         
         function s = length(obj, tau)
