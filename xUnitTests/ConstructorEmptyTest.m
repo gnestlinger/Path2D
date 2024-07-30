@@ -6,10 +6,13 @@ classdef ConstructorEmptyTest < matlab.unittest.TestCase
             'SplinePath', SplinePath());
     end
     
+
     methods (Test)
+
         function testConstructorInputLength(testCase, obj)
-            testCase.verifyEqual(numel(obj), 0)
+            testCase.verifyEqual(obj.numel(), 0)
         end%fcn
+        
     end
     
 end%class
