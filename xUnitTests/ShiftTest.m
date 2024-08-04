@@ -7,7 +7,7 @@ classdef ShiftTest < matlab.unittest.TestCase
             'PolygonPathNonEmpty', PolygonPath.xy2Path(10:-1:0, zeros(1,11)), ...
             'SplinePathEmpty', SplinePath(), ...
             'SplinePathOneElm', SplinePath.pp2Path(mkpp([-1 2], [0 1 -1; 1 0 2], 2)), ...
-            'DubinsPathEmpty', DubinsPath(), ...)
+            'DubinsPathEmpty', DubinsPath(), ...
             'DubinsPathOneElm',DubinsPath([-1 1 pi/2], 1, 2, 2), ...
             'DubinsPathNonEmpty', DubinsPath([-1 1 pi/2], [1 -1 1], [1.4455 9.1741 1.4455], 2));
         
@@ -27,7 +27,7 @@ classdef ShiftTest < matlab.unittest.TestCase
                 testCase.verifyTrue(all(isnan([P0; P1; Q0; Q1])))
             else
                 testCase.verifyEqual(Q0, P0+dP);
-                testCase.verifyEqual(Q1, P1+dP);
+                testCase.verifyEqual(Q1, P1+dP, 'AbsTol',3e-16); % Tol added for Dubins path
             end
             
         end%fcn

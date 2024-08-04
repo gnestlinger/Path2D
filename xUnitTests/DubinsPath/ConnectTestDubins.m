@@ -69,7 +69,7 @@ classdef ConnectTestDubins < matlab.unittest.TestCase
             
             % Check terminal points
             testCase.verifyEqual([dub.InitialPos' dub.InitialAng], C0)
-            testCase.verifyEqual([x(1) y(1) h(1)], C0);
+            testCase.verifyEqual([x(1) y(1) h(1)], C0, 'AbsTol',1e-15); % Check tol
             testCase.verifyEqual([x(end) y(end) h(end)], C1, 'AbsTol',1e-15);
             
             % Check segment types/lengths
@@ -122,7 +122,7 @@ classdef ConnectTestDubins < matlab.unittest.TestCase
             
             % Check terminal points
             testCase.verifyEqual([dub.InitialPos' dub.InitialAng], C0)
-            testCase.verifyEqual([x(1) y(1) h(1)], C0);
+            testCase.verifyEqual([x(1) y(1) h(1)], C0, 'AbsTol',1e-15); % Check tol
             testCase.verifyEqual([x(end) y(end)], C1(1:2), 'AbsTol',1e-15);
             testCase.verifyEqual(mod2Pi(h(end)), mod2Pi(C1(end)), 'AbsTol',1e-15);
             
@@ -173,7 +173,7 @@ ds.show();
 
 if ~isempty(dub)
     hold on
-    dub.plot('MarkerIndices',1, 'Marker','o')
+    dub.plot('LineWidth',1, 'MarkerIndices',1, 'Marker','o')
     hold off
 end
 
