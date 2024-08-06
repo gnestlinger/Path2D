@@ -20,7 +20,7 @@ classdef EvalTest < matlab.unittest.TestCase
             'nd', randn(10,3,4)*10);
     end
     
-
+    
     methods (Test)
         
         function testReturnSizeNoTau(testCase, obj)
@@ -189,6 +189,24 @@ classdef EvalTest < matlab.unittest.TestCase
             testCase.verifyEqual(h, hSet);
             testCase.verifyEqual(c, cSet);
             testCase.verifyEqual(d, dSet);
+            
+        end%fcn
+       
+        function testReturnValuesDubins(testCase)
+        % Make sure eval() returns the same values irrespective of the path
+        % segments adressed by the path parameter argument. I.e., the
+        % (i+1)-th segment starts at the end point of the i-th segment.
+           
+            dub = DubinsPath([0 0 0], [-1 0 1], [1 2 3], 2);
+            
+            [x1,y1,tau1,h1,c1] = dub.eval(2);
+            [x2,y2,tau2,h2,c2] = dub.eval([0 1 2]);
+            
+            verifyEqual(testCase, x2(end), x1);
+            verifyEqual(testCase, y2(end), y1);
+            verifyEqual(testCase, tau2(end), tau1);
+            verifyEqual(testCase, h2(end), h1);
+            verifyEqual(testCase, c2(end), c1);
             
         end%fcn
         

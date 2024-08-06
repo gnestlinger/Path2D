@@ -150,108 +150,28 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             end
             
             objs = obj.simplify();
-            if nargin < 2 % tau is undefined -> set-up
+            
+            % Make sure that tau is defined
+            if nargin < 2
                 if objs.isempty()
-                    x = zeros(0,1);
-                    y = zeros(0,1);
                     tau = zeros(0,1);
-                    head = zeros(0,1);
-                    curv = zeros(0,1);
-                    curvDs = zeros(0,1);
-                    return
+                else
+                    tau = objs.sampleTau(100);
                 end
-
-                % M samples per L/R segment, 1 sample per S segment and 1
-                % additional sample for the final segment of any type
-                M = 100;
-                types = objs.SegmentTypes;
-                lengths = objs.SegmentLengths;
-                Nnz = numel(lengths(lengths > 0)); % Nonzero length segments
-                Ns = sum((types == objs.STRAIGHT) & (lengths > 0));
-                Nlr = Nnz - Ns;
-                tau = coder.nullcopy(zeros(Nlr*M + Ns*1 + 1, 1));
-                
-                xyhc = zeros(numel(tau), 4);
-%                 x0 = objs.InitialPos(1);
-%                 y0 = objs.InitialPos(2);
-%                 h0 = objs.InitialAng;
-%                 R = objs.TurningRadius;
-                i1 = 1;
-                for i = 1:objs.numel()
-                    si = lengths(i);
-                    if si < eps
-                        continue
-                    end
-                    
-                    i0 = i1;
-                    tau0 = i - 1;
-                    if types(i) == objs.STRAIGHT
-                        i1 = i0 + 1;
-                        taui = [tau0; tau0 + 1];
-%                         xi = [0; si*cos(h0)];
-%                         yi = [0; si*sin(h0)];
-%                         hi = [h0; h0];
-%                         ci = [0; 0];
-                    else % Left/right turn
-                        i1 = i0 + M;
-                        taui = linspace(tau0, tau0 + 1, M+1)';
-%                         if types(i) == objs.LEFT
-%                             % S = R*PHI -> PHI = S/R
-%                             % taui = linspace(0, 1, M+1)';
-%                             hi = linspace(h0, h0+si/R, M+1)';
-%                             [xi,yi,ci] = circleLeft(R, hi);
-%                         else
-%                             % taui = linspace(0, 1, M+1)';
-%                             hi = linspace(h0, h0-si/R, M+1)';
-%                             [xi,yi,ci] = circleRight(R, hi);
-%                         end
-                    end
-
-%                     % Shift to match current starting position
-%                     xi = xi - xi(1) + x0;
-%                     yi = yi - yi(1) + y0;
-    
-%                     % The next segment starts at the end point of the
-%                     % current segment
-%                     x0 = xi(end);
-%                     y0 = yi(end);
-%                     h0 = hi(end);
-
-                    tau(i0:i1) = taui;
-%                     xyhc(i0:i1,:) = [xi yi hi ci]; % plot(xi, yi, 'LineWidth',1)
-                end%for
-
-%                 x = xyhc(:,1);
-%                 y = xyhc(:,2);
-%                 head = xyhc(:,3);
-%                 curv = xyhc(:,4);
-%                 curvDs = zeros(numel(tau), 1);
-%                 return
             else
                 tau = tau(:);
             end%if
             
-            if objs.isempty()
+            if objs.isempty() % Return all NaN's if path is empty
                 N = numel(tau);
                 tau(:) = NaN;
-                x = NaN(N, 1);
-                y = NaN(N, 1);
-                head = NaN(N, 1);
-                curv = NaN(N, 1);
+                xyhc = NaN(N, 4);
                 curvDs = NaN(N, 1);
-                return
+            else % Otherwise, evaluate path definition
+                [xyhc,tau,curvDs] = objs.evalImpl(tau(:), extrap);
             end
             
-            
-%             if nargin < 2
-%                 [x2,y2,tau2,head2,curv2] = objs.evalImpl(tau(:), extrap);
-%                 assert(max(abs(x - x2)) < 1e-14)
-%                 assert(max(abs(y - y2)) < 1e-14)
-%                 assert(all(tau == tau2))
-%                 assert(max(abs(head - head2)) < 1e-14)
-%                 assert(all(curv == curv2))
-%             end%if
-            [xyhc,tau,curvDs] = objs.evalImpl(tau(:), extrap);
+            % Unpack data
             x = xyhc(:,1);
             y = xyhc(:,2);
             head = xyhc(:,3);
@@ -267,7 +187,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             error('Not implemented!')
             
         end%fcn
-
+        
         function [xy,Q,idx,tau] = frenet2cart(obj, sd, doPlot)
             error('Not implemented!')
         end%fcn
@@ -398,12 +318,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             R = obj.TurningRadius;
             
             for i = 1:N
-                si = obj.SegmentLengths(i);
-                if si < eps
-%                     continue
-                end
-                
-                % Evaluate the first N-1 pieces on half open intervals
+                % Evaluate the first N-1 pieces on half-open intervals
                 % [t0,t1) and the Nth piece on the closed interval [t0,t1]
                 if i < N
                     logIdxi = (tau >= i-1) & ( tau < i);
@@ -411,28 +326,30 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                     logIdxi = (tau >= i-1) & ( tau <= i);
                 end
                 taui = tau(logIdxi);
-                if isempty(taui)
-                    continue
-                end
+%                 if isempty(taui)
+%                     continue
+%                 end
                 
+                si = obj.SegmentLengths(i);
                 typei = obj.SegmentTypes(i);
-                dtau = taui - taui(1);
+                dtau = taui - i + 1;
                 if typei == obj.LEFT
                     % Linear interpolation from h0 to h1 = h0 + si/R:
                     hi = h0 + si/R*dtau;
                     [xi,yi,ci] = circleLeft(R, hi);
                     
-                    % Explicitly calculate the end pointsince it may not be
-                    % included in the path parameter dtau
+                    % Explicitly calculate the terminal points of the
+                    % current segment.. since they may not be included in
+                    % the path parameter dtau
                     hEnd =  h0 + si/R;
-                    [xEnd,yEnd] = circleLeft(R, hEnd);
+                    [xT,yT] = circleLeft(R, [h0 hEnd]);
                     
                 elseif typei == obj.RIGHT
                     % Linear interpolation from h0 to h1 = h0 - si/R:
                     hi = h0 - si/R*dtau;
                     [xi,yi,ci] = circleRight(R, hi);
                     hEnd = h0 - si/R;
-                    [xEnd,yEnd] = circleRight(R, hEnd);
+                    [xT,yT] = circleRight(R, [h0 hEnd]);
                     
                 else % Straight segment
                     % Linear interpolation x0 + (x1-x0)*tau, where x0 = 0
@@ -441,20 +358,23 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                     hi = repmat(h0, [numel(taui) 1]);
                     ci = zeros(size(xi));
                     hEnd = h0;
-                    xEnd = si*cos(h0);
-                    yEnd = si*sin(h0);
+                    xT = [0 si*cos(h0)];
+                    yT = [0 si*sin(h0)];
                 end%if
                 
-                % Shift to match current starting position
-                dx = x0 - xi(1);
-                dy = y0 - yi(1);
+                % Shift to match current starting position. This assumes
+                % the current segment is evaluated at tau(1) = 0!
+                % dx = x0 - xi(1);
+                % dy = y0 - yi(1);
+                dx = x0 - xT(1);
+                dy = y0 - yT(1);
                 xi = xi + dx;
                 yi = yi + dy;
                 
                 % The next segment starts at the end point of the current
                 % segment
-                x0 = xEnd + dx;
-                y0 = yEnd + dy;
+                x0 = xT(2) + dx;
+                y0 = yT(2) + dy;
                 h0 = hEnd;
                 
                 xyhc(logIdxi, :) = [xi yi hi ci];
@@ -473,6 +393,38 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             
         end%fcn
         
+        function tau = sampleTau(obj, M)
+            
+            % M samples per L/R segment, 1 sample per S segment and 1
+            % additional sample for the final segment of any type
+            types = obj.SegmentTypes;
+            lengths = obj.SegmentLengths;
+            Nnz = numel(lengths(lengths > 0)); % Nonzero length segments
+            Ns = sum((types == obj.STRAIGHT) & (lengths > 0));
+            Nlr = Nnz - Ns;
+            tau = coder.nullcopy(zeros(Nlr*M + Ns*1 + 1, 1));
+            
+            i1 = 1;
+            for i = 1:obj.numel()
+                si = lengths(i);
+                if si < eps
+                    continue
+                end
+                
+                i0 = i1;
+                tau0 = i - 1;
+                if types(i) == obj.STRAIGHT
+                    i1 = i0 + 1;
+                    taui = [tau0; tau0 + 1];
+                else % Left/right turn
+                    i1 = i0 + M;
+                    taui = linspace(tau0, tau0 + 1, M+1)';
+                end
+                tau(i0:i1) = taui;
+            end%for
+            
+        end%fcn
+        
         function objs = simplify(obj)
         %SIMPLIFY   Get rid of zero-length path segments.
         %   
@@ -484,11 +436,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                 hasNZeroLength(1) = true;
             end
             
+            % Create simplified Dubins path with explicitly specified
+            % IsCircuit property to avoid an infinit recursion.
             objs = DubinsPath(...
                 [obj.InitialPos; obj.InitialAng], ...
                 obj.SegmentTypes(hasNZeroLength), ...
                 obj.SegmentLengths(hasNZeroLength), ...
-                obj.TurningRadius);
+                obj.TurningRadius, ...
+                obj.IsCircuit);
             
         end%fcn
     end
