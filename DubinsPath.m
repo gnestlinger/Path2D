@@ -95,18 +95,18 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             
             assert(isequal(numel(types), numel(lengths)), ...
                 'DubinsPath:Constructor:numelTypesLengths', ...
-                'Number of path property elements mismatch!');
+                'Number of path property elements must be equal!');
             obj.SegmentTypes = types;
             obj.SegmentLengths = lengths;
             obj.TurningRadius = R;
             
             obj.ArcLengths = [0; cumsum(obj.SegmentLengths)'];
               
-            % if nargin < 5
-            %     obj = obj.setIsCircuit(1e-5);
-            % else
-            %     obj.IsCircuit = isCircuit;
-            % end%if
+            if nargin < 5
+                obj = obj.setIsCircuit(1e-5);
+            else
+                obj.IsCircuit = isCircuit;
+            end%if
             
         end%Constructor
         
@@ -264,8 +264,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                 P0 = [NaN; NaN];
                 P1 = [NaN; NaN];
             else
-                P0 = obj.InitialPos(:);
-                [x,y] = obj.eval(obj.numel() - 1);
+                P0 = obj.InitialPos;
+                [x,y] = obj.eval(obj.numel());
                 P1 = [x; y];
             end
             
