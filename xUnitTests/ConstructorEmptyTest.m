@@ -1,7 +1,7 @@
 classdef ConstructorEmptyTest < matlab.unittest.TestCase
     
     properties (TestParameter)
-        obj = struct(...
+        PathEmpty = struct(...
             'PolygonPath', PolygonPath(), ...
             'SplinePath', SplinePath(), ...
             'DubinsPath', DubinsPath());
@@ -10,8 +10,11 @@ classdef ConstructorEmptyTest < matlab.unittest.TestCase
 
     methods (Test)
         
-        function testConstructorInputLength(testCase, obj)
-            testCase.verifyEqual(obj.numel(), 0)
+        function testConstructorNoArgs(testCase, PathEmpty)
+        % Test that contructor with zero arguments returns an empty path
+            
+            verifyEqual(testCase, PathEmpty.numel(), 0);
+            verifyTrue(testCase, PathEmpty.isempty());
         end%fcn
         
     end

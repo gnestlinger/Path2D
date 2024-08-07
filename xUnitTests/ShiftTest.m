@@ -23,11 +23,11 @@ classdef ShiftTest < matlab.unittest.TestCase
             
             objs = obj.shift(dP);
             [Q0,Q1] = objs.termPoints();
-            if isempty(obj)
-                testCase.verifyTrue(all(isnan([P0; P1; Q0; Q1])))
+            if obj.isempty()
+                verifyEqual(testCase, [P0 P1 Q0 Q1], NaN(2,4))
             else
-                testCase.verifyEqual(Q0, P0+dP);
-                testCase.verifyEqual(Q1, P1+dP, 'AbsTol',4e-15); % Tol added for Dubins path
+                verifyEqual(testCase, Q0, P0+dP);
+                verifyEqual(testCase, Q1, P1+dP, 'AbsTol',4e-15); % Tol added for Dubins path
             end
             
         end%fcn
@@ -39,9 +39,12 @@ classdef ShiftTest < matlab.unittest.TestCase
             
             objs = obj.shift();
             [Q0,Q1] = objs.termPoints();
-            if ~isempty(obj)
-                testCase.verifyEqual(Q0, [0;0]);
-                testCase.verifyEqual(Q1, P1-P0, 'AbsTol',5e-16); % Tol added for Dubins path
+            if obj.isempty()
+                verifyEqual(testCase, Q0, [NaN; NaN]);
+                verifyEqual(testCase, Q1, [NaN; NaN]);
+            else
+                verifyEqual(testCase, Q0, [0;0]);
+                verifyEqual(testCase, Q1, P1-P0, 'AbsTol',5e-16); % Tol added for Dubins path
             end
             
         end%fcn
