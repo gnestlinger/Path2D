@@ -40,9 +40,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         curv = zeros(0, 1)
     end
     
-    properties (Access = private)
-       s = zeros(0, 1) 
-    end
     
     
     methods
@@ -72,9 +69,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             obj.head = head(:);
             obj.curv = curv(:);
             if isempty(x)
-                obj.s = zeros(0,1);
+                obj.ArcLengths = zeros(0,1);
             else
-                obj.s = [0; cumsum(hypot(diff(x(:)), diff(y(:))))];
+                obj.ArcLengths = [0; cumsum(hypot(diff(x(:)), diff(y(:))))];
             end
             
             if nargin < 5
@@ -141,17 +138,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             dy = Q(:,2) - xy(2);
             signD = sign(ux.*dy - uy.*dx);
             
-            S = obj.s;
+            S = obj.ArcLengths;
             % Go to local path parameter for path length computation
             sd = [S(idx0) + (tau-idx+1).*(S(idx1)-S(idx0)), signD.*hypot(dx,dy)];
             if isempty(dphi)
                 dphi = abs(pi/2 - abs(atan2(ux.*dy - uy.*dx, ux.*dx + uy.*dy)));
             end
             
-        end%fcn
-        
-        function s = cumlengths(obj)
-            s = obj.s;
         end%fcn
         
         function [tauL,tauU] = domain(obj)
@@ -182,7 +175,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 y = obj.y;
                 head = obj.head;
                 curv = obj.curv;
-                curvDs = estiamteCurvDs(curv, obj.s);
+                curvDs = estiamteCurvDs(curv, obj.ArcLengths);
                 tau = (0:numel(x)-1)';
                 return
             end
@@ -195,7 +188,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 binIdxSat = max(min(binIdx-1, N-1), 1);
                 
                 % Linear interpolation
-                lin = [obj.x obj.y obj.head obj.curv estiamteCurvDs(obj.curv, obj.s)];
+                lin = [obj.x obj.y obj.head obj.curv estiamteCurvDs(obj.curv, obj.ArcLengths)];
                 xyhc = lin(binIdxSat,:) + bsxfun(@times, ...
                     tau - tauAct(binIdxSat), ...
                     lin(binIdxSat+1,:) - lin(binIdxSat,:));
@@ -378,10 +371,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % strictly increasing
             assert(all(diff(tau) > 0))
             
-            xyhcs = interp1(0:N-1, [obj.x obj.y obj.head obj.curv obj.s], ...
+            xyhcs = interp1(0:N-1, [obj.x obj.y obj.head obj.curv obj.ArcLengths], ...
                 tau(:), varargin{:});
             obj = PolygonPath(xyhcs(:,1), xyhcs(:,2), xyhcs(:,3), xyhcs(:,4));
-            obj.s = xyhcs(:,5);
+            obj.ArcLengths = xyhcs(:,5);
             
         end%fcn
         
@@ -509,14 +502,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 hold off
             end%if
             
-        end%fcn
-        
-        function s = length(obj)
-            if isempty(obj.s)
-                s = 0;
-            else
-                s = obj.s(end);
-            end
         end%fcn
         
         function n = numel(obj)
@@ -707,7 +692,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 obji.y = flip(obji.y);
                 obji.head = flip(obji.head) + pi;
                 obji.curv = -flip(obji.curv);
-                obji.s = -flip(obji.s) + obji.length();
+                obji.ArcLengths = -flip(obji.ArcLengths) + obji.length();
                 obj(i) = obji;
             end%for
             
@@ -776,7 +761,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function [tau,idx,ds] = s2tau(obj, s)
             
-            sObj = obj.s;
+            sObj = obj.ArcLengths;
             N = numel(sObj);
             if N < 2
                 % Paths with less than 2 waypoints have length 0
@@ -824,7 +809,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 'x (m)', 'y (m)', 'head (rad)', 'curv (1/m)', 's (m)');
             fprintf(fid,...
                 [repmat(doubleFmt, [1,5]), '\n'], ...
-                [obj.x, obj.y, obj.head, obj.curv, obj.s]');
+                [obj.x, obj.y, obj.head, obj.curv, obj.ArcLengths]');
             
             % Close file
             fclose(fid);
@@ -863,7 +848,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             obj = PolygonPath(r*cos(t), r*sin(t), t+signPhi*pi/2, signPhi*repmat(1/r,N,1));
             
             % Set exact path length
-            obj.s = abs(t - t(1))*r; % r*phi where phi=0,...,2*pi
+            obj.ArcLengths = abs(t - t(1))*r; % r*phi where phi=0,...,2*pi
         end%fcn
         
         function obj = clothoid(L, curv01, N, MODE)
@@ -909,7 +894,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %             head = s.^2/(2*A2);
             head = curv.*s/2; % s.^2/(2*A^2)
             obj = PolygonPath(x, y, head, curv);
-            obj.s = s;
+            obj.ArcLengths = s;
             
         end%fcn
         
@@ -955,9 +940,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             obj = c1.append(c2.select(2:N2)).append(c3.select(2:N13+1));
             
             % Set exact path length
-            s1 = c1.s;
-            s2 = c2.s(2:N2) + s1(end);
-            obj.s = [s1; s2; c3.s(2:N13+1) + s2(end)];
+            s1 = c1.cumlengths();
+            s2 = c2.cumlengths() + s1(end);
+            s3 = c3.cumlengths() + s2(end);
+            obj.ArcLengths = [s1; s2(2:N2); s3(2:N13+1)];
             
         end%fcn
         

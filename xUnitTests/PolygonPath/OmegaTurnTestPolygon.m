@@ -25,14 +25,14 @@ classdef OmegaTurnTestPolygon < matlab.unittest.TestCase
             
             % Path length
             s = obj.cumlengths();
-            testCase.verifyEqual(numel(s), N);
-            testCase.verifyTrue(all(diff(s) > 0));
-            testCase.verifyEqual(s(1), 0);
+            verifySize(testCase, s, [N 1]);
+            verifyTrue(testCase, all(diff(s) > 0));
+            verifyEqual(testCase, s(1), 0);
             
             % Terminal points
             [A,B] = obj.termPoints();
-            testCase.verifyEqual(A, [0;0], 'AbsTol',1e-20);
-            testCase.verifyEqual(B, [0;w], 'AbsTol',1e-14);
+            verifyEqual(testCase, A, [0;0], 'AbsTol',1e-20);
+            verifyEqual(testCase, B, [0;w], 'AbsTol',1e-14);
             
         end%fcn
         

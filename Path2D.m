@@ -53,6 +53,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         IsCircuit = false
     end
     
+    properties (Access = protected)
+        % ArcLengths - Cumulative length of path segments
+        ArcLengths = zeros(0,1)
+    end
+    
     
     
     methods
@@ -60,7 +65,17 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         function obj = Path2D()
         %PATH2D     Construct a PATH2D class instance.
         end%Constructor
-
+        
+        function s = cumlengths(obj)
+        % CUMLENGTHS    Cumulative path segment lengths.
+        %   S = CUMLENGTHS(OBJ) returns the vector S of cumulative path
+        %   segment lengths.
+        %
+        %   See also LENGTH.
+        
+            s = obj.ArcLengths;
+        end%fcn
+        
         function flag = isempty(obj)
         % ISEMPTY   Check if path is empty
         %   FLAG = ISEMPTY(OBJ) returns true if the path contains no path
@@ -69,6 +84,20 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   See also NUMEL.
         
             flag = (obj.numel() < 1);
+        end%fcn
+        
+        function s = length(obj)
+        % LENGTH    Path length.
+        %   S = LENGTH(OBJ) returns the arc length S >= 0 of the path OBJ.
+        %   For empty paths, S = 0.
+        %
+        %   See also CUMLENGTHS.
+        
+            if isempty(obj.ArcLengths)
+                s = 0;
+            else
+                s = obj.ArcLengths(end);
+            end
         end%fcn
         
         function tau = sampleDomain(obj, arg)
@@ -321,13 +350,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %    See also FRENET2CART, POINTPROJECTION.
         [sd,Q,idx,tau] = cart2frenet(obj, xy, phiMax)
         
-        % CUMLENGTHS    Cumulative path segment lengths.
-        %   S = CUMLENGTHS(OBJ) returns the vector S of cumulative path
-        %   segment lengths.
-        %
-        %   See also LENGTH.
-        s = cumlengths(obj)
-        
         % DOMAIN    Domain of the path.
         %   [TAUL,TAUU] = DOMAIN(OBJ) returns the lower and upper domain
         %   value TAUL and TAUU respectively. For empty paths NaNs are
@@ -388,13 +410,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   Flag ERRFLAG is true if no intersection was found and false
         %   otherwise.
         [xy,tau,errFlag] = intersectCircle(obj, C, r)
-        
-        % LENGTH    Path length.
-        %   S = LENGTH(OBJ) returns the arc length S >= 0 of the path OBJ.
-        %   For empty paths, S = 0.
-        %
-        %   See also CUMLENGTHS.
-        s = length(obj)
         
         % POINTPROJECTION    Point projection.
         %   Q = POINTPROJECTION(OBJ,POI,PHIMAX) returns the orthogonal
