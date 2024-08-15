@@ -1,11 +1,11 @@
 classdef SelectTest < matlab.unittest.TestCase
     
-    methods (Test)		
+    methods (Test)
 		function testNonDecreasingPathLength(testCase)
 			
             % Create circle with radius 3
 			obj0 = PolygonPath.circle(3);
-			obj1 = obj0.select(numel(obj0):-1:1);
+			obj1 = obj0.select(numel(obj0.x):-1:1);
 			
 			% Path length can not decrease
 			verifyTrue(testCase, ~any(diff(obj1.cumlengths()) < 0));

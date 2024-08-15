@@ -5,8 +5,10 @@ classdef NumelTest < matlab.unittest.TestCase
             'PolygonPath', PolygonPath(), ...
             'SplinePath', SplinePath())
         
-        PathNonEmpty = {
-            {PolygonPath.xy2Path(0:10, zeros(1,11)), 11};
+        PathNonEmpty = {% {Path object, number of segments}
+            {PolygonPath(1, 2, 3, 4), 0};
+            {PolygonPath([0 1], [1 1], [0 0], [0 0]), 1};
+            {PolygonPath.xy2Path(0:10, zeros(1,11)), 10};
             {SplinePath([0 1 2], reshape([1 0; 0 0; 1 1; 1 0], 2,2,2)), 2};
             }
     end

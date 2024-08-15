@@ -4,22 +4,22 @@ classdef S2TauTestPolygon < matlab.unittest.TestCase
         Path = struct(...
             'emptyPath', PolygonPath(), ...
             'oneElmPath', PolygonPath(1, 2, pi/4, 0), ...
-            'nonEmptyPath', PolygonPath.xy2Path(0:10, zeros(1,11)));
+            'nonEmptyPath', PolygonPath.xy2Path(0:10, zeros(1,11)))
         s = struct(...
             'emptyTau', [], ...
             'oneElmTau', 1.1, ...
             'vectorTau', linspace(-1,10,24), ...
-            'ndTau', ones(10,2,3));
+            'ndTau', ones(10,2,3))
     end
     
     methods (Test)
         function testReturnSize(testCase, Path, s)
             [tau,idx,ds] = Path.s2tau(s);
             
-			testCase.verifySize(tau, size(s));
+            testCase.verifySize(tau, size(s));
             testCase.verifySize(idx, size(s));
             testCase.verifySize(ds, size(s));
-		end%fcn
+        end%fcn
         
         function testReturnValuesZeroLengthPath(testCase, s)
             % Empty path
@@ -43,7 +43,7 @@ classdef S2TauTestPolygon < matlab.unittest.TestCase
             [tau,idx,ds] = obj.s2tau(s);
             
             [tau0,tau1] = obj.domain();
-            cl = obj.cumlengths()';
+            cl = [0 obj.cumlengths()'];
             tauSet = interp1(cl, tau0:tau1, s, 'linear','extrap');
             dsSet  = s - cl(idx);
             

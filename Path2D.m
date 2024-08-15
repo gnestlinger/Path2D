@@ -49,7 +49,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   See also PolygonPath, SplinePath.
     
     properties (SetAccess = protected)
-        % ISCIRCUIT - Logical indicating if path is a circuit.
+        % ISCIRCUIT - Logical indicating if path is a circuit
         IsCircuit = false
     end
     
@@ -77,11 +77,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         end%fcn
         
         function flag = isempty(obj)
-        % ISEMPTY   Check if path is empty
-        %   FLAG = ISEMPTY(OBJ) returns true if the path contains no path
-        %   elements, i.e. numel(OBJ) == 0, and false otherwise.
+        % ISEMPTY   Check if path is empty.
+        %   FLAG = ISEMPTY(OBJ) returns true if the path's domain is
+        %   undefined, i.e. domain(OBJ) returns NaN, and false otherwise.
         %
-        %   See also NUMEL.
+        %   See also DOMAIN.
         
             flag = (obj.numel() < 1);
         end%fcn
@@ -428,10 +428,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   TAU have as many rows as solutions are found.
         [Q,idx,tau,dphi] = pointProjection(obj, poi, phiMax)
         
-        % NUMEL     Number of path elements.
-        %   N = NUMEL(OBJ) returns the number of path elements, e.g. 
-        %    - The number of waypoints for polygon path.
-        %    - The number of path segments otherwise.
+        % NUMEL     Number of path segments.
+        %   N = NUMEL(OBJ) returns the number N of path segments.
         N = numel(obj)
         
         % RESTRICT  Restrict domain.

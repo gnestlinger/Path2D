@@ -21,13 +21,13 @@ classdef OmegaTurnTestPolygon < matlab.unittest.TestCase
             obj = PolygonPath.omegaTurn(r, w, N);
             
             % Number of path elements
-            testCase.verifyEqual(obj.numel(), N);
+            testCase.verifyEqual(numel(obj.x), N);
             
             % Path length
             s = obj.cumlengths();
-            verifySize(testCase, s, [N 1]);
+            verifySize(testCase, s, [N-1 1]);
             verifyTrue(testCase, all(diff(s) > 0));
-            verifyEqual(testCase, s(1), 0);
+            verifyTrue(testCase, s(1) > 0);
             
             % Terminal points
             [A,B] = obj.termPoints();
