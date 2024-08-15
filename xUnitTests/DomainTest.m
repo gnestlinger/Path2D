@@ -3,11 +3,15 @@ classdef DomainTest < matlab.unittest.TestCase
     properties (TestParameter)
         PathEmpty = struct(...
             'PolygonPath', PolygonPath(), ...
-            'SplinePath', SplinePath());
+            'SplinePath', SplinePath())
+        
+        PathZeroLength = struct(... % Non-empty but zero length
+            'PolygonPath', PolygonPath(1, 1, 0, 0), ...
+            'SplinePath', SplinePath([0 0], reshape([1 0; 0 0], [2 1 2])))
         
         PathNonEmpty = struct(...
             'PolygonPath', PolygonPath.xy2Path(0:10, zeros(1,11)), ...
-            'SplinePath', SplinePath([0 1 2], reshape([1 0; 0 0; 1 1; 1 0], 2,2,2)));
+            'SplinePath', SplinePath([0 1 2], reshape([1 0; 0 0; 1 1; 1 0], [2 2 2])))
     end
     
     
@@ -18,6 +22,14 @@ classdef DomainTest < matlab.unittest.TestCase
             
             verifyEqual(testCase, tauL, NaN);
             verifyEqual(testCase, tauU, NaN);
+        end%fcn
+        
+        function testPathZeroLength(testCase, PathZeroLength)
+            [tauL,tauU] = PathZeroLength.domain();
+            
+            verifySize(testCase, tauL, [1 1]);
+            verifySize(testCase, tauU, [1 1]);
+            verifyEqual(testCase, tauL, tauU);
         end%fcn
         
         function testPathNonEmpty(testCase, PathNonEmpty)

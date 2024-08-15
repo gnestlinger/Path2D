@@ -49,8 +49,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   See also PolygonPath, SplinePath.
     
     properties (SetAccess = protected)
-        % ISCIRCUIT - Logical indicating if path is a circuit.
+        % ISCIRCUIT - Logical indicating if path is a circuit
         IsCircuit = false
+    end
+    
+    properties (Access = protected)
+        % ArcLengths - Cumulative length of path segments
+        ArcLengths = zeros(0,1)
     end
     
     
@@ -60,15 +65,39 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         function obj = Path2D()
         %PATH2D     Construct a PATH2D class instance.
         end%Constructor
-
-        function flag = isempty(obj)
-        % ISEMPTY   Check if path is empty
-        %   FLAG = ISEMPTY(OBJ) returns true if the path contains no path
-        %   elements, i.e. numel(OBJ) == 0, and false otherwise.
+        
+        function s = cumlengths(obj)
+        % CUMLENGTHS    Cumulative path segment lengths.
+        %   S = CUMLENGTHS(OBJ) returns the vector S of cumulative path
+        %   segment lengths.
         %
-        %   See also NUMEL.
+        %   See also LENGTH.
+        
+            s = obj.ArcLengths;
+        end%fcn
+        
+        function flag = isempty(obj)
+        % ISEMPTY   Check if path is empty.
+        %   FLAG = ISEMPTY(OBJ) returns true if the path's domain is
+        %   undefined, i.e. domain(OBJ) returns NaN, and false otherwise.
+        %
+        %   See also DOMAIN.
         
             flag = (obj.numel() < 1);
+        end%fcn
+        
+        function s = length(obj)
+        % LENGTH    Path length.
+        %   S = LENGTH(OBJ) returns the arc length S >= 0 of the path OBJ.
+        %   For empty paths, S = 0.
+        %
+        %   See also CUMLENGTHS.
+        
+            if isempty(obj.ArcLengths)
+                s = 0;
+            else
+                s = obj.ArcLengths(end);
+            end
         end%fcn
         
         function tau = sampleDomain(obj, arg)
@@ -321,13 +350,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %    See also FRENET2CART, POINTPROJECTION.
         [sd,Q,idx,tau] = cart2frenet(obj, xy, phiMax)
         
-        % CUMLENGTHS    Cumulative path segment lengths.
-        %   S = CUMLENGTHS(OBJ) returns the vector S of cumulative path
-        %   segment lengths.
-        %
-        %   See also LENGTH.
-        s = cumlengths(obj)
-        
         % DOMAIN    Domain of the path.
         %   [TAUL,TAUU] = DOMAIN(OBJ) returns the lower and upper domain
         %   value TAUL and TAUU respectively. For empty paths NaNs are
@@ -389,13 +411,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   otherwise.
         [xy,tau,errFlag] = intersectCircle(obj, C, r)
         
-        % LENGTH    Path length.
-        %   S = LENGTH(OBJ) returns the arc length S >= 0 of the path OBJ.
-        %   For empty paths, S = 0.
-        %
-        %   See also CUMLENGTHS.
-        s = length(obj)
-        
         % POINTPROJECTION    Point projection.
         %   Q = POINTPROJECTION(OBJ,POI,PHIMAX) returns the orthogonal
         %   projection Q of point of interest POI onto the path OBJ. Point
@@ -413,10 +428,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   TAU have as many rows as solutions are found.
         [Q,idx,tau,dphi] = pointProjection(obj, poi, phiMax)
         
-        % NUMEL     Number of path elements.
-        %   N = NUMEL(OBJ) returns the number of path elements, e.g. 
-        %    - The number of waypoints for polygon path.
-        %    - The number of path segments otherwise.
+        % NUMEL     Number of path segments.
+        %   N = NUMEL(OBJ) returns the number N of path segments.
         N = numel(obj)
         
         % RESTRICT  Restrict domain.

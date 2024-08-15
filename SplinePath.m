@@ -30,10 +30,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         Coefs = zeros(2,0,4)
     end
     
-    properties (Access = private)
-        % ArcLengths - Cumulative length of spline segments
-        ArcLengths = 0;
-    end
     
     
     methods
@@ -63,8 +59,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             if (nargin < 3) || isempty(s)
                 s = obj.calcArcLength(breaks, coefs);
             end
-            assert(numel(s) == numel(breaks));
-            obj.ArcLengths = s - s(1); % Make sure first element is zero!
+            assert(numel(s) == size(coefs,2));
+            obj.ArcLengths = s;
             
             if nargin < 4
                 obj = obj.setIsCircuit(1e-5);
@@ -123,10 +119,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
         end%fcn
         
-        function s = cumlengths(obj)
-            s = obj.ArcLengths;
-        end%fcn
-        
         function obj = derivative(obj, n)
         %DERIVATIVE     Derivative of path.
         %   OBJ = DERIVATIVE(OBJ) returns the derivative of path OBJ.
@@ -163,7 +155,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             obj = obj.setIsCircuit(1e-5);
             
             % Update the path length after setting derivative coefficients
-            s = calcArcLength(obj);
+            s = obj.calcArcLength();
             obj.ArcLengths = s;
             
         end%fcn
@@ -310,7 +302,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             if obj.IsCircuit
                 sEval = mod(sEval, obj.length());
             end
-            S = obj.ArcLengths(2:end);
+            S = obj.ArcLengths;
             idx = coder.nullcopy(zeros(size(sEval), 'uint32'));
             for i = 1:numel(sEval)
                 idxs = find(sEval(i) < S, 1, 'first');
@@ -324,7 +316,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             % The points on the path (i.e. d=0) are given by the segment's
             % initial point plus the remaining length along the current
             % segment
-            S = obj.ArcLengths;
+            S = [0; S];
             ds = sEval - S(idx);
             breaks = obj.Breaks';
             tau = breaks(idx);
@@ -450,9 +442,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function s = length(obj, tau)
             
-            if nargin < 2
-                s = obj.ArcLengths(end);
-            else
+            if nargin < 2 % Call superclass method
+                s = length@Path2D(obj);
+            else % Some undocumented & untested stuff
                 idx = find(tau > obj.Breaks, 1, 'last');
                 taus = linspace(obj.Breaks(idx), tau, 100);
                 xy = diff(ppval(obj.mkpp(), taus), 1, 2);
@@ -679,7 +671,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             tau0 = obj.Breaks(idx)';
 %             assert(all(tau0 < tau));
             
-            s = obj.ArcLengths(idx);
+            stmp = [0; obj.ArcLengths];
+            s = stmp(idx);
             for i = 1:numel(tau)
                 taui = linspace(tau0(i), tau(i), 100);
                 xy = diff(ppval(obj.mkpp(), taui), 1, 2);
@@ -696,13 +689,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             N = size(coefs,2);
             pp = mkpp(breaks, coefs, 2);
-            s = coder.nullcopy(zeros(N+1,1));
-            s(1) = 0;
+            s = coder.nullcopy(zeros(N,1));
             for i = 1:N
                 tau = linspace(breaks(i), breaks(i+1), 1000);
                 dxy = diff(ppval(pp, tau), 1, 2);
-                s(i+1) = s(i) + sum(hypot(dxy(1,:), dxy(2,:)));
+                s(i) = sum(hypot(dxy(1,:), dxy(2,:)));
             end
+            s = cumsum(s);
             
         end%fcn
         
@@ -728,7 +721,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             y1 = P1(2);
             obj = SplinePath([0 1], ...
                 cat(3, [x1-x0; y1-y0], [x0; y0]), ...
-                [0 hypot(x1-x0, y1-y0)], ...
+                hypot(x1-x0, y1-y0), ...
                 false);
             
         end%fcn
@@ -744,7 +737,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             BusElements = {...
                 {'breaks',      101, 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
                 {'coefs', [2,100,4], 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
-                {'lengths',     101, 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
+                {'lengths',     100, 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
                 };
             c = {{BusName,HeaderFile,Description,BusElements}};
         end%fcn
