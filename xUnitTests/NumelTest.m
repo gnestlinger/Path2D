@@ -3,13 +3,16 @@ classdef NumelTest < matlab.unittest.TestCase
     properties (TestParameter)
         PathEmpty = struct(...
             'PolygonPath', PolygonPath(), ...
-            'SplinePath', SplinePath())
+            'SplinePath', SplinePath(), ...
+            'DubinsPath', DubinsPath())
         
         PathNonEmpty = {% {Path object, number of segments}
             {PolygonPath(1, 2, 3, 4), 0};
             {PolygonPath([0 1], [1 1], [0 0], [0 0]), 1};
             {PolygonPath.xy2Path(0:10, zeros(1,11)), 10};
             {SplinePath([0 1 2], reshape([1 0; 0 0; 1 1; 1 0], 2,2,2)), 2};
+            {DubinsPath([1 2 0], 0, 0, 2), 1}
+            {DubinsPath([1 0 pi], [1 -1 0], [1 1 1], 2), 3};
             }
     end
     

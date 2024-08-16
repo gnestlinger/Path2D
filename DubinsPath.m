@@ -10,7 +10,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
 % 
 %   DubinsPath methods:
 %   DubinsPath - Constructor.
-%   convertSegmentType2Char - ...
+%   convertSegmentType2Char - Convert numeric segment type to character.
 % 
 %   DubinsPath static methods:
 %   connect - Create Dubins path from initial/target configuration.
@@ -39,11 +39,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         
         % InitialAng - Initial orientation angle
         InitialAng = 0
-    end
-    
-    properties (Access = private)
-        % ArcLengths - Cumulative length of path segments
-        ArcLengths = zeros(0, 1)
     end
     
     properties (Constant, Hidden)
@@ -75,11 +70,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         %DUBINSPATH    Create Dubins path object.
         %   OBJ = DUBINSPATH() creates an empty path.
         %
-        %   OBJ = DUBINSPATH(C0, T, L, R) creates a Dubins-like path with
-        %   initial pose C0, consisting of path segment types T with
+        %   OBJ = DUBINSPATH(C0, T, L, R) creates a path consisting of
+        %   Dubins segments with initial pose C0, segment types T with
         %   individual lengths L. Arc segments have a radius R.
         %
-        
         %   OBJ = DUBINSPATH(___,ISCIRCUIT) set to true if the path is a
         %   circuit.
         %
@@ -100,7 +94,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             obj.SegmentLengths = lengths;
             obj.TurningRadius = R;
             
-            obj.ArcLengths = [0; cumsum(obj.SegmentLengths)'];
+            obj.ArcLengths = cumsum(obj.SegmentLengths)';
               
             if nargin < 5
                 obj = obj.setIsCircuit(1e-5);
@@ -119,15 +113,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         end%fcn
         
         function c = convertSegmentType2Char(obj)
-        %CONVERTSEGMENTTYPE2CHAR    Convert segment type to character
+        %CONVERTSEGMENTTYPE2CHAR    Convert segment type to character.
         %   C = CONVERTSEGMENTTYPE2CHAR(OBJ) converts numeric property
         %   SegmentTypes to character representation.
             
             c = obj.MapType2Char(obj.SegmentTypes + 2);
-        end%fcn
-        
-        function s = cumlengths(obj)
-            s = obj.ArcLengths;
         end%fcn
         
         function [tauL,tauU] = domain(obj)
@@ -198,10 +188,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         
         function [xy,tau,errFlag] = intersectLine(obj, O, psi, doPlot)
             error('Not implemented!')
-        end%fcn
-        
-        function s = length(obj)
-            s = obj.ArcLengths(end);
         end%fcn
         
         function n = numel(obj)
@@ -326,9 +312,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                     logIdxi = (tau >= i-1) & ( tau <= i);
                 end
                 taui = tau(logIdxi);
-%                 if isempty(taui)
-%                     continue
-%                 end
                 
                 si = obj.SegmentLengths(i);
                 typei = obj.SegmentTypes(i);
@@ -485,7 +468,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             [T(:,5),S(5),L(:,5)] = dubinsRSL(d, phi0, phi1);
             [T(:,6),S(6),L(:,6)] = dubinsRSR(d, phi0, phi1);
             
-            % Find the shortest one
+            % Find the shortest path
             [~,minIdx] = min(S);
             assert(sum(L(:, minIdx)) == S(minIdx))
             obj = DubinsPath(C0, T(:, minIdx), L(:, minIdx)*R, R);
