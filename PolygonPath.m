@@ -330,18 +330,19 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
             % Get the indexes referring to the path segments according to
             % the frenet coordinates s-value
-            [tau,idx,ds] = obj.s2tau(sd(:,1));
+            [tau,idx] = obj.s2tau(sd(:,1));
             
-            % Normalized orientation vectors (TODO: make use of heading?)
+            % Orientation vectors (TODO: make use of heading?)
             u = Pxy(idx + 1,:) - Pxy(idx,:);
-            u = bsxfun(@rdivide, u, hypot(u(:,1), u(:,2)));
             
             % The points on the path (i.e. d=0) are given by the segments
             % initial point plus the remaining length along the current
             % segment
-            Q = Pxy(idx,:) + bsxfun(@times, ds, u);
+            dtau = tau - double(idx-1);
+            Q = Pxy(idx,:) + bsxfun(@times, dtau, u);
             
             % From Q, go D units along normal vector of U
+            u = bsxfun(@rdivide, u, hypot(u(:,1), u(:,2)));
             xy = Q + bsxfun(@times, sd(:,2), [-u(:,2), u(:,1)]);
             
             if (nargin > 2) && doPlot
@@ -774,7 +775,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function [tau,idx,ds] = s2tau(obj, s)
+        function [tau,idx] = s2tau(obj, s)
             
             sObj = obj.arcLengths0();
             N = numel(sObj);
@@ -782,7 +783,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 % Paths with less than 2 waypoints have length 0
                 tau = nan(size(s));
                 idx = zeros(size(s), 'uint32');
-                ds = nan(size(s));
                 return
             end
             
