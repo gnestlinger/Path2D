@@ -50,7 +50,9 @@ classdef S2TauTestPolygon < matlab.unittest.TestCase
             s = [s0  s1];
             [tau,idx] = obj.s2tau(s);
             
-            verifyEqual(testCase, tau, [-0.25 3.5]);
+            [tau0,tau1] = obj.domain();
+            tauSet = interp1([0;obj.cumlengths()], tau0:tau1, s, 'linear', 'extrap');
+            verifyEqual(testCase, tau, tauSet);
             verifyEqual(testCase, idx, uint32([1 3]));
         end%fcn
     end

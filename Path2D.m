@@ -33,6 +33,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   length - Path length.
 %   numel - Number of path elements.
 %   pointProjection - Point projection on path.
+%   s2tau - Path length to path parameter.
 %   termPoints - Terminal points.
 % 
 %   Path2D visualization methods:
@@ -449,6 +450,19 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   OBJ = ROTATE(OBJ) rotates the path by the negative of it's
         %   initial slope.
         obj = rotate(obj, phi)
+        
+        % S2TAU     Path length to path parameter.
+        %   TAU = S2TAU(OBJ, S) converts the path lengths S to the path
+        %   parameters TAU, such that the path OBJ, evaluated at TAU has
+        %   length S.
+        %
+        %   [___,IDX] = S2TAU(___) also returns the index IDX of the
+        %   corresponding path segment.
+        %
+        %   Input S can be of any size and can exceed [0,L], where L is the
+        %   path length. In this case, TAU is linearly extrapolated and IDX
+        %   is saturated to [0,N], where N is the number of path segments.
+        [tau,idx] = s2tau(obj, s)
         
         % SELECT    Select path elements.
         %   OBJ = SELECT(OBJ,IDXS) selects the path elements IDXS of path
