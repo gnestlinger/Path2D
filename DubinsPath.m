@@ -179,7 +179,31 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         end%fcn
         
         function [xy,Q,idx,tau] = frenet2cart(obj, sd, doPlot)
-            error('Not implemented!')
+            
+            % Get the indexes referring to the path segments according to
+            % the frenet coordinates s-value
+            [tau,idx] = obj.s2tau(sd(:,1));
+            
+            [x,y,~,head] = obj.eval(tau, true);
+            Q = [x,y];
+            
+            % Tangent vector already has length 1 - > no need to normalize
+            tHandle = @(phi) [-sin(phi) cos(phi)];
+            t = tHandle(head-pi/2);
+            
+            xy = Q + bsxfun(@times, [-t(:,2), t(:,1)], sd(:,2));
+            
+            if (nargin > 2) && doPlot
+                obj.plot('DisplayName',class(obj));
+                hold on
+                % [xb,yb] = obj.eval(obj.Breaks);
+                % plot(xb, yb, 'b.', 'MarkerSize',10, 'DisplayName','Breaks');
+                plot(xy(:,1), xy(:,2), 'o', 'DisplayName','xy');
+                plot(Q(:,1), Q(:,2), 'kx', 'DisplayName','Q');
+                hold off
+                legend('-DynamicLegend')
+            end%if
+            
         end%fcn
         
         function [xy,tau,errFlag] = intersectCircle(obj, C, r, doPlot)
@@ -240,8 +264,30 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             
         end%fcn
         
-        function [tau,idx,ds] = s2tau(obj, s)
-            error('Not implemented!')
+        function [tau,idx] = s2tau(obj, s)
+            
+            if obj.length() < eps % Zero-length path
+                tau = nan(size(s));
+                idx = zeros(size(s), 'uint32');
+                if ~obj.isempty()
+                    theIdx = abs(s) < eps;
+                    tau(theIdx) = 0;
+                    idx(theIdx) = 1;
+                end
+                return
+            end
+            
+            if obj.IsCircuit
+                s = mod(s, obj.length());
+            end
+            
+            S = obj.ArcLengths;
+            [~,tmp] = histc(s, [0;S;inf]); %#ok<HISTC>
+            idx = min(max(uint32(tmp), 1), numel(S));
+            
+            S = [0; S];
+            ds = s - reshape(S(idx), size(s));
+            tau = double(idx-1) + ds./reshape(S(idx+1) - S(idx), size(s));
         end%fcn
         
         function [P0,P1] = termPoints(obj)
