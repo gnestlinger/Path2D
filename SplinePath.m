@@ -299,28 +299,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             % Get the indexes referring to the path segments according to
             % the frenet coordinates s-values
             sEval = sd(:,1);
-            if obj.IsCircuit
-                sEval = mod(sEval, obj.length());
-            end
-            S = obj.ArcLengths;
-            idx = coder.nullcopy(zeros(size(sEval), 'uint32'));
-            for i = 1:numel(sEval)
-                idxs = find(sEval(i) < S, 1, 'first');
-                if isempty(idxs)
-                    idx(i) = obj.numel();
-                else
-                    idx(i) = idxs(1);
-                end
-            end%for
-            
-            % The points on the path (i.e. d=0) are given by the segment's
-            % initial point plus the remaining length along the current
-            % segment
-            S = [0; S];
-            ds = sEval - S(idx);
-            breaks = obj.Breaks';
-            tau = breaks(idx);
-            tau = tau + ds./(S(idx+1) - S(idx)).*(breaks(idx+1) - tau);
+            [tau,idx] = obj.s2tau(sEval);
             
             [x,y] = obj.eval(tau, true);
             n = ppval(ppdiff(obj.mkpp()), tau)';
@@ -597,6 +576,44 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 obj(i).Coefs = coefs;
             end%for
             
+        end%fcn
+        
+        function [tau,idx] = s2tau(obj, s)
+            
+            if obj.length() < eps % Zero-length path
+                tau = nan(size(s));
+                idx = zeros(size(s), 'uint32');
+                if ~obj.isempty()
+                    theIdx = abs(s) < eps;
+                    tau(theIdx) = 0;
+                    idx(theIdx) = 1;
+                end
+                return
+            end
+            
+            if obj.IsCircuit
+                s = mod(s, obj.length());
+            end
+            S = obj.ArcLengths;
+            idx = coder.nullcopy(zeros(size(s), 'uint32'));
+            for i = 1:numel(s)
+                idxs = find(s(i) < S, 1, 'first');
+                if isempty(idxs)
+                    idx(i) = obj.numel();
+                else
+                    idx(i) = idxs(1);
+                end
+            end%for
+            
+            % The points on the path (i.e. d=0) are given by the segment's
+            % initial point plus the remaining length along the current
+            % segment
+            S = [0; S];
+            ds = s - reshape(S(idx), size(s));
+            breaks = obj.Breaks';
+            tau0 = breaks(idx);
+            tau = reshape(tau0, size(s)) + ds./...
+                reshape((S(idx+1) - S(idx)).*(breaks(idx+1) - tau0), size(s));
         end%fcn
         
         function obj = select(obj, idxs)
