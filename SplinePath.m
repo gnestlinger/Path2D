@@ -306,10 +306,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             Q = [x,y];
             xy = Q + bsxfun(@times, [-n(:,2), n(:,1)], sd(:,2)./sqrt(sum(n.^2, 2)));
             
-            if nargin < 3
-                doPlot = false;
-            end
-            if doPlot
+            if (nargin > 2) && doPlot
                 obj.plot('DisplayName','SplinePath');
                 hold on
                 [xb,yb] = obj.eval(obj.Breaks);
@@ -594,6 +591,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             if obj.IsCircuit
                 s = mod(s, obj.length());
             end
+            
             S = obj.ArcLengths;
             idx = coder.nullcopy(zeros(size(s), 'uint32'));
             for i = 1:numel(s)
@@ -612,8 +610,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             ds = s - reshape(S(idx), size(s));
             breaks = obj.Breaks';
             tau0 = breaks(idx);
-            tau = reshape(tau0, size(s)) + ds./...
-                reshape((S(idx+1) - S(idx)).*(breaks(idx+1) - tau0), size(s));
+            tau = reshape(tau0, size(s)) + ds.*...
+                reshape((breaks(idx+1) - tau0)./(S(idx+1) - S(idx)), size(s));
         end%fcn
         
         function obj = select(obj, idxs)
