@@ -1,6 +1,10 @@
 classdef S2TauTest < matlab.unittest.TestCase
     
     properties (TestParameter)
+        PathEmpty = struct(...
+            'PolygonPathEmpty',PolygonPath(), ...
+            'SplinePathEmpty',SplinePath())
+        
         PathObj = struct(...
             'PolygonPathEmpty',PolygonPath(), ...
             'PolygonPathZeroLength',PolygonPath(1, 1, 0, 0), ...
@@ -26,6 +30,13 @@ classdef S2TauTest < matlab.unittest.TestCase
             verifySize(testCase, tau, size(s));
             verifySize(testCase, idx, size(s));
             verifyClass(testCase, idx, 'uint32');
+        end%fcn
+        
+        function testReturnValuesEmptyPath(testCase, PathEmpty, s)
+            % Empty path return NaN for tau and 0 for idx
+            [tau,idx] = PathEmpty.s2tau(s);
+            verifyEqual(testCase, tau, nan(size(s)));
+            verifyEqual(testCase, idx, zeros(size(s), 'uint32'));
         end%fcn
     end
     
