@@ -152,13 +152,18 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                 tau = tau(:);
             end%if
             
-            if objs.isempty() % Return all NaN's if path is empty
+            if objs.isempty() % Empty path: return all NaN's/no extrapolation
                 N = numel(tau);
                 tau(:) = NaN;
-                xyhc = NaN(N, 4);
-                curvDs = NaN(N, 1);
+                xyhc = NaN(N, 5);
+            elseif objs.length() < eps % Zero length path: no extrapolation
+                xyhc = repmat([objs.InitialPos(:)', objs.InitialAng, ...
+                    double(objs.SegmentTypes(1))/objs.TurningRadius, 0], ...
+                    numel(tau), 1);
+                xyhc(tau ~= 0, :) = NaN;
+                tau(tau ~= 0) = NaN;
             else % Otherwise, evaluate path definition
-                [xyhc,tau,curvDs] = objs.evalImpl(tau(:), extrap);
+                [xyhc,tau] = objs.evalImpl(tau(:), extrap);
             end
             
             % Unpack data
@@ -166,6 +171,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             y = xyhc(:,2);
             head = xyhc(:,3);
             curv = xyhc(:,4);
+            curvDs = xyhc(:,5);
             
         end%fcn
         
@@ -194,8 +200,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             xy = Q + bsxfun(@times, [-t(:,2), t(:,1)], sd(:,2));
             
             if (nargin > 2) && doPlot
-                obj.plot('DisplayName',class(obj));
+                h = obj.plot(linspace(min(tau),max(tau),1e3), '--','DisplayName','Extrap.');
                 hold on
+                obj.plot('Color',get(h,'Color'), 'DisplayName',class(obj));
                 % [xb,yb] = obj.eval(obj.Breaks);
                 % plot(xb, yb, 'b.', 'MarkerSize',10, 'DisplayName','Breaks');
                 plot(xy(:,1), xy(:,2), 'o', 'DisplayName','xy');
@@ -339,24 +346,41 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
     
     methods (Access = private)
         
-        function [xyhc,tau,curvDs] = evalImpl(obj, tau, extrap)
+        function [xyhc,tau] = evalImpl(obj, tau, extrap)
             
             N = obj.numel();
             
-            xyhc = coder.nullcopy(zeros(numel(tau), 4));
+            xyhc = coder.nullcopy(zeros(numel(tau), 5));
             x0 = obj.InitialPos(1);
             y0 = obj.InitialPos(2);
             h0 = obj.InitialAng;
             R = obj.TurningRadius;
             
+            % Assign values of tau to path segments
+            [a,b] = obj.domain();
+            [~,segIdxs] = histc(tau, [a:b, inf]); %#ok<HISTC>
+            segIdxs = max(min(segIdxs, N), 1);
+            
+            % Assume extrap=true for path evaluation
             for i = 1:N
                 % Evaluate the first N-1 pieces on half-open intervals
                 % [t0,t1) and the Nth piece on the closed interval [t0,t1]
-                if i < N
-                    logIdxi = (tau >= i-1) & ( tau < i);
-                else
-                    logIdxi = (tau >= i-1) & ( tau <= i);
-                end
+%                 if i == 1
+%                     if N < 2
+%                         logIdxi = (tau == 0);
+%                     else
+%                         logIdxi = (tau < 1);
+%                     end
+%                 elseif i == N
+%                     logIdxi = (tau >= N-1);
+%                 else % i < N
+%                     logIdxi = (tau >= i-1) & (tau < i);
+% %                 else
+% %                     logIdxi = (tau >= i-1) & (tau <= i);
+%                 end
+% %                 taui = tau(logIdxi);
+
+                logIdxi = (segIdxs == i);
                 taui = tau(logIdxi);
                 
                 si = obj.SegmentLengths(i);
@@ -406,10 +430,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                 y0 = yT(2) + dy;
                 h0 = hEnd;
                 
-                xyhc(logIdxi, :) = [xi yi hi ci];
+                xyhc(logIdxi, :) = [xi yi hi ci zeros(size(xi))];
             end%for
-            
-            curvDs = zeros(numel(tau), 1);
             
             % Set return values to NaN outside path domain
             if ~extrap
@@ -417,7 +439,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                 isOutsideDomain = (tau < tau0) | (tau > tau1);
                 tau(isOutsideDomain) = NaN;
                 xyhc(isOutsideDomain,:) = NaN;
-                curvDs(isOutsideDomain,:) = NaN;
             end
             
         end%fcn

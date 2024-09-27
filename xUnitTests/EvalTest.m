@@ -191,7 +191,62 @@ classdef EvalTest < matlab.unittest.TestCase
             testCase.verifyEqual(d, dSet);
             
         end%fcn
-       
+        
+        function testExtrapolationDubins(testCase, obj)
+            
+            if ~isa(obj, 'DubinsPath')
+                return
+            end
+            
+            % Evaluate inside and outside of the path's domain
+            [tau0,tau1] = obj.domain();
+            tauEval = [tau0-3 tau0-1 tau0:1:tau1 tau1+1 tau1+3];
+            N = numel(tauEval);
+            
+            [x,y,t,h,c,d] = obj.eval(tauEval, true);
+            if obj.isempty() % Nothing to extrapolate
+                xSet = NaN(N, 1);
+                ySet = NaN(N, 1);
+                tSet = NaN(N, 1);
+                hSet = NaN(N, 1);
+                cSet = NaN(N, 1);
+                dSet = NaN(N, 1);
+            elseif tau1 - tau0 < eps
+                xSet = NaN(N, 1);
+                ySet = NaN(N, 1);
+                tSet = NaN(N, 1);
+                hSet = NaN(N, 1);
+                cSet = NaN(N, 1);
+                dSet = NaN(N, 1);
+                isInDomain = (tauEval == 0);
+                xSet(isInDomain) = obj.InitialPos(1);
+                ySet(isInDomain) = obj.InitialPos(2);
+                tSet(isInDomain) = 0;
+                hSet(isInDomain) = obj.InitialAng;
+                cSet(isInDomain) = obj.SegmentTypes(1)*obj.TurningRadius;
+                dSet(isInDomain) = 0;
+                
+            else % Assume path is straight -> we can use interp1()
+                [xP,yP,~,hP] = obj.eval(tau0:tau1);
+                xyhSet = interp1(tau0:tau1, [xP yP hP], tauEval, 'linear','extrap');
+                xSet = xyhSet(:,1);
+                ySet = xyhSet(:,2);
+                hSet = xyhSet(:,3);
+                tSet = tauEval(:);
+                cSet = zeros(numel(tauEval), 1);
+                dSet = zeros(numel(tauEval), 1);
+            end
+            
+            %%% Checks
+            testCase.verifyEqual(x, xSet);
+            testCase.verifyEqual(y, ySet);
+            testCase.verifyEqual(t, tSet);
+            testCase.verifyEqual(h, hSet);
+            testCase.verifyEqual(c, cSet);
+            testCase.verifyEqual(d, dSet);
+            
+        end%fcn
+        
         function testReturnValuesDubins(testCase)
         % Make sure eval() returns the same values irrespective of the path
         % segments adressed by the path parameter argument. I.e., the
