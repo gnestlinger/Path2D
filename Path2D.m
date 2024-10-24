@@ -12,6 +12,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 % 
 %   Path2D methods (modify path object):
 %   append - Append paths.
+%   derivative - Derivative of path.
 %   restrict - Restrict path domain.
 %   reverse - Reverse path.
 %   rotate - Rotate path.
@@ -350,6 +351,18 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %
         %    See also FRENET2CART, POINTPROJECTION.
         [sd,Q,idx,tau] = cart2frenet(obj, xy, phiMax)
+        
+        % DERIVATIVE    Derivative of path.
+        %   OBJD = DERIVATIVE(OBJ,N) returns the Nth derivative OBJD of the
+        %   path OBJ w.r.t. the path parameter.
+        %
+        %   Note: The result OBJD represents the tangent of the path OBJ,
+        %   that can be queried for a given value of the path parameter via
+        %   eval(). As a consequence, OBJD is not meaningful in terms of a
+        %   path.
+        %
+        %   See also EVAL.
+        objD = derivative(obj, n)
         
         % DOMAIN    Domain of the path.
         %   [TAUL,TAUU] = DOMAIN(OBJ) returns the lower and upper domain

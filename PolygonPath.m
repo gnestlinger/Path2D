@@ -149,6 +149,27 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
+        function obj = derivative(obj, n)
+            
+            if nargin < 2
+                n = 1;
+            elseif n > 1
+                error('N>1 not implemented!')
+            end
+            
+            if (n < 1) || obj.isempty()
+                return
+            end
+            
+            % This approach also works for paths defined at a single point
+            h = obj.head;
+            obj.x = cos(h);
+            obj.y = sin(h);
+            obj.curv(:) = 0;
+            obj.IsCircuit = false;
+            
+        end%fcn
+        
         function [tauL,tauU] = domain(obj)
             if isempty(obj)
                 tauL = NaN;
