@@ -131,6 +131,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 n = 1;
             end
             
+            if (n < 1) || obj.isempty()
+                return
+            end
+            
             c = obj.Coefs;
             [~,Ns,Np] = size(c); % Number of pieces and polynomial order
             
@@ -674,7 +678,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 'coefs',obj.Coefs, ...
                 'lengths',obj.ArcLengths);
         end%fcn
-        
+
     end%methods
     
     
@@ -725,11 +729,35 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             obj = SplinePath(breaks, reshape(coefs, 2, nbrSeg, polyOrd));
         end%fcn
         
-        function obj = straight(P0, P1)
-        % STRAIGHT  Create straight path.
-        %   OBJ = SPLINEPATH.STRAIGHT(P0,P1) creates a straight path from
-        %   point P0 to P1.
+        function obj = circle(r, phi01)
+        %CIRCLE     Create circle.
+        %   OBJ = SPLINEPATH.CIRCLE(R) creates a path object OBJ
+        %   approximating a circle of radius R using the SPLINE function.
+        %   
+        %   OBJ = POLYGONPATH.CIRCLE(R, PHI01) sets the initial and final
+        %   angle to PHI01(1) and PHI01(2) respectively. Default value is
+        %   [0; 2*pi].
+        %
+        %   See also SPLINE.
+        
+            if nargin < 2
+                phi01 = [0; 2*pi];
+            end
             
+            % This will become the breaks vector
+            x = [0 0.5 1 1.5 2]*pi; 
+            
+            % Define five sample points as well as the terminal derivatives
+            y = [0  1  0 -1  0  1  0; 1  0  1  0 -1  0  1];
+            
+            % Create the full "circle", then restrict to specified domain
+            pp = spline(x, r*y);
+            obj = SplinePath.pp2Path(pp);
+            obj = obj.restrict(phi01(1), phi01(2));
+            
+        end%fcn
+        
+        function obj = straight(P0, P1)
             x0 = P0(1);
             y0 = P0(2);
             x1 = P1(1);
@@ -738,7 +766,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 cat(3, [x1-x0; y1-y0], [x0; y0]), ...
                 hypot(x1-x0, y1-y0), ...
                 false);
-            
         end%fcn
         
         function obj = fromStruct(s)
