@@ -965,9 +965,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             N2 = N - 2*N13;
             
             % Create individual circles
-            c1 = PolygonPath.circle(r, signW*[pi/2 pi/2-a] + phi0, N13+1);
-            c2 = PolygonPath.circle(r, signW*[-a-pi/2 pi/2+a] + phi0, N2);
-            c3 = PolygonPath.circle(r, signW*[a-pi/2 -pi/2] + phi0, N13+1);
+            c1 = PolygonPath.circle(r, signW*[pi/2 pi/2-a] + phi0, N13);
+            c2 = PolygonPath.circle(r, signW*[-a-pi/2 pi/2+a] + phi0, N2-1);
+            c3 = PolygonPath.circle(r, signW*[a-pi/2 -pi/2] + phi0, N13);
             c3.head = c3.head - 2*pi;
             
             % Shift before appending
