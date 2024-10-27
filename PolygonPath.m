@@ -876,16 +876,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
     methods (Static)
         
         function obj = circle(r, phi01, N)
-        %CIRCLE     Create circle.
-        %   OBJ = POLYGONPATH.CIRCLE(R) creates a path object OBJ
-        %   describing a circle of radius R.
-        %   
-        %   OBJ = POLYGONPATH.CIRCLE(R, PHI01) sets the initial and final
-        %   angle to PHI01(1) and PHI01(2) respectively. Default value is
-        %   [0; 2*pi];
-        %   
-        %   OBJ = POLYGONPATH.CIRCLE(R, PHI01, N) creates the circle using
-        %   N samples. Default value is N = 100.
             
             if nargin < 3
                 N = 100;
@@ -893,9 +883,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             if nargin < 2
                 phi01 = [0; 2*pi];
             end
-            t = linspace(phi01(1), phi01(2), N)';
+            t = linspace(phi01(1), phi01(2), N+1)';
             signPhi = sign(phi01(2) - phi01(1));
-            obj = PolygonPath(r*cos(t), r*sin(t), t+signPhi*pi/2, signPhi*repmat(1/r,N,1));
+            obj = PolygonPath(r*cos(t), r*sin(t), ...
+                t+signPhi*pi/2, ...
+                signPhi*repmat(1/r, N+1, 1));
             
             % Set exact path length
             obj.ArcLengths = abs(t(2:end) - t(1))*r; % r*phi where phi=0,...,2*pi

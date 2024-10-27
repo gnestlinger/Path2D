@@ -46,6 +46,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   ll2Path - Construct path from latitude/longitude coordinates.
 %   pp2Path - Construct path from piecewise polynomial.
 %   xy2Path - Construct path from cartesian coordinates.
+%   circle - Construct circle.
 %   straight - Construct straight path.
 %
 %   See also PolygonPath, SplinePath.
@@ -515,6 +516,20 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   from piecewise polynomial struct PP.
         %   
         %   See also MKPP.
+            error('Not implemented!')
+        end%fcn
+        
+        function obj = circle(r, phi01, N) %#ok<STOUT,INUSD>
+        %CIRCLE     Create circle.
+        %   OBJ = <ClassName>.CIRCLE(R) creates a path object OBJ
+        %   describing a circle of radius R.
+        %   
+        %   OBJ = <ClassName>.CIRCLE(R, PHI01) sets the initial and final
+        %   angle to PHI01(1) and PHI01(2) respectively. Default value is
+        %   [0, 2*pi].
+        %
+        %   OBJ = <ClassName>.CIRCLE(R, PHI01, N) creates a circle using N
+        %   path segments.
             error('Not implemented!')
         end%fcn
         
