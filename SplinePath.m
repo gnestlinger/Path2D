@@ -729,31 +729,39 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             obj = SplinePath(breaks, reshape(coefs, 2, nbrSeg, polyOrd));
         end%fcn
         
-        function obj = circle(r, phi01)
+        function obj = circle(r, phi01, N)
         %CIRCLE     Create circle.
-        %   OBJ = SPLINEPATH.CIRCLE(R) creates a path object OBJ
-        %   approximating a circle of radius R using the SPLINE function.
-        %   
-        %   OBJ = POLYGONPATH.CIRCLE(R, PHI01) sets the initial and final
-        %   angle to PHI01(1) and PHI01(2) respectively. Default value is
-        %   [0; 2*pi].
         %
-        %   See also SPLINE.
-        
+        %   Reasonable circle fits are obtained for N >= 4 spline segments.
+        %
+        %   See also Path2D/circle, SPLINE.
+            
+            if nargin < 3
+                N = 3;
+            end    
             if nargin < 2
                 phi01 = [0; 2*pi];
             end
             
             % This will become the breaks vector
-            x = [0 0.5 1 1.5 2]*pi; 
+            x = linspace(0, 2, N+1)*pi;
             
-            % Define five sample points as well as the terminal derivatives
-            y = [0  1  0 -1  0  1  0; 1  0  1  0 -1  0  1];
+            % Define sample points as well as the terminal derivatives
+            y = cat(2, [0;1], [cos(x); sin(x)], [0;1]);
             
             % Create the full "circle", then restrict to specified domain
             pp = spline(x, r*y);
             obj = SplinePath.pp2Path(pp);
             obj = obj.restrict(phi01(1), phi01(2));
+            
+%             h = obj.plot('LineWidth',1, 'DisplayName','Spline');
+%             [xBreaks,yBreaks] = obj.eval(obj.Breaks);
+%             hold on
+%             plot(xBreaks, yBreaks, 'o', 'Color',get(h, 'Color'), 'DisplayName','Breaks')
+%             N = 100; % Samples per spline segment
+%             phi = linspace(0, 2, N*obj.numel())*pi;
+%             plot(r*cos(phi), r*sin(phi), 'r--', 'DisplayName','Circle');
+%             hold off
             
         end%fcn
         
