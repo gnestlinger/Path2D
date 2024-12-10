@@ -36,6 +36,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   pointProjection - Point projection on path.
 %   s2tau - Path length to path parameter.
 %   termPoints - Terminal points.
+%   vectorField - Vector field towards path.
 % 
 %   Path2D visualization methods:
 %   plot - Plot the path.
@@ -64,7 +65,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
     
     
     methods
-        
         function obj = Path2D()
         %PATH2D     Construct a PATH2D class instance.
         end%Constructor
@@ -148,6 +148,79 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             obj.IsCircuit = (norm(P1 - P0) < ths);
             
         end%fcn
+        
+        function [Fx,Fy] = vectorField(obj, x, y, kf, doPlot)
+        %VECTORFIELD    Vector field towards path.
+        %   [FX,FY] = VECTORFIELD(OBJ, X, Y) computes the vector field
+        %   F(X,Y) = [Fx;Fy] for the pairs (X,Y) that points towards the
+        %   path OBJ.
+        %
+        %   [___] = VECTORFIELD(___, K) lets you specify the scaling of the
+        %   normal over the tangential component of the vector field.
+        %   Default value: 1.
+        %   
+        %   EXAMPLES: 
+        %    po = PolygonPath.straight([0 0], [10 5]);
+        %    [x,y] = meshgrid(linspace(-5,15,41), linspace(-5,10,31));
+        %    po.vectorField(x, y, 1, true);
+        % 
+        %    po = SplinePath.circle(3, [0 2*pi], 6);
+        %    [x,y] = meshgrid(linspace(-5,5,21), linspace(-5,5,21));
+        %    po.vectorField(x, y, 1, true);
+        % 
+        %   REFERENCES:
+        %    [1] A. M. C. Rezende, V. M. Goncalves and L. C. A. Pimenta,
+        %    "Constructive Time-Varying Vector Fields for Robot
+        %    Navigation," in IEEE Transactions on Robotics, vol. 38, no. 2,
+        %    pp. 852-867, April 2022, doi: 10.1109/TRO.2021.3093674.
+            
+            assert(isequal(size(x), size(y)))
+            
+            if nargin < 4
+                kf = 1;
+            end
+            
+            if obj.isempty()
+                Fx = NaN(size(x));
+                Fy = NaN(size(y));
+                return
+            end
+            
+            [n,d,tau] = obj.closestUniquePointOnPath(x, y);
+            
+            % Obtain the normal vector from the closest point on the path
+            n = bsxfun(@rdivide, [x(:) y(:)] - n, d + eps);
+            
+            % Since we calculate the tangent vector T = [tx ty] from the
+            % derivative of the path, T always points in the direction of
+            % the path w.r.t. increasing path parameter!
+            PathObjT = obj.derivative();
+            [tx,ty] = PathObjT.eval(tau);
+            
+            % In general, the path parameter is not the path length.
+            % Therefore, we must normalize the tangent vector
+            Th = hypot(tx, ty);
+            
+            fhG = @(D,kf) 2/pi*atan(kf*D);
+%             fhG = @(D,kf) D./sqrt(kf + D.^2);
+            G = fhG(d, kf);
+            H = sqrt(1 - G.^2);
+            Fx = -G.*n(:,1) + H.*(tx./Th);
+            Fy = -G.*n(:,2) + H.*(ty./Th);
+            
+            Fx = reshape(Fx, size(x));
+            Fy = reshape(Fy, size(y));
+            
+            if (nargin > 4) && doPlot
+                obj.plot('r', 'LineWidth',2);
+                hold on
+                quiver(x, y, Fx, Fy, 'k');
+%                 contour(x, y, reshape(d, size(x)));
+                hold off
+            end
+            
+        end%fcn
+        
         
         %%% Plot methods
         function [hr,axr] = plot(varargin)
@@ -331,12 +404,72 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             end
             
         end%fcn
-        
-    end%methods
+    end
     
+    methods (Access = private)
+        function [Q,d,tau] = closestUniquePointOnPath(obj, X, Y)
+        %   For all points (x,y) find the closest unique point Q on the
+        %   path, if it exists. Otherwise, return NaN.
+        %
+        %   [1] A. M. C. Rezende, V. M. Goncalves and L. C. A. Pimenta,
+        %   "Constructive Time-Varying Vector Fields for Robot Navigation,"
+        %   in IEEE Transactions on Robotics, vol. 38, no. 2, pp. 852-867,
+        %   April 2022, doi: 10.1109/TRO.2021.3093674.
+        
+            assert(isequal(size(X), size(Y)))
+            
+            [C0,C1] = obj.termPoints();
+            [tau0,tau1] = obj.domain();
+            isCircuit = obj.IsCircuit;
+            
+            % Given the parameterized path C(s). For each point (x,y), we
+            % find the path paramter s* such that C(s*):=Q is the closest
+            % point on the path (orthogonal projection). Therefore, PQ is
+            % the normal vector.
+            Q = coder.nullcopy(zeros(numel(X), 2));
+            d = coder.nullcopy(zeros(numel(X), 1));
+            tau = coder.nullcopy(zeros(numel(X), 1));
+            for i = 1:numel(X)
+                xi = X(i);
+                yi = Y(i);
+                
+                % Solve Eq. (1)-(3): Find the path parameter/point on path
+                % that has the minimum distance to point Pi
+                [Qi,~,taui] = obj.pointProjection([xi yi]);
+                if isCircuit && (numel(taui) > 1) 
+                    % If the path is a circuit, and two or more solutions
+                    % are found, check if the first and last solution refer
+                    % to the same point. (In case point projection returned
+                    % repeated solutions)
+                    if isequal([tau0 tau1], [taui(1) taui(end)])
+                        Qi(end,:) = [];
+                        taui(end) = [];
+                    end
+                end
+                if isempty(taui)
+                    % Consider endpoints of path
+                    if isCircuit
+                        Qi = C0';
+                        taui = tau0;
+                    else
+                        Qi = [C0'; C1'];
+                        taui = [tau0; tau1];
+                    end
+                end
+                
+                % Check for singleton (unique) solution from a set of
+                % solutions
+                [dMin,QMin,tauMin] = getSingletonSolution(Qi, xi, yi, taui);
+                
+                Q(i,:) = QMin;
+                d(i) = dMin;
+                tau(i) = tauMin;
+            end%for
+            
+        end%fcn
+    end
     
     methods (Abstract)
-        
         % APPEND    Append paths.
         %   OBJ = append(OBJ0,OBJ1,...,OBJN) appends paths OBJ to OBJN in
         %   the given order creating path OBJ.
@@ -497,10 +630,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   (initial point) and P1 (end point) of size 2-by-1. For empty
         %   paths NaNs are returned.
         [P0,P1] = termPoints(obj)
-        
-    end%methods
-    
-    
+    end
+      
     methods (Static)
         
         function obj = ll2Path(lat, lon) %#ok<STOUT,INUSD>
@@ -547,6 +678,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             error('Not implemented!')
         end%fcn
         
-    end%methods
+    end
     
 end%class
