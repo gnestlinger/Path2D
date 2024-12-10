@@ -11,7 +11,8 @@ These path types are available:
 - `PolygonPath.m` implements a class to work with a polygonal path representation, i.e. a path defined by waypoints. 
 - `SplinePath.m` implements a class to work with a polynomial spline path representation.
 - `DubinsPath.m` models a path as a sequence of Dubins segments, i.e. fixed radius arcs and straight lines. (Under development; check branch "DubinsPath"!)
-The implementation aims to support code generation, i.e. can be used in Simulink.  
+
+The code is written with code generation capabilities in mind, i.e. most methods can be used in Simulink.  
 
 ## Motivation
 Two well-known path tracking controllers are the Pure Pursuit [1] and the Stanley controller [2]. Their underlying path tracking error model differs in terms of reference point (rear/front axle), look-ahead (in the direction of the path/none) and lateral error orientation (orthogonal to vehicle heading/path). In literature, you can find several additional path tracking error definitions. As a result, the implementation of a specific path tracking controller not only requires the implementation of the control itself, but also the implementation of the according error model.  
@@ -29,20 +30,25 @@ This repository implements these operations (and other such as frenet transforma
 To view the help of a specific class type `help <ClassName>`, e.g. the help of the base class `Path2D` is viewed by typing `help Path2D` in the command window and the help of the `PolygonPath` class is viewed by typing `help PolygonPath`.
 
 ## Examples
-### Intersection of spline path with a circle
+The following examples demonstrate some of provided functionality. Further examples can be found in the test files.
 
-![Spline_CircleIntersection](https://user-images.githubusercontent.com/84226458/233801288-a0665561-353f-4edc-a8e8-89793ea8414b.svg)
+### Intersection of spline path with a circle
+<img src="https://user-images.githubusercontent.com/84226458/233801288-a0665561-353f-4edc-a8e8-89793ea8414b.svg" width="500">
 
 ### Orthogonal projection w.r.t. to spline path
+<img src="https://user-images.githubusercontent.com/84226458/233801353-1c4cc9b6-3151-44bf-9b33-15054bf7119f.svg" width="500">
 
-![Spline_Cart2Frenet](https://user-images.githubusercontent.com/84226458/233801353-1c4cc9b6-3151-44bf-9b33-15054bf7119f.svg)
 
-Further examples can be found in the test files.
+### Vector field to guide a robot towards a reference path as proposed in [4]
+<img src="https://github.com/user-attachments/assets/170b6913-2a0b-47f7-84a7-8d4d5e9210a7" width="500">
+
+
 
 ## Contribution
 Contributers are welcome! Both, by submitting issues and creating pull requests.
 
 ## References
-[1] R. Craig Coulter, Implementation of the Pure Pursuit Path Tracking Algorithm, 1992, Carnegie Mellon University.  
-[2] G. M. Hoffmann, C. J. Tomlin, M. Montemerlo and S. Thrun, "Autonomous Automobile Trajectory Tracking for Off-Road Driving: Controller Design, Experimental Validation and Racing," 2007 American Control Conference, New York, NY, USA, 2007, pp. 2296-2301, https://doi.org/10.1109/ACC.2007.4282788.  
-[3] Rumetshofer, J.; Stolz, M.; Watzenig, D. A Generic Interface Enabling Combinations of State-of-the-Art Path Planning and Tracking Algorithms. Electronics 2021, 10, 788. https://doi.org/10.3390/electronics10070788 
+[1] R. Craig Coulter. "Implementation of the Pure Pursuit Path Tracking Algorithm", 1992, Carnegie Mellon University.  
+[2] G. M. Hoffmann, C. J. Tomlin, M. Montemerlo and S. Thrun. "Autonomous Automobile Trajectory Tracking for Off-Road Driving: Controller Design, Experimental Validation and Racing", 2007 American Control Conference, New York, NY, USA, 2007, pp. 2296-2301, https://doi.org/10.1109/ACC.2007.4282788  
+[3] Rumetshofer, J.; Stolz, M.; Watzenig, D. "A Generic Interface Enabling Combinations of State-of-the-Art Path Planning and Tracking Algorithms", Electronics 2021, 10, 788. https://doi.org/10.3390/electronics10070788  
+[4] A. M. C. Rezende, V. M. Goncalves and L. C. A. Pimenta, "Constructive Time-Varying Vector Fields for Robot Navigation", in IEEE Transactions on Robotics, vol. 38, no. 2, pp. 852-867, April 2022, doi: https://doi.org/10.1109/TRO.2021.3093674  
