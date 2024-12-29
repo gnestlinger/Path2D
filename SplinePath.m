@@ -33,7 +33,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
     
     
     methods
-        
         function obj = SplinePath(breaks, coefs, s, isCircuit)
         %SPLINEPATH     Create spline path object.
         %   OBJ = SPLINEPATH(BREAKS,COEFS) creates a spline path OBJ with
@@ -307,8 +306,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             [x,y] = obj.eval(tau, true);
             n = ppval(ppdiff(obj.mkpp()), tau)';
-            Q = [x,y];
-            xy = Q + bsxfun(@times, [-n(:,2), n(:,1)], sd(:,2)./sqrt(sum(n.^2, 2)));
+            Q = [x y];
+            xy = Q + bsxfun(@times, [-n(:,2) n(:,1)], sd(:,2)./sqrt(sum(n.^2, 2)));
             
             if (nargin > 2) && doPlot
                 obj.plot('DisplayName','SplinePath');
@@ -592,11 +591,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 return
             end
             
+            S = obj.ArcLengths;
             if obj.IsCircuit
-                s = mod(s, obj.length());
+                s = mod(s, S(end));
             end
             
-            S = obj.ArcLengths;
             idx = coder.nullcopy(zeros(size(s), 'uint32'));
             for i = 1:numel(s)
                 idxs = find(s(i) < S, 1, 'first');
@@ -678,12 +677,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 'coefs',obj.Coefs, ...
                 'lengths',obj.ArcLengths);
         end%fcn
-
     end%methods
     
     
     methods (Access = private)
-        
         function s = idxTau2s(obj, idx, tau)
         % IDXTAU2S  Lenghts from path segment IDX and path parameter TAU.
         
@@ -717,12 +714,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             s = cumsum(s);
             
         end%fcn
-        
     end%methods
     
     
     methods (Static)
-        
         function obj = pp2Path(pp)
             [breaks,coefs,nbrSeg,polyOrd,dim] = unmkpp(pp);
             assert(dim == 2, 'Spline must be 2D valued!')
@@ -765,6 +760,40 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
         end%fcn
         
+        function obj = connect(P0, P1)
+        %CONNECT    Polynomial path from initial to target configuration.
+        %   OBJ = SplinePath.CONNECT(P0, P1) creates a polynomial path OBJ
+        %   connecting the inital/end configuration P0/P1, where Pi has as
+        %   many rows as differential boundary conditions, i.e.:
+        %       Pi = [xi yi;
+        %             dxi/dt dyi/dt;
+        %             ...
+        %             dxi/dt dyi/dt;
+        
+            % Number of boundary conditions at start/end
+            NBC0 = size(P0, 1);
+            NBC1 = size(P1, 1);
+            
+            % To have a well-define system of equations, we need one
+            % polynomial coefficient per boundary condition
+            Nc = NBC0 + NBC1;
+            
+            A1 = coder.nullcopy(zeros(NBC0, Nc));
+            A1(1,1) = 1;
+            for i = 2:NBC0
+                A1(i,i) = gamma(i); % gamma(n+1) = n!
+            end
+            
+            A2 = coder.nullcopy(zeros(NBC1, Nc));
+            A2(1,:) = 1;
+            for i = 2:NBC1
+                A2(i,:) = A2(i-1,:).*[zeros(1,i-2), 0:Nc+1-i];
+            end
+            
+            coefs = flip([A1;A2]\[P0; P1], 1);
+            obj = SplinePath([0 1], reshape(coefs', [2 1 Nc]));
+        end%fcn
+        
         function obj = straight(P0, P1)
             x0 = P0(1);
             y0 = P0(2);
@@ -791,7 +820,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 };
             c = {{BusName,HeaderFile,Description,BusElements}};
         end%fcn
-        
     end%methods
     
 end%class
