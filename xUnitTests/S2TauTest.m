@@ -1,9 +1,11 @@
 classdef S2TauTest < matlab.unittest.TestCase
     
     properties (TestParameter)
-        PathEmpty = struct(...
+        PathZeroLength = struct(...
             'PolygonPathEmpty',PolygonPath(), ...
-            'SplinePathEmpty',SplinePath())
+            'PolygonPathZeroLength',PolygonPath(1,2,3,4), ...
+            'SplinePathEmpty',SplinePath(), ...
+            'SplinePathZeroLength',SplinePath([0 0], cat(3, [1;2], [0;0])))
         
         PathObj = struct(...
             'PolygonPathEmpty',PolygonPath(), ...
@@ -14,6 +16,7 @@ classdef S2TauTest < matlab.unittest.TestCase
             'SplinePathNonEmpty',SplinePath([0 1 2], reshape([1 0; 0 0; 1 1; 1 0], [2 2 2])))
         
         s = struct(...
+            'emptyS',[], ...
             'emptyColS',zeros(0,1), ...
             'emptyRowS',zeros(1,0), ...
             'scalarS',1.1, ...
@@ -25,16 +28,19 @@ classdef S2TauTest < matlab.unittest.TestCase
     
     methods (Test)
         function testReturnSize(testCase, PathObj, s)
+        % The size of the return arguments must match the size of S.
+        
             [tau,idx] = PathObj.s2tau(s);
-            
             verifySize(testCase, tau, size(s));
             verifySize(testCase, idx, size(s));
             verifyClass(testCase, idx, 'uint32');
         end%fcn
         
-        function testReturnValuesEmptyPath(testCase, PathEmpty, s)
-            % Empty path return NaN for tau and 0 for idx
-            [tau,idx] = PathEmpty.s2tau(s);
+        function testReturnValuesEmptyPath(testCase, PathZeroLength, s)
+        % For empty or zero-length paths, S2TAU returns NaN for tau and
+        % 0 for idx.
+        
+            [tau,idx] = PathZeroLength.s2tau(s);
             verifyEqual(testCase, tau, nan(size(s)));
             verifyEqual(testCase, idx, zeros(size(s), 'uint32'));
         end%fcn
