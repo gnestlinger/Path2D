@@ -591,42 +591,31 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 return
             end
             
+            N = obj.numel();
             S = obj.ArcLengths;
             if obj.IsCircuit
                 s = mod(s, S(end));
             end
             
+            % Get the segment index
+            [~,idx] = histc(s, [-inf; S; inf]); %#ok<HISTC>
+            idx = min(uint32(idx), N);
+            
             breaks = obj.Breaks;
             pp = obj.mkpp();
-            idx = coder.nullcopy(zeros(size(s), 'uint32'));
             tau = coder.nullcopy(zeros(size(s)));
-            for i = 1:numel(s)
-                si = s(i);
-                idxi = find(si < S, 1, 'first');
-                if isempty(idxi)
-                    idxi = obj.numel();
-                else
-                    idxi = idxi(1);
+            S = circshift(S, 1);
+            S(1) = 0;
+            for i = 1:N % Loop over spline segments
+                if any(idx == i)
+                    taui = linspace(breaks(i), breaks(i+1), 1000);
+                    dxy = diff(ppval(pp, taui), 1, 2);
+                    ds = cumsum(hypot(dxy(1,:), dxy(2,:))); 
+                    tau(idx == i) = interp1([0 ds] + S(i), taui, s(idx == i), ...
+                        'linear','extrap');
                 end
-                idx(i) = idxi;
-                
-                taui = linspace(breaks(idxi), breaks(idxi+1), 1000);
-                dxy = diff(ppval(pp, taui), 1, 2);
-                ds = (hypot(dxy(1,:), dxy(2,:)));
-                
-                S2 = [0; obj.ArcLengths];
-                tau(i) = interp1([0 cumsum(ds)] + S2(idxi), taui, si, 'linear','extrap');
-            end%for
+            end
             
-            % The points on the path (i.e. d=0) are given by the segment's
-            % initial point plus the remaining length along the current
-            % segment
-%             S = [0; S];
-%             ds = s - reshape(S(idx), size(s));
-%             breaks = obj.Breaks';
-%             tau0 = breaks(idx);
-%             tau = reshape(tau0, size(s)) + ds.*...
-%                 reshape((breaks(idx+1) - tau0)./(S(idx+1) - S(idx)), size(s));
         end%fcn
         
         function obj = select(obj, idxs)
