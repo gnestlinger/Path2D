@@ -596,25 +596,37 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 s = mod(s, S(end));
             end
             
+            breaks = obj.Breaks;
+            pp = obj.mkpp();
             idx = coder.nullcopy(zeros(size(s), 'uint32'));
+            tau = coder.nullcopy(zeros(size(s)));
             for i = 1:numel(s)
-                idxs = find(s(i) < S, 1, 'first');
-                if isempty(idxs)
-                    idx(i) = obj.numel();
+                si = s(i);
+                idxi = find(si < S, 1, 'first');
+                if isempty(idxi)
+                    idxi = obj.numel();
                 else
-                    idx(i) = idxs(1);
+                    idxi = idxi(1);
                 end
+                idx(i) = idxi;
+                
+                taui = linspace(breaks(idxi), breaks(idxi+1), 1000);
+                dxy = diff(ppval(pp, taui), 1, 2);
+                ds = (hypot(dxy(1,:), dxy(2,:)));
+                
+                S2 = [0; obj.ArcLengths];
+                tau(i) = interp1([0 cumsum(ds)] + S2(idxi), taui, si, 'linear','extrap');
             end%for
             
             % The points on the path (i.e. d=0) are given by the segment's
             % initial point plus the remaining length along the current
             % segment
-            S = [0; S];
-            ds = s - reshape(S(idx), size(s));
-            breaks = obj.Breaks';
-            tau0 = breaks(idx);
-            tau = reshape(tau0, size(s)) + ds.*...
-                reshape((breaks(idx+1) - tau0)./(S(idx+1) - S(idx)), size(s));
+%             S = [0; S];
+%             ds = s - reshape(S(idx), size(s));
+%             breaks = obj.Breaks';
+%             tau0 = breaks(idx);
+%             tau = reshape(tau0, size(s)) + ds.*...
+%                 reshape((breaks(idx+1) - tau0)./(S(idx+1) - S(idx)), size(s));
         end%fcn
         
         function obj = select(obj, idxs)
@@ -703,7 +715,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 coefs = obj.Coefs;
             end
             
-            N = size(coefs,2);
+            N = size(coefs, 2);
             pp = mkpp(breaks, coefs, 2);
             s = coder.nullcopy(zeros(N,1));
             for i = 1:N
