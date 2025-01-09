@@ -39,8 +39,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         %   breaks BREAKS of size 1-by-(N+1) and coefficients COEFS of size
         %   2-by-N-by-K, where N is the number of spline segments and K-1
         %   the polynomial degree.
+        %   
+        %   OBJ = SPLINEPATH(___,S) sets the cumulative lengths of the
+        %   spline segments.
         %
-        %   OBJ = SPLINEPATH(___,ISCIRCUIT) set to true if the path is a
+        %   OBJ = SPLINEPATH(___,S,ISCIRCUIT) set to true if the path is a
         %   circuit.
         %
         
@@ -59,7 +62,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 s = obj.calcArcLength(breaks, coefs);
             end
             assert(numel(s) == size(coefs,2));
-            obj.ArcLengths = s;
+            obj.ArcLengths = s(:);
             
             if nargin < 4
                 obj = obj.setIsCircuit(1e-5);
@@ -719,10 +722,19 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
     
     
     methods (Static)
-        function obj = pp2Path(pp)
+        function obj = pp2Path(pp, varargin)
+        % PP2PATH    Path object from piecewise polynomial.
+        %   OBJ = SplinePath.PP2PATH(PP) instantiates the path OBJ
+        %   from piecewise polynomial struct PP.
+        %   
+        %   OBJ = SplinePath.PP2PATH(PP, VARARGIN) sets additional
+        %   constructor arguments via VARARGIN.
+        %
+        %   See also SPLINEPATH/SPLINEPATH, MKPP.
+        
             [breaks,coefs,nbrSeg,polyOrd,dim] = unmkpp(pp);
             assert(dim == 2, 'Spline must be 2D valued!')
-            obj = SplinePath(breaks, reshape(coefs, 2, nbrSeg, polyOrd));
+            obj = SplinePath(breaks, reshape(coefs, 2, nbrSeg, polyOrd), varargin{:});
         end%fcn
         
         function obj = circle(r, phi01, N)
@@ -762,7 +774,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         end%fcn
         
         function obj = connect(P0, P1)
-        %CONNECT    Polynomial path from initial to target configuration.
+        %CONNECT    Spline path from initial to target configuration.
         %   OBJ = SplinePath.CONNECT(P0, P1) creates a polynomial path OBJ
         %   connecting the inital/end configuration P0/P1, where Pi has as
         %   many rows as differential boundary conditions, i.e.:
