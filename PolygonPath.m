@@ -43,7 +43,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
     
     
     methods
-        
         function obj = PolygonPath(x, y, head, curv, isCircuit)
         %POLYGONPATH    Create polygon path object.
         %   OBJ = POLYGONPATH() creates an empty path.
@@ -547,18 +546,18 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function d = perpendicularDistance(obj, P0, P1, doPlot)
         %PERPENDICULARDISTANCE    Perpendicular distance to line.
-        %    D = PERPENDICULARDISTANCE(OBJ,P1,P2) calculate the
-        %    perpendicular distance D for all waypoints of OBJ to the line
-        %    passing through P1 and P2.
-        % 
-        %    D = PERPENDICULARDISTANCE(...,DOPLOT) also shows a plot of
-        %    results if DOPLOT evaluates to TRUE.
+        %   D = PERPENDICULARDISTANCE(OBJ,P1,P2) calculate the
+        %   perpendicular distance D for all waypoints of OBJ to the line
+        %   passing through P1 and P2.
+        %   
+        %   D = PERPENDICULARDISTANCE(...,DOPLOT) also shows a plot of
+        %   results if DOPLOT evaluates to TRUE.
         %
-        %    NOTE: The distance for waypoints of OBJ to the left/right of
-        %    the line from P1 to P2 is positive/negative.
+        %   NOTE: The distance for waypoints of OBJ to the left/right of
+        %   the line from P1 to P2 is positive/negative.
         %    
-        %    See also
-        %    https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Line_defined_by_two_points
+        %   See also
+        %   https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Line_defined_by_two_points
             
             % Handle input arguments
             narginchk(1, 4)
@@ -704,13 +703,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function [obj,idx] = rdp(obj, eps)
         %RDP    Ramer-Douglas-Peucker point reduction.
-        %    OBJR = RDP(OBJ,EPS) applies the Ramer-Douglas-Peuker point
-        %    reduction algorithm to path OBJ with parameter EPS. None of
-        %    the removed waypoints has a distance greater than EPS to the
-        %    resulting path!
+        %   OBJR = RDP(OBJ,EPS) applies the Ramer-Douglas-Peuker point
+        %   reduction algorithm to path OBJ with parameter EPS. None of the
+        %   removed waypoints has a distance greater than EPS to the
+        %   resulting path!
         %    
-        %    [OBJR,IDX] = RDP(OBJ,EPS) returns an array IDX so that OBJR =
-        %    SELECT(OBJ, IDX).
+        %   [OBJR,IDX] = RDP(OBJ,EPS) returns an array IDX so that OBJR =
+        %   SELECT(OBJ, IDX).
         %
             
             % The actual implementation is moved to a separate file,
@@ -832,7 +831,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %WRITE2FILE		Write path to file.
         %	WRITE2FILE(OBJ,FN) writes waypoints OBJ to file with filename
         %	FN (specify extension!).
-        %	
+        %   
             
             % Open file with write-permission
             [~,~,fileExt] = fileparts(fn);
@@ -855,7 +854,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         function s = toStruct(obj)
             s = struct('x',obj.x, 'y',obj.y, 'head',obj.head, 'curv',obj.curv);
         end%fcn
-        
     end%methods
     
     
@@ -874,7 +872,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
     
     
     methods (Static)
-        
         function obj = circle(r, phi01, N)
             
             if nargin < 3
@@ -1004,7 +1001,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function obj = pp2Path(pp, tau, polyDeg)
-            
+        % PP2PATH    Path object from piecewise polynomial.
+        %   OBJ = PolygonPath.PP2PATH(PP,TAU) instantiates the path OBJ
+        %   from piecewise polynomial struct PP sampled at TAU.
+        %   
+        %   See also MKPP.
+        
             if nargin < 3
                 [~,~,~,polyOrd] = unmkpp(pp);
                 polyDeg = polyOrd - 1;
@@ -1052,7 +1054,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 };
             c = {{BusName,HeaderFile,Description,BusElements}};
         end%fcn
-        
     end%methods
     
 end%class

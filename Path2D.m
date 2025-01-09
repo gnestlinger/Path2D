@@ -73,7 +73,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         % CUMLENGTHS    Cumulative path segment lengths.
         %   S = CUMLENGTHS(OBJ) returns the vector S of cumulative path
         %   segment lengths.
-        %
+        %   
         %   See also LENGTH.
         
             s = obj.ArcLengths;
@@ -83,7 +83,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         % ISEMPTY   Check if path is empty.
         %   FLAG = ISEMPTY(OBJ) returns true if the path's domain is
         %   undefined, i.e. domain(OBJ) returns NaN, and false otherwise.
-        %
+        %   
         %   See also DOMAIN.
         
             flag = (obj.numel() < 1);
@@ -93,7 +93,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         % LENGTH    Path length.
         %   S = LENGTH(OBJ) returns the arc length S >= 0 of the path OBJ.
         %   For empty paths, S = 0.
-        %
+        %   
         %   See also CUMLENGTHS.
         
             if isempty(obj.ArcLengths)
@@ -105,7 +105,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         
         function tau = sampleDomain(obj, arg)
         %SAMPLEDOMAIN   Sample domain of path.
-        %
+        %   
         %   TAU = SAMPLEDOMAIN(OBJ,ARG) returns the path parameter TAU
         %   sampled over the domain of path OBJ depending on the class of
         %   ARG: if ARG is 
@@ -130,10 +130,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
                     end%if
                     
                 case {'uint8', 'uint16', 'uint32', 'uint64'}
-                        tau = linspace(tau0, tau1, arg)';
+                    tau = linspace(tau0, tau1, arg)';
                     
                 otherwise
-                   error('Unsupported data type for argument ARG!')
+                    error('Unsupported data type for argument ARG!')
             end%switch
             
         end%fcn
@@ -146,7 +146,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         
             [P0,P1] = obj.termPoints();
             obj.IsCircuit = (norm(P1 - P0) < ths);
-            
         end%fcn
         
         function [Fx,Fy] = vectorField(obj, x, y, kf, doPlot)
@@ -225,27 +224,27 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %%% Plot methods
         function [hr,axr] = plot(varargin)
         %PLOT   Plot path.
-        %    PLOT(OBJ) plots the path OBJ in terms of x over y.
-        %
-        %    PLOT(OBJ,DTAU) specify path parameter increment to be plotted.
+        %   PLOT(OBJ) plots the path OBJ in terms of x over y.
+        %   
+        %   PLOT(OBJ,DTAU) specify path parameter increment to be plotted.
         %    
-        %    PLOT(OBJ,S) additionally applies the line specification S.
+        %   PLOT(OBJ,S) additionally applies the line specification S.
         %
-        %    PLOT(OBJ,DTAU,S) specify DTAU before any line specification.
+        %   PLOT(OBJ,DTAU,S) specify DTAU before any line specification.
         %
-        %    PLOT(...,NAME,VALUE) specifies line properties using one or
-        %    more Name,Value pair arguments.
+        %   PLOT(...,NAME,VALUE) specifies line properties using one or
+        %   more Name,Value pair arguments.
         %
-        %    PLOT(AX,...) plots into the axes with handle AX.
+        %   PLOT(AX,...) plots into the axes with handle AX.
         %    
-        %    [H,AX] = PLOT(...) returns the handle H to lineseries objects
-        %    and axes handle AX.
+        %   [H,AX] = PLOT(...) returns the handle H to lineseries objects
+        %   and axes handle AX.
         %    
-        %    The line specification S is a character string supported by the
-        %    standard PLOT command. For example
-        %        PLOT(OBJ, 'LineWidth',2, 'Color',[.6 0 0]) 
-        %    will plot a dark red line using a line width of 2 points.
-        %
+        %   The line specification S is a character string supported by the
+        %   standard PLOT command. For example
+        %       PLOT(OBJ, 'LineWidth',2, 'Color',[.6 0 0]) 
+        %   will plot a dark red line using a line width of 2 points.
+        %   
         %   See also PLOTG2, PLOTTANGENT.
             
             [ax,obj,dtau,opts] = parsePlotInputs(varargin{:});
@@ -314,21 +313,21 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             
         end%fcn
         
-        function [hr,axr] = plottangent(varargin) 
+        function [hr,axr] = plottangent(varargin)
         %PLOTTANGENT    Plot path and tangents.
-        %    PLOTTANGENT(OBJ,TAU) plots the path and tangents at the path
-        %    parameters TAU and highlights the path coordinates at TAU. If
-        %    TAU is empty, tangents are plotted for the path's terminal
-        %    points.
+        %   PLOTTANGENT(OBJ,TAU) plots the path and tangents at the path
+        %   parameters TAU and highlights the path coordinates at TAU. If
+        %   TAU is empty, tangents are plotted for the path's terminal
+        %   points.
         %    
-        %    [H,AX] = PLOTTANGENT(...) returns a handle array H to
-        %    lineseries objects and the axes handle AX. Here, H(1,1) is the
-        %    path-handle, H(i+1,1) and H(i+1,2) the marker- and the
-        %    tangent-handle of TAU(i) respectively.
+        %   [H,AX] = PLOTTANGENT(...) returns a handle array H to
+        %   lineseries objects and the axes handle AX. Here, H(1,1) is the
+        %   path-handle, H(i+1,1) and H(i+1,2) the marker- and the
+        %   tangent-handle of TAU(i) respectively.
         %    
-        %    For Syntax see also PATH2D/PLOT.
-        %
-        %    See also PATH2D/PLOT, PATH2D/PLOTG2.
+        %   For Syntax see also PATH2D/PLOT.
+        %   
+        %   See also PATH2D/PLOT, PATH2D/PLOTG2.
             
             [ax,obj,tau,opts] = parsePlotInputs(varargin{:});
             if isempty(ax) || ~ishghandle(ax)
@@ -410,7 +409,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         function [Q,d,tau] = closestUniquePointOnPath(obj, X, Y)
         %   For all points (x,y) find the closest unique point Q on the
         %   path, if it exists. Otherwise, return NaN.
-        %
+        %   
         %   [1] A. M. C. Rezende, V. M. Goncalves and L. C. A. Pimenta,
         %   "Constructive Time-Varying Vector Fields for Robot Navigation,"
         %   in IEEE Transactions on Robotics, vol. 38, no. 2, pp. 852-867,
@@ -633,7 +632,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
     end
       
     methods (Static)
-        
         function obj = ll2Path(lat, lon) %#ok<STOUT,INUSD>
         % LL2PATH    Path object from LAT/LON coordinates.
         %   OBJ = <ClassName>.LL2PATH(LAT, LON) instantiates the path OBJ
@@ -641,10 +639,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             error('Not implemented!')
         end%fcn
         
-        function obj = pp2Path(pp, tay, polyDeg) %#ok<STOUT,INUSD>
+        function obj = pp2Path(pp, varargin) %#ok<STOUT,INUSD>
         % PP2PATH    Path object from piecewise polynomial.
-        %   OBJ = <ClassName>.PP2PATH(PP,TAU) instantiates the path OBJ
-        %   from piecewise polynomial struct PP.
+        %   OBJ = <ClassName>.PP2PATH(PP,VARARGIN) instantiates the path
+        %   OBJ from piecewise polynomial struct PP.
         %   
         %   See also MKPP.
             error('Not implemented!')
@@ -677,7 +675,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   from x/y data.
             error('Not implemented!')
         end%fcn
-        
     end
     
 end%class
