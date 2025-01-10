@@ -10,7 +10,8 @@ Provides methods to
 These path types are available:
 - `PolygonPath.m` implements a class to work with a polygonal path representation, i.e. a path defined by waypoints. 
 - `SplinePath.m` implements a class to work with a polynomial spline path representation.
-Both classes are implemented to support code generation, i.e. can be used in Simulink.  
+- `DubinsPath.m` models a path as a sequence of Dubins segments, i.e. fixed radius arcs and straight lines. (Under development; check branch "DubinsPath"!)
+The implementation aims to support code generation, i.e. can be used in Simulink.  
 
 ## Motivation
 Two well-known path tracking controllers are the Pure Pursuit [1] and the Stanley controller [2]. Their underlying path tracking error model differs in terms of reference point (rear/front axle), look-ahead (in the direction of the path/none) and lateral error orientation (orthogonal to vehicle heading/path). In literature, you can find several additional path tracking error definitions. As a result, the implementation of a specific path tracking controller not only requires the implementation of the control itself, but also the implementation of the according error model.  

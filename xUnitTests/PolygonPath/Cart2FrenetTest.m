@@ -40,7 +40,7 @@ classdef Cart2FrenetTest < matlab.unittest.TestCase
             testCase.verifySize(sd, [N 2]);
             testCase.verifySize(Q, [N 2]);
             testCase.verifyEqual(idx, (1:N)');
-            testCase.verifyTrue(all(idx <= obj.numel() - 1))
+            testCase.verifyTrue(all(idx <= numel(obj.x) - 1))
             testCase.verifyEqual(tau, (0:N-1)'+0.5, 'AbsTol',1e-10);
             testCase.verifyEqual(dphi, zeros(N,1), 'AbsTol',1e-15);
         end%fcn
@@ -62,7 +62,7 @@ classdef Cart2FrenetTest < matlab.unittest.TestCase
             testCase.verifyEqual(sd, [1 -sqrt(2)]);
             testCase.verifyEqual(Q, P1');
             testCase.verifyEqual(idx, 2);
-            testCase.verifyTrue(idx <= obj.numel() - 1);
+            testCase.verifyTrue(idx <= numel(obj.x) - 1);
             testCase.verifyEqual(tau, 2);
             testCase.verifyEqual(dphi, pi/4);
             
@@ -72,7 +72,7 @@ classdef Cart2FrenetTest < matlab.unittest.TestCase
             testCase.verifyEqual(sd, [sqrt(0.5) -0.5]);
             testCase.verifyEqual(Q, [0.5 0.5]);
             testCase.verifyEqual(idx, 2);
-            testCase.verifyTrue(idx <= obj.numel() - 1);
+            testCase.verifyTrue(idx <= numel(obj.x) - 1);
             testCase.verifyEqual(tau, 1);
             testCase.verifyEqual(dphi, pi/4);
         end%fcn
@@ -83,11 +83,11 @@ classdef Cart2FrenetTest < matlab.unittest.TestCase
             [sd,Q,idx,tau,dphi] = obj.cart2frenet([0 0], [], false);
             
             % One solution per path segment, at the center of each segment
-            N = numel(obj) - 1;
+            N = numel(obj.x) - 1;
             testCase.verifySize(sd, [N 2]);
             testCase.verifySize(Q, [N 2]);
             testCase.verifyEqual(idx, (1:N)');
-            testCase.verifyTrue(all(idx <= obj.numel() - 1))
+            testCase.verifyTrue(all(idx <= numel(obj.x) - 1))
             testCase.verifyEqual(tau, (0:N-1)'+0.5, 'AbsTol',1e-15);
             testCase.verifyEqual(dphi, zeros(N,1), 'AbsTol',1e-15);
         end%fcn

@@ -10,6 +10,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
 % 
 %   DubinsPath methods:
 %   DubinsPath - Constructor.
+%   convertSegmentType2Char - Convert numeric segment type to character.
 % 
 %   DubinsPath static methods:
 %   connect - Create Dubins path from initial/target configuration.
@@ -21,27 +22,23 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
 
     properties (SetAccess = private)
         % TurningRadius - Turning radius
+        %   The radius of circular arc path segments.
         TurningRadius = 1
         
         % SegmentTypes - Segment types
         %   1 ... Left turn
         %   0 ... Straight line
         %  -1 ... Right turn
-        SegmentTypes = zeros(3,1, 'int8')
+        SegmentTypes = zeros(1,0, 'int8')
 
         % SegmentLengths - Segment lengths
-        SegmentLengths = zeros(3,1)
+        SegmentLengths = zeros(1,0)
         
         % InitialPos - Initial position
         InitialPos = zeros(2,1)
         
         % InitialAng - Initial orientation angle
         InitialAng = 0
-    end
-    
-    properties (Access = private)
-        % ArcLengths - Cumulative length of path segments
-        Arclengths = zeros(0, 1)
     end
     
     properties (Constant, Hidden)
@@ -55,7 +52,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             -1 0 1;
              1 0 -1;
             -1 1 -1;
-             1 -1 1]);          
+             1 -1 1]);
         
         % MapNum2Char - Segment type map from numeric to character
         %   
@@ -69,13 +66,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
     
     methods
         
-        function obj = DubinsPath(startPose, types, lengths, R)
+        function obj = DubinsPath(startPose, types, lengths, R, isCircuit)
         %DUBINSPATH    Create Dubins path object.
         %   OBJ = DUBINSPATH() creates an empty path.
         %
-        %   OBJ = DUBINSPATH(C0, TYPES, LENGTHS, R) 
+        %   OBJ = DUBINSPATH(C0, T, L, R) creates a path consisting of
+        %   Dubins segments with initial pose C0, segment types T with
+        %   individual lengths L. Arc segments have a radius R.
         %
-        
         %   OBJ = DUBINSPATH(___,ISCIRCUIT) set to true if the path is a
         %   circuit.
         %
@@ -85,23 +83,24 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                 return
             end
             
-            obj.InitialPos = startPose(1:2);
-            obj.InitialAng = mod2pi(startPose(3));
+            P0 = startPose(1:2);
+            obj.InitialPos = P0(:);
+            obj.InitialAng = startPose(3);
             
             assert(isequal(numel(types), numel(lengths)), ...
                 'DubinsPath:Constructor:numelTypesLengths', ...
-                'Number of path property elements mismatch!');
+                'Number of path property elements must be equal!');
             obj.SegmentTypes = types;
             obj.SegmentLengths = lengths;
             obj.TurningRadius = R;
             
-            obj.Arclengths = [0; cumsum(obj.SegmentLengths)'];
+            obj.ArcLengths = cumsum(obj.SegmentLengths)';
               
-%             if nargin < 5
-%                 obj = obj.setIsCircuit(1e-5);
-%             else
-%                 obj.IsCircuit = isCircuit;
-%             end%if
+            if nargin < 5
+                obj = obj.setIsCircuit(1e-5);
+            else
+                obj.IsCircuit = isCircuit;
+            end%if
             
         end%Constructor
         
@@ -114,102 +113,65 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         end%fcn
         
         function c = convertSegmentType2Char(obj)
+        %CONVERTSEGMENTTYPE2CHAR    Convert segment type to character.
+        %   C = CONVERTSEGMENTTYPE2CHAR(OBJ) converts numeric property
+        %   SegmentTypes to character representation.
             
             c = obj.MapType2Char(obj.SegmentTypes + 2);
         end%fcn
         
-        function s = cumlengths(obj)
-            s = obj.Arclengths;
-        end%fcn
-        
         function [tauL,tauU] = domain(obj)
-
+            
             if isempty(obj)
                 tauL = NaN;
                 tauU = NaN;
             else
                 tauL = 0;
-                tauU = obj.numel() - 1;
+                tauU = sum(obj.SegmentLengths > 0);
             end
         end%fcn
         
-        function [x,y,tau,head,curv,curvDs] = eval(obj, tau, ~)
+        function [x,y,tau,head,curv,curvDs] = eval(obj, tau, extrap)
         %EVAL   Evaluate path at path parameter.
         %   
             
-%             if nargin < 3 % Not supported
-%                 extrap = false;
-%             end
+            if nargin < 3
+                extrap = false;
+            end
             
-            N = obj.numel();
+            objs = obj.simplify();
             
+            % Make sure that tau is defined
             if nargin < 2
-                % M samples per L/R segment; 1 sample per S segment; 1
-                % additional sample for final segment of any type
-                M = 100;
-                types = obj.SegmentTypes;
-                lengths = obj.SegmentLengths;
-                Nlr = sum(abs(types(lengths > 0)));
-                Ns = sum(types == 0 & lengths > 0);
-                tau = coder.nullcopy(zeros(Nlr*M + Ns*1 + 1, 1));
-                xyhc = zeros(numel(tau), 4);
-                
-                x0 = obj.InitialPos(1);
-                y0 = obj.InitialPos(2);
-                h0 = obj.InitialAng;
-                R = obj.TurningRadius;
-                tau0 = 0;
-                
-                jj = 1;
-                for i = 1:N
-                    si = lengths(i);
-                    if si < eps
-                        continue
-                    end
-                    
-                    ii = jj;
-                    jj = ii + M;
-                    
-                    typei = types(i);
-                    if typei == obj.LEFT % Left turn
-                        % S = R*PHI -> PHI = S/R
-                        taui = linspace(0, 1, M+1)';
-                        hi = linspace(h0, h0+si/R, M+1)';
-                        [xi,yi,ci] = circleLeft(R, hi);
-                    elseif typei == obj.RIGHT % Right turn
-                        taui = linspace(0, 1, M+1)';
-                        hi = linspace(h0, h0-si/R, M+1)';
-                        [xi,yi,ci] = circleRight(R, hi);
-                    else % Straight
-                        jj = ii + 1;
-                        taui = [0; 1];
-                        xi = [0; si/R*cos(h0)];
-                        yi = [0; si/R*sin(h0)];
-                        hi = [h0; h0];
-                        ci = [0; 0];
-                    end
-                    xi = xi - xi(1) + x0;
-                    yi = yi - yi(1) + y0;
-                    taui = taui + tau0;
-                    x0 = xi(end);
-                    y0 = yi(end);
-                    h0 = hi(end);
-                    tau0 = taui(end);
-                    
-                    xyhc(ii:jj,:) = [xi yi hi ci];
-                    tau(ii:jj) = taui;
-%                     plot(xi, yi)
+                if objs.isempty()
+                    tau = zeros(0,1);
+                else
+                    tau = objs.sampleTau(100);
                 end
-            
-            else % nargin > 1
-                error('ToDo!!!')
+            else
+                tau = tau(:);
             end%if
             
+            if objs.isempty() % Empty path: return all NaN's/no extrapolation
+                N = numel(tau);
+                tau(:) = NaN;
+                xyhc = NaN(N, 5);
+            elseif objs.length() < eps % Zero length path: no extrapolation
+                xyhc = repmat([objs.InitialPos(:)', objs.InitialAng, ...
+                    double(objs.SegmentTypes(1))/objs.TurningRadius, 0], ...
+                    numel(tau), 1);
+                xyhc(tau ~= 0, :) = NaN;
+                tau(tau ~= 0) = NaN;
+            else % Otherwise, evaluate path definition
+                [xyhc,tau] = objs.evalImpl(tau(:), extrap);
+            end
+            
+            % Unpack data
             x = xyhc(:,1);
             y = xyhc(:,2);
             head = xyhc(:,3);
             curv = xyhc(:,4);
-            curvDs = zeros(numel(tau), 1);
+            curvDs = xyhc(:,5);
             
         end%fcn
         
@@ -221,23 +183,34 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             error('Not implemented!')
             
         end%fcn
-
-        function [xy,Q,idx,tau] = frenet2cart(obj, sd, doPlot)
-            error('Not implemented!')
-        end%fcn
         
-        function obj = interp(obj, tau, varargin)
-        %INTERP     Interpolate path.
-        %   OBJ = INTERP(OBJ,TAU) interpolate path OBJ w.r.t. path
-        %   parameter TAU.
-        %
-        %   OBJ = INTERP(__,ARGS) specify interpolation settings via ARGS.
-        %
-        %   See also INTERP1.
+        function [xy,Q,idx,tau] = frenet2cart(obj, sd, doPlot)
             
-            narginchk(2, 4) % object, query points, method, extrapolation
+            % Get the indexes referring to the path segments according to
+            % the frenet coordinates s-value
+            [tau,idx] = obj.s2tau(sd(:,1));
             
-            error('Not implemented!')
+            [x,y,~,head] = obj.eval(tau, true);
+            Q = [x,y];
+            
+            % Tangent vector already has length 1 - > no need to normalize
+            tHandle = @(phi) [-sin(phi) cos(phi)];
+            t = tHandle(head-pi/2);
+            
+            xy = Q + bsxfun(@times, [-t(:,2), t(:,1)], sd(:,2));
+            
+            if (nargin > 2) && doPlot
+                h = obj.plot(linspace(min(tau),max(tau),1e3), '--','DisplayName','Extrap.');
+                hold on
+                obj.plot('Color',get(h,'Color'), 'DisplayName',class(obj));
+                % [xb,yb] = obj.eval(obj.Breaks);
+                % plot(xb, yb, 'b.', 'MarkerSize',10, 'DisplayName','Breaks');
+                plot(xy(:,1), xy(:,2), 'o', 'DisplayName','xy');
+                plot(Q(:,1), Q(:,2), 'kx', 'DisplayName','Q');
+                hold off
+                legend('-DynamicLegend')
+            end%if
+            
         end%fcn
         
         function [xy,tau,errFlag] = intersectCircle(obj, C, r, doPlot)
@@ -248,36 +221,34 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             error('Not implemented!')
         end%fcn
         
-        function flag = isempty(obj)
-            flag = ~any(obj.SegmentLengths ~= 0);
-        end%fcn
-        
-        function s = length(obj)
-            s = obj.ArcLengths(end);
-        end%fcn
-        
         function n = numel(obj)
             n = numel(obj.SegmentTypes);
         end%fcn
         
         function [Q,idx,tau,dphi] = pointProjection(obj, poi, ~, doPlot)
-            
             error('Not implemented!')
         end%fcn
         
         function [obj,tau0,tau1] = restrict(obj, tau0, tau1)
-            
             error('Not implemented!')
         end%fcn
         
         function obj = reverse(obj)
-            
             error('Not implemented!')
         end%fcn
         
         function obj = rotate(obj, phi)
             
-            error('Not implemented!')
+            if nargin < 2
+                phi = -obj.InitialAng;
+            end%if
+            
+            R = rotmat2D(phi);
+            for i = 1:builtin('numel', obj)
+                obj(i).InitialPos = R*obj(i).InitialPos;
+                obj(i).InitialAng = obj(i).InitialAng + phi;
+            end%for
+            
         end%fcn
         
         function obj = select(obj, idxs)
@@ -286,12 +257,44 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         
         function obj = shift(obj, P)
             
-            error('Not implemented!')
+            % Handle input arguments
+            narginchk(1, 2);
+            
+            if nargin < 2
+                P = -obj(1).termPoints();
+            end%if
+            
+            % BUILTIN is supported for code-generation starting with R2017b
+            for i = 1:builtin('numel', obj)
+                obj(i).InitialPos = obj(i).InitialPos + P;
+            end%for
+            
         end%fcn
         
-        function [tau,idx,ds] = s2tau(obj, s)
+        function [tau,idx] = s2tau(obj, s)
             
-            error('Not implemented!')
+            if obj.length() < eps % Zero-length path
+                tau = nan(size(s));
+                idx = zeros(size(s), 'uint32');
+                if ~obj.isempty()
+                    theIdx = abs(s) < eps;
+                    tau(theIdx) = 0;
+                    idx(theIdx) = 1;
+                end
+                return
+            end
+            
+            if obj.IsCircuit
+                s = mod(s, obj.length());
+            end
+            
+            S = obj.ArcLengths;
+            [~,tmp] = histc(s, [0;S;inf]); %#ok<HISTC>
+            idx = min(max(uint32(tmp), 1), numel(S));
+            
+            S = [0; S];
+            ds = s - reshape(S(idx), size(s));
+            tau = double(idx-1) + ds./reshape(S(idx+1) - S(idx), size(s));
         end%fcn
         
         function [P0,P1] = termPoints(obj)
@@ -300,8 +303,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                 P0 = [NaN; NaN];
                 P1 = [NaN; NaN];
             else
-                P0 = obj.InitialPos(:);
-                [x,y] = obj.eval(obj.numel() - 1);
+                P0 = obj.InitialPos;
+                [x,y] = obj.eval(obj.numel());
                 P1 = [x; y];
             end
             
@@ -320,6 +323,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         end%fcn
         
         %%% Set methods
+        function obj = set.InitialAng(obj, val)
+            assert(isscalar(val) && isnumeric(val));
+            obj.InitialAng = mod2pi(val);
+        end%fcn
+        
         function obj = set.SegmentLengths(obj, val)
             obj.SegmentLengths = double(val(:)');
         end%fcn
@@ -332,11 +340,166 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             assert(isscalar(val) && isnumeric(val) && val > 0);
             obj.TurningRadius = double(val);
         end%fcn
+        
     end%methods
     
     
-    methods (Static)
+    methods (Access = private)
+        
+        function [xyhc,tau] = evalImpl(obj, tau, extrap)
+            
+            N = obj.numel();
+            
+            xyhc = coder.nullcopy(zeros(numel(tau), 5));
+            x0 = obj.InitialPos(1);
+            y0 = obj.InitialPos(2);
+            h0 = obj.InitialAng;
+            R = obj.TurningRadius;
+            
+            % Assign values of tau to path segments
+            [a,b] = obj.domain();
+            [~,segIdxs] = histc(tau, [a:b, inf]); %#ok<HISTC>
+            segIdxs = max(min(segIdxs, N), 1);
+            
+            % Assume extrap=true for path evaluation
+            for i = 1:N
+                % Evaluate the first N-1 pieces on half-open intervals
+                % [t0,t1) and the Nth piece on the closed interval [t0,t1]
+%                 if i == 1
+%                     if N < 2
+%                         logIdxi = (tau == 0);
+%                     else
+%                         logIdxi = (tau < 1);
+%                     end
+%                 elseif i == N
+%                     logIdxi = (tau >= N-1);
+%                 else % i < N
+%                     logIdxi = (tau >= i-1) & (tau < i);
+% %                 else
+% %                     logIdxi = (tau >= i-1) & (tau <= i);
+%                 end
+% %                 taui = tau(logIdxi);
 
+                logIdxi = (segIdxs == i);
+                taui = tau(logIdxi);
+                
+                si = obj.SegmentLengths(i);
+                typei = obj.SegmentTypes(i);
+                dtau = taui - i + 1;
+                if typei == obj.LEFT
+                    % Linear interpolation from h0 to h1 = h0 + si/R:
+                    hi = h0 + si/R*dtau;
+                    [xi,yi,ci] = circleLeft(R, hi);
+                    
+                    % Explicitly calculate the terminal points of the
+                    % current segment.. since they may not be included in
+                    % the path parameter dtau
+                    hEnd =  h0 + si/R;
+                    [xT,yT] = circleLeft(R, [h0 hEnd]);
+                    
+                elseif typei == obj.RIGHT
+                    % Linear interpolation from h0 to h1 = h0 - si/R:
+                    hi = h0 - si/R*dtau;
+                    [xi,yi,ci] = circleRight(R, hi);
+                    hEnd = h0 - si/R;
+                    [xT,yT] = circleRight(R, [h0 hEnd]);
+                    
+                else % Straight segment
+                    % Linear interpolation x0 + (x1-x0)*tau, where x0 = 0
+                    xi = si*cos(h0)*dtau;
+                    yi = si*sin(h0)*dtau;
+                    hi = repmat(h0, [numel(taui) 1]);
+                    ci = zeros(size(xi));
+                    hEnd = h0;
+                    xT = [0 si*cos(h0)];
+                    yT = [0 si*sin(h0)];
+                end%if
+                
+                % Shift to match current starting position. This assumes
+                % the current segment is evaluated at tau(1) = 0!
+                % dx = x0 - xi(1);
+                % dy = y0 - yi(1);
+                dx = x0 - xT(1);
+                dy = y0 - yT(1);
+                xi = xi + dx;
+                yi = yi + dy;
+                
+                % The next segment starts at the end point of the current
+                % segment
+                x0 = xT(2) + dx;
+                y0 = yT(2) + dy;
+                h0 = hEnd;
+                
+                xyhc(logIdxi, :) = [xi yi hi ci zeros(size(xi))];
+            end%for
+            
+            % Set return values to NaN outside path domain
+            if ~extrap
+                [tau0,tau1] = obj.domain();
+                isOutsideDomain = (tau < tau0) | (tau > tau1);
+                tau(isOutsideDomain) = NaN;
+                xyhc(isOutsideDomain,:) = NaN;
+            end
+            
+        end%fcn
+        
+        function tau = sampleTau(obj, M)
+            
+            % M samples per L/R segment, 1 sample per S segment and 1
+            % additional sample for the final segment of any type
+            types = obj.SegmentTypes;
+            lengths = obj.SegmentLengths;
+            Nnz = numel(lengths(lengths > 0)); % Nonzero length segments
+            Ns = sum((types == obj.STRAIGHT) & (lengths > 0));
+            Nlr = Nnz - Ns;
+            tau = coder.nullcopy(zeros(Nlr*M + Ns*1 + 1, 1));
+            
+            i1 = 1;
+            for i = 1:obj.numel()
+                si = lengths(i);
+                if si < eps
+                    continue
+                end
+                
+                i0 = i1;
+                tau0 = i - 1;
+                if types(i) == obj.STRAIGHT
+                    i1 = i0 + 1;
+                    taui = [tau0; tau0 + 1];
+                else % Left/right turn
+                    i1 = i0 + M;
+                    taui = linspace(tau0, tau0 + 1, M+1)';
+                end
+                tau(i0:i1) = taui;
+            end%for
+            
+        end%fcn
+        
+        function objs = simplify(obj)
+        %SIMPLIFY   Get rid of zero-length path segments.
+        %   
+        
+            hasNZeroLength = (obj.SegmentLengths > 0);
+            if ~isempty(hasNZeroLength) && ~any(hasNZeroLength)
+                % Keep at least one path segment even if it has length
+                % zero. -> Path that is only defined at the initial point!
+                hasNZeroLength(1) = true;
+            end
+            
+            % Create simplified Dubins path with explicitly specified
+            % IsCircuit property to avoid an infinit recursion.
+            objs = DubinsPath(...
+                [obj.InitialPos; obj.InitialAng], ...
+                obj.SegmentTypes(hasNZeroLength), ...
+                obj.SegmentLengths(hasNZeroLength), ...
+                obj.TurningRadius, ...
+                obj.IsCircuit);
+            
+        end%fcn
+    end
+    
+    methods (Static)
+        
         function obj = fromStruct(s)
         end%fcn
         
@@ -361,10 +524,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             phi0 = mod2pi(C0(3)) - theta;
             phi1 = mod2pi(C1(3)) - theta;
             
+            % Calculate all admissible paths
             T = coder.nullcopy(zeros(3, 6, 'int8'));
             L = coder.nullcopy(zeros(3, 6));
             S = coder.nullcopy(zeros(6, 1));
-            
             [T(:,1),S(1),L(:,1)] = dubinsLRL(d, phi0, phi1);
             [T(:,2),S(2),L(:,2)] = dubinsLSL(d, phi0, phi1);
             [T(:,3),S(3),L(:,3)] = dubinsLSR(d, phi0, phi1);
@@ -372,6 +535,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             [T(:,5),S(5),L(:,5)] = dubinsRSL(d, phi0, phi1);
             [T(:,6),S(6),L(:,6)] = dubinsRSR(d, phi0, phi1);
             
+            % Find the shortest path
             [~,minIdx] = min(S);
             assert(sum(L(:, minIdx)) == S(minIdx))
             obj = DubinsPath(C0, T(:, minIdx), L(:, minIdx)*R, R);

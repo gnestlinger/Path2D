@@ -34,7 +34,7 @@ classdef FitStraightTestPolygon < matlab.unittest.TestCase
         end%fcn
         
         function testNoisyPath(testCase, obj)
-            N = obj.numel();
+            N = numel(obj.x);
             dx = randn(N, 1);
             dy = randn(N, 1);
             objNoisy = PolygonPath(obj.x + dx, obj.y + dy, obj.head, obj.curv);

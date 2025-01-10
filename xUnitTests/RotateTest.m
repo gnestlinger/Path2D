@@ -5,9 +5,12 @@ classdef RotateTest < matlab.unittest.TestCase
             'PolygonPathEmpty', PolygonPath(), ...
             'PolygonPathNonEmpty', PolygonPath.xy2Path(1:10, repmat(2, [10,1])), ...
             'SplinePathEmpty', SplinePath(), ...
-            'SplinePathNonEmpty', SplinePath([0 1 2], reshape([1 0; 0 0; 1 1; 1 0], 2,2,2)));
+            'SplinePathNonEmpty', SplinePath([0 1 2], reshape([1 0; 0 0; 1 1; 1 0], 2,2,2)), ...
+            'DubinsPathEmpty', DubinsPath(), ...)
+            'DubinsPathNonEmpty', DubinsPath([-1 1 pi/2], [1 -1 1], [1.4455 9.1741 1.4455], 2));
     end
     
+
     methods (Test)
         function testRotate(testCase, obj)
             
@@ -19,10 +22,11 @@ classdef RotateTest < matlab.unittest.TestCase
             [xr,yr,taur,hr,cr] = objr.eval();
             
             % A point (x,y) rotated by pi/2 moves to (-y,x)
-            verifyEqual(testCase, [x y], [yr -xr], 'AbsTol',1e-12);
-            verifyEqual(testCase, tau, taur, 'AbsTol',1e-15);
-            verifyEqual(testCase, h, hr - dphi);
-            verifyEqual(testCase, c, cr);
+            verifyEqual(testCase, xr, -y, 'AbsTol',1e-12);
+            verifyEqual(testCase, yr,  x, 'AbsTol',1e-12);
+            verifyEqual(testCase, taur, tau, 'AbsTol',1e-15);
+            verifyEqual(testCase, hr, h + dphi, 'AbsTol',1e-15);
+            verifyEqual(testCase, cr, c);
         end%fcn
     end
     

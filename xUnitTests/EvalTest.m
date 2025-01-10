@@ -3,11 +3,14 @@ classdef EvalTest < matlab.unittest.TestCase
     properties (TestParameter)
         obj = struct(...
             'PolygonPathEmpty', PolygonPath([], [], [], []), ...
-            'SplinePathEmpty', SplinePath(), ...
             'PolygonPathZeroLength', PolygonPath(1, 2, pi/4, 0), ...
+            'PolygonPathNonEmpty', PolygonPath.xy2Path(0:10, ones(1,11)), ...
+            'SplinePathEmpty', SplinePath(), ...
             'SplinePathZeroLength', SplinePath([0 0], reshape([1 1; 1 2], [2 1 2])), ...
-            'PolygonPathNonEmpty', PolygonPath.xy2Path(0:10, zeros(1,11)), ...
-            'SplinePathNonEmpty', SplinePath([0 10], reshape([1 0; 0 0],  [2 1 2])));
+            'SplinePathNonEmpty', SplinePath([0 10], reshape([1 0; 0 1],  [2 1 2])), ... 
+            'DubinsPathEmpty', DubinsPath(), ... 
+            'DubinsPathZeroLength', DubinsPath([1 2 pi/4], 0, 0, 2), ...
+            'DubinsPathNonEmpty', DubinsPath([0 1 0], [0 0 0], [1 1 1], 10));
         
         tau = struct(...
             'empty', zeros(0,1), ...
@@ -16,6 +19,7 @@ classdef EvalTest < matlab.unittest.TestCase
             'matrix', randn(10,10)*10, ...
             'nd', randn(10,3,4)*10);
     end
+    
     
     methods (Test)
         
@@ -66,8 +70,11 @@ classdef EvalTest < matlab.unittest.TestCase
                 testCase.verifyEqual(c, [NaN NaN NaN NaN 0 NaN NaN NaN NaN]');
                 testCase.verifyEqual(dc, [NaN NaN NaN NaN 0 NaN NaN NaN NaN]');
             else
+                % Assume the path is a straight line at (x,1) for x =
+                % 0,..,10. Since the path parameter is hard-coded, the path
+                % must be defined accordingly
                 testCase.verifyEqual(x, [NaN NaN NaN NaN 0.0 0.5 1.0 1.5 2.0]');
-                testCase.verifyEqual(y, [NaN NaN NaN NaN 0.0 0.0 0.0 0.0 0.0]');
+                testCase.verifyEqual(y, [NaN NaN NaN NaN 1.0 1.0 1.0 1.0 1.0]');
                 testCase.verifyEqual(h, [NaN NaN NaN NaN 0.0 0.0 0.0 0.0 0.0]');
                 testCase.verifyEqual(c, [NaN NaN NaN NaN 0.0 0.0 0.0 0.0 0.0]');
                 testCase.verifyEqual(dc, [NaN NaN NaN NaN 0.0 0.0 0.0 0.0 0.0]');
@@ -122,8 +129,8 @@ classdef EvalTest < matlab.unittest.TestCase
                 dSet(~isTauExtrap) = 0; % Zero path length -> set dCurv/dS to 0
                 
             else
-                xyhcdSet = interp1(0:obj.numel()-1, ...
-                    [obj.x obj.y obj.head obj.curv gradient(obj.curv)./gradient(obj.cumlengths())], ...
+                xyhcdSet = interp1(0:numel(obj.x)-1, ...
+                    [obj.x obj.y obj.head obj.curv gradient(obj.curv)./gradient([0; obj.cumlengths()])], ...
                     tauEval, 'linear', 'extrap');
                 xSet = xyhcdSet(:,1);
                 ySet = xyhcdSet(:,2);
@@ -182,6 +189,79 @@ classdef EvalTest < matlab.unittest.TestCase
             testCase.verifyEqual(h, hSet);
             testCase.verifyEqual(c, cSet);
             testCase.verifyEqual(d, dSet);
+            
+        end%fcn
+        
+        function testExtrapolationDubins(testCase, obj)
+            
+            if ~isa(obj, 'DubinsPath')
+                return
+            end
+            
+            % Evaluate inside and outside of the path's domain
+            [tau0,tau1] = obj.domain();
+            tauEval = [tau0-3 tau0-1 tau0:1:tau1 tau1+1 tau1+3];
+            N = numel(tauEval);
+            
+            [x,y,t,h,c,d] = obj.eval(tauEval, true);
+            if obj.isempty() % Nothing to extrapolate
+                xSet = NaN(N, 1);
+                ySet = NaN(N, 1);
+                tSet = NaN(N, 1);
+                hSet = NaN(N, 1);
+                cSet = NaN(N, 1);
+                dSet = NaN(N, 1);
+            elseif tau1 - tau0 < eps
+                xSet = NaN(N, 1);
+                ySet = NaN(N, 1);
+                tSet = NaN(N, 1);
+                hSet = NaN(N, 1);
+                cSet = NaN(N, 1);
+                dSet = NaN(N, 1);
+                isInDomain = (tauEval == 0);
+                xSet(isInDomain) = obj.InitialPos(1);
+                ySet(isInDomain) = obj.InitialPos(2);
+                tSet(isInDomain) = 0;
+                hSet(isInDomain) = obj.InitialAng;
+                cSet(isInDomain) = obj.SegmentTypes(1)*obj.TurningRadius;
+                dSet(isInDomain) = 0;
+                
+            else % Assume path is straight -> we can use interp1()
+                [xP,yP,~,hP] = obj.eval(tau0:tau1);
+                xyhSet = interp1(tau0:tau1, [xP yP hP], tauEval, 'linear','extrap');
+                xSet = xyhSet(:,1);
+                ySet = xyhSet(:,2);
+                hSet = xyhSet(:,3);
+                tSet = tauEval(:);
+                cSet = zeros(numel(tauEval), 1);
+                dSet = zeros(numel(tauEval), 1);
+            end
+            
+            %%% Checks
+            testCase.verifyEqual(x, xSet);
+            testCase.verifyEqual(y, ySet);
+            testCase.verifyEqual(t, tSet);
+            testCase.verifyEqual(h, hSet);
+            testCase.verifyEqual(c, cSet);
+            testCase.verifyEqual(d, dSet);
+            
+        end%fcn
+        
+        function testReturnValuesDubins(testCase)
+        % Make sure eval() returns the same values irrespective of the path
+        % segments adressed by the path parameter argument. I.e., the
+        % (i+1)-th segment starts at the end point of the i-th segment.
+           
+            dub = DubinsPath([0 0 0], [-1 0 1], [1 2 3], 2);
+            
+            [x1,y1,tau1,h1,c1] = dub.eval(2);
+            [x2,y2,tau2,h2,c2] = dub.eval([0 1 2]);
+            
+            verifyEqual(testCase, x2(end), x1);
+            verifyEqual(testCase, y2(end), y1);
+            verifyEqual(testCase, tau2(end), tau1);
+            verifyEqual(testCase, h2(end), h1);
+            verifyEqual(testCase, c2(end), c1);
             
         end%fcn
         

@@ -35,6 +35,18 @@ classdef EvalTestPolygon < matlab.unittest.TestCase
             testCase.verifyEqual(c, cSet);
         end%fcn
         
+        function testEvalZeroLengthPath(testCase)
+        % Evaluating the path defined at a point only, should return the
+        % same values for tau = 0 and tau beeing undefined.
+        
+            obj = PolygonPath(1, 2, 3, 4);
+            [x1,y1,t1,h1,c1,dc1] = obj.eval(0);
+            [x2,y2,t2,h2,c2,dc2] = obj.eval();
+            
+            expected = [obj.x obj.y 0 obj.head obj.curv 0];
+            assertEqual(testCase, [x1 y1 t1 h1 c1 dc1], expected);
+            assertEqual(testCase, [x2 y2 t2 h2 c2 dc2], expected);
+        end%fcn
     end
     
 end%class
