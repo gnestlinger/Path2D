@@ -77,13 +77,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             breaks = obj.Breaks;
             coefs = obj.Coefs;
             arcLen = obj.ArcLengths;
+            breaks2 = obj2.Breaks;
+            coefs2 = obj2.Coefs;
             
-            obj.Breaks = [breaks, breaks(end) + obj2.Breaks(2:end)];
+            obj.Breaks = [breaks, breaks(end) + breaks2(2:end) - breaks2(1)];
             
-            [~,~,k] = size(coefs);
-            [~,n2,k2] = size(obj2.Coefs);
-            assert(k2 <= k, 'Degree of path to append must not exceed degree of initial path!')
-            obj.Coefs = cat(2, coefs, cat(3, zeros(2,n2,k-k2), obj2.Coefs));
+            [~,n1,k1] = size(coefs);
+            [~,n2,k2] = size(coefs2);
+            obj.Coefs = cat(2, ...
+                cat(3, zeros(2,n1,k2-k1), coefs), ...
+                cat(3, zeros(2,n2,k1-k2), coefs2));
             
             [~,P1] = obj.termPoints();
             P0 = obj2.termPoints();
@@ -752,15 +755,15 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             end
             
             % This will become the breaks vector
-            x = linspace(0, 2, N+1)*pi;
+            x = linspace(phi01(1), phi01(2), N+1);
             
             % Define sample points as well as the terminal derivatives
-            y = cat(2, [0;1], [cos(x); sin(x)], [0;1]);
+            dy = @(phi) [-sin(phi); cos(phi)];
+            y = cat(2, dy(phi01(1)), [cos(x); sin(x)], dy(phi01(2)));
             
-            % Create the full "circle", then restrict to specified domain
+            % Create the circle
             pp = spline(x, r*y);
             obj = SplinePath.pp2Path(pp);
-            obj = obj.restrict(phi01(1), phi01(2));
             
 %             h = obj.plot('LineWidth',1, 'DisplayName','Spline');
 %             [xBreaks,yBreaks] = obj.eval(obj.Breaks);
