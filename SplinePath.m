@@ -106,8 +106,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             [Q,idx,tau,dphi] = obj.pointProjection(xy, phiMax, doPlot);
             if isempty(Q)
-                % Find the waypoint closest to point of interest
-                error('Not implemented!')
+                % Find the break point closest to point of interest
+                breaks = obj.Breaks;
+                [x,y] = obj.eval(breaks);
+                [~,idx] = min(hypot(x - xy(1), y - xy(2)));
+                Q = [x(idx) y(idx)];
+                tau = breaks(idx);
+                if idx == numel(breaks) - 1
+                    % Avoid out of range indexing
+                    idx = idx - 1; 
+                end
             end%if
             
             % Get the orientation vector related with Q to calculate the
@@ -121,6 +129,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             sd = [obj.idxTau2s(idx, tau), ...
                 signD.*hypot(qp(:,1), qp(:,2))];
+            
+            if isempty(dphi)
+                ux = u(:,1);
+                uy = u(:,2);
+                dx = qp(:,1);
+                dy = qp(:,2);
+                dphi = abs(pi/2 - abs(atan2(ux.*dy - uy.*dx, ux.*dx + uy.*dy)));
+            end
             
         end%fcn
         
@@ -525,7 +541,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                     [Q(:,2)'; repmat([poi(2) NaN], size(Q,1),1)'], 'k:'); 
                 hold off
                 a = legend(ax); % For ~2019b
-                legend(a.String(1:4))
+                a.String(5:end) = '';
             end%if
             
         end%fcn

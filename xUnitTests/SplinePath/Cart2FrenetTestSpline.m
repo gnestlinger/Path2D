@@ -1,7 +1,6 @@
 classdef Cart2FrenetTestSpline < matlab.unittest.TestCase
     
     methods (Test)
-        
         function testUniqueSolutions(testCase)
             cc = [-1/2 1 0];
             pp = mkpp([-2 0 2 4],[0 1 -2; -cc; 0 1 0; cc; 0 1 2; -cc], 2);
@@ -55,6 +54,30 @@ classdef Cart2FrenetTestSpline < matlab.unittest.TestCase
             testCase.verifyEqual(dphi, zeros(3,1));
         end%fcn
         
+        function testFallbackSolution(testCase)
+            obj = SplinePath([0 1 2], ...
+                reshape([3 2 0; 0 2 0; 0 1 5; -1 0 2], 2, [], 3));
+%             [P0,P1] = obj.termPoints();
+            
+            % Fallback initial point
+            [sd,Q,idx,tau,dphi] = obj.cart2frenet([-1 -1], [], true);
+            verifySize(testCase, sd, [1 2]);
+            verifySize(testCase, Q, [1 2]);
+            verifySize(testCase, idx, [1 1]);
+            verifySize(testCase, tau, [1 1]);
+            verifySize(testCase, dphi, [1 1]);
+            
+            % Fallback end point
+            [sd,Q,idx,tau,dphi] = obj.cart2frenet([2 1], [], false);
+            verifySize(testCase, sd, [1 2]);
+            verifySize(testCase, Q, [1 2]);
+            verifySize(testCase, idx, [1 1]);
+            verifySize(testCase, tau, [1 1]);
+            verifySize(testCase, dphi, [1 1]);
+            
+            % Fallback non-terminal point
+            % TODO
+        end%fcn
     end
     
 end%class
