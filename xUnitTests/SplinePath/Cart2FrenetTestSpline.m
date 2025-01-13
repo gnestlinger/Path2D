@@ -60,7 +60,7 @@ classdef Cart2FrenetTestSpline < matlab.unittest.TestCase
 %             [P0,P1] = obj.termPoints();
             
             % Fallback initial point
-            [sd,Q,idx,tau,dphi] = obj.cart2frenet([-1 -1], [], true);
+            [sd,Q,idx,tau,dphi] = obj.cart2frenet([-1 -1], [], false);
             verifySize(testCase, sd, [1 2]);
             verifySize(testCase, Q, [1 2]);
             verifySize(testCase, idx, [1 1]);
