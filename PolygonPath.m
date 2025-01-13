@@ -112,7 +112,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
             [Q,idx,tau,dphi] = obj.pointProjection(xy, [], doPlot);
             N = numel(obj.x);
-            assert(all(idx) < N)
+            assert(all(idx < N))
             if isempty(Q)
                 % Take the waypoint closest to point of interest
                 [~,minIdx] = min(hypot(obj.x - xy(1), obj.y - xy(2)));
