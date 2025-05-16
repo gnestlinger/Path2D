@@ -343,6 +343,45 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
+        function d = discreteFrechetDist(obj, Q, distFcn)
+        %DISCRETEFRECHETDIST    Compute the discrete Fréchet distance.
+        %   D = DISCRETEFRECHETDIST(OBJ, Q) returns the discrete frechet
+        %   distance D for the PolygonPath object OBJ and an N-by-2 matrix
+        %   Q of coordinates.
+        %
+        %   D = DISCRETEFRECHETDIST(___,DISTFCN) allows to define a custom
+        %   distance function DISTFCN as an anonymous function, e.g.
+        %       @(dpq) hypot(dpq(:,1), dpq(:,2))
+        %   which is the default value.
+        
+            if nargin < 3 % Define default metric
+                distFcn = @(dpq) hypot(dpq(:,1), dpq(:,2));
+            end
+            
+            D = coder.nullcopy(-ones(numel(obj.x), size(Q,1)));
+            
+            % Fill the first row/column with cumulative maximum of
+            % distances from P0 to Qi/Pi to Q0.
+            dP0toQ = distFcn([obj.x(1) obj.y(1)] - Q);
+            D(1,:) = cummax(dP0toQ);
+            dQ0toP = distFcn([obj.x obj.y] - Q(1,:));
+            D(:,1) = cummax(dQ0toP);
+            
+            % Since the first row/column are already filled, the remaining
+            % elements of the distance matrix can be calculated without
+            % branching.
+            for i = 2:size(D,1)
+                Pi = [obj.x(i) obj.y(i)];
+                for j = 2:size(D,2)
+                    d = distFcn(Pi - Q(j,:));
+                    dTmp = [D(i-1,j) D(i-1,j-1) D(i,j-1)];
+                    D(i,j) = max(d, min(dTmp));
+                end
+            end
+            
+            d = D(end,end);
+        end%fcn
+        
         function [xy,Q,idx,tau] = frenet2cart(obj, sd, doPlot)
         
             Pxy = [obj.x, obj.y]; % Initial/terminal points per path segment
