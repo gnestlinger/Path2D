@@ -52,7 +52,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %   The path parameter is inherited according to
         %   [0,1,...,N-1], where N =numel(X) = numel(Y) = numel(HEAD) =
         %   numel(CURV).
-        %
+        % 
         %   OBJ = POLYGONPATH(___,ISCIRCUIT) set to true if the path is a
         %   circuit.
         %
@@ -197,7 +197,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 y = obj.y;
                 head = obj.head;
                 curv = obj.curv;
-                curvDs = obj.estiamteCurvDs();
+                curvDs = obj.estimateCurvDs();
                 tau = (0:numel(x)-1)';
                 return
             end
@@ -210,7 +210,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 binIdxSat = max(min(binIdx-1, N-1), 1);
                 
                 % Linear interpolation
-                lin = [obj.x obj.y obj.head obj.curv obj.estiamteCurvDs()];
+                lin = [obj.x obj.y obj.head obj.curv obj.estimateCurvDs()];
                 xyhc = lin(binIdxSat,:) + bsxfun(@times, ...
                     tau - tauAct(binIdxSat), ...
                     lin(binIdxSat+1,:) - lin(binIdxSat,:));
@@ -225,7 +225,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 
             elseif N > 0 % Just one sample point (no extrapolation)
                 xyhc = repmat(...
-                    [obj.x(1) obj.y(1) obj.head(1) obj.curv(1) obj.estiamteCurvDs()], ...
+                    [obj.x(1) obj.y(1) obj.head(1) obj.curv(1) obj.estimateCurvDs()], ...
                     numel(tau), 1);
                 xyhc(tau ~= 0,:) = NaN;
                 tau(tau ~= 0) = NaN;
@@ -268,17 +268,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %    
         %   See also POLYGONPATH/FITSTRAIGHT.
             
-            % Extract x/y data
-            xsub = obj.x;
-            ysub = obj.y;
-            
-            method = 'Kasa';
-            switch method
-                case 'Kasa'
-                    [xc,yc,R,e] = fitCircle_Kasa(xsub, ysub);
-                otherwise
-                    % 
-            end%switch
+            [xc,yc,R,e] = fitCircle_Kasa(obj.x, obj.y);
             
             % Create POLYGONPATH object
             objc = PolygonPath.circle(R, [0 2*pi], N);
@@ -344,7 +334,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function d = discreteFrechetDist(obj, Q, distFcn)
-        %DISCRETEFRECHETDIST    Compute the discrete Fréchet distance.
+        %DISCRETEFRECHETDIST    Compute the discrete FrÃ©chet distance.
         %   D = DISCRETEFRECHETDIST(OBJ, Q) returns the discrete frechet
         %   distance D for the PolygonPath object OBJ and an N-by-2 matrix
         %   Q of coordinates.
@@ -362,9 +352,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
             % Fill the first row/column with cumulative maximum of
             % distances from P0 to Qi/Pi to Q0.
-            dP0toQ = distFcn([obj.x(1) obj.y(1)] - Q);
+            dP0toQ = distFcn([obj.x(1) - Q(:,1), obj.y(1) - Q(:,2)]);
             D(1,:) = cummax(dP0toQ);
-            dQ0toP = distFcn([obj.x obj.y] - Q(1,:));
+            dQ0toP = distFcn([obj.x - Q(1,1), obj.y - Q(1,2)]);
             D(:,1) = cummax(dQ0toP);
             
             % Since the first row/column are already filled, the remaining
@@ -591,7 +581,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %   
         %   D = PERPENDICULARDISTANCE(...,DOPLOT) also shows a plot of
         %   results if DOPLOT evaluates to TRUE.
-        %
+        % 
         %   NOTE: The distance for waypoints of OBJ to the left/right of
         %   the line from P1 to P2 is positive/negative.
         %    
@@ -901,7 +891,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             s = [0; obj.ArcLengths];
         end%fcn
         
-        function curvDs = estiamteCurvDs(obj)
+        function curvDs = estimateCurvDs(obj)
         % Estimate change of curvature w.r.t. change in path length.
             ds = gradient1D(obj.arcLengths0());
             ds(ds < eps) = eps; % Avoid division by zero
@@ -922,7 +912,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             t = linspace(phi01(1), phi01(2), N+1)';
             signPhi = sign(phi01(2) - phi01(1));
             obj = PolygonPath(r*cos(t), r*sin(t), ...
-                t+signPhi*pi/2, ...
+                t + signPhi*pi/2, ...
                 signPhi*repmat(1/r, N+1, 1));
             
             % Set exact path length
@@ -934,7 +924,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %   OBJ = POLYGONPATH.CLOTHOID(L, PHI01, N) creates a clothoid path
         %   of length L, initial curvature CURV01(1) and end curvature
         %   CURV01(2) at N equidistant sample points.
-        %
+        % 
         %   OBJ = POLYGONPATH.CLOTHOID(___,MODE) allows to select different
         %   calculation methods. Possible values are 'Heald', 'Quad'.
         %   
