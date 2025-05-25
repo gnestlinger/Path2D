@@ -14,11 +14,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 % 
 %   PolygonPath methods:
 %   PolygonPath - Constructor.
+%   discreteFrechetDist - Discrete Frechet distance.
 %   fitCircle - Fit circle to path.
 %   fitStraight - Fit straight line to path.
 %   interp - Interpolate path.
 %   perpendicularDistance - Distance of path waypoints to line.
 %   rdp - Ramer-Douglas-Peucker point reduction.
+%   rdpIter - Iterative Ramer-Douglas-Peucker line simplification.
 %   write2file - Write path to file.
 %   See superclass for more methods.
 % 
@@ -730,8 +732,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function [obj,idx] = rdp(obj, eps)
-        %RDP    Ramer-Douglas-Peucker point reduction.
+        function [obj,idx] = rdp(obj, epsilon)
+        %RDP    Recursive Ramer-Douglas-Peucker polyline simplification.
         %   OBJR = RDP(OBJ,EPS) applies the Ramer-Douglas-Peuker point
         %   reduction algorithm to path OBJ with parameter EPS. None of the
         %   removed waypoints has a distance greater than EPS to the
@@ -744,9 +746,57 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % The actual implementation is moved to a separate file,
             % otherwise its nested function would block code generation for
             % all class methods in older MATLAB releases!
-            [~,~,idx] = ramerDouglasPeucker(obj.x, obj.y, eps);
-            obj = obj.select(idx);
+            keepIdx = ramerDouglasPeucker(obj.x, obj.y, epsilon);
+            obj = obj.select(keepIdx);
+            idx = find(keepIdx);
             
+        end%fcn
+        
+        function [obj,idx] = rdpIter(obj, epsilon)
+        %RDPITER    Iterative Ramer-Douglas-Peucker algorithm.
+        %   OBJR = RDPITER(OBJ,EPS)
+        %
+        %   Use this implementation if code-generation is required!
+        %
+        %   See also PolygonPath/rdp.
+        
+            N = numel(obj.x);
+            if N < 3
+                return
+            end
+            
+            % Initialize a logical array indicating which waypoints to keep
+            keep = false(N,1);
+            keep([1 end]) = true;
+            
+            % Track the segments to be checked. Each row is of the form
+            % [start index, end index]. No upper bound is set for the
+            % number of segments, since this would need to be a
+            % compile-time constant.
+            coder.varsize('segments', [inf 2], [true false]);
+            segments = [1 N];
+            
+            while ~isempty(segments)
+                % Work on the end segment
+                idx0 = segments(end,1);
+                idx1 = segments(end,2);
+                segments(end,:) = [];
+                
+                dists = perpDist(obj.x(idx0:idx1), obj.y(idx0:idx1));
+                [dMax,idxMax] = max(dists);
+                
+                if ~isempty(dMax) && (dMax > epsilon)
+                    idxSplit = idxMax + idx0 - 1; % Offset to absolute index
+                    
+                    % Set index where to split the segment to be kept and
+                    % add the two new segments to the stack
+                    keep(idxSplit) = true;
+                    segments = [segments; idx0 idxSplit; idxSplit idx1]; %#ok<AGROW>
+                end
+            end
+            
+            obj = obj.select(keep);
+            idx = find(keep);
         end%fcn
         
         function obj = reverse(obj)
