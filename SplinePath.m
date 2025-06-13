@@ -105,9 +105,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             end
             
             [Q,idx,tau,dphi] = obj.pointProjection(xy, phiMax, doPlot);
-            if isempty(Q)
-                % Find the break point closest to point of interest
-                breaks = obj.Breaks;
+            if isempty(Q) % Find the break point closest to point of interest
+                % SInce we index into breaks to obtain tau, breaks must be
+                % a column vector (such as tau from pointProjection()) to
+                % have no conflicting array sizes in code-gen.
+                breaks = obj.Breaks(:);
                 [x,y] = obj.eval(breaks);
                 [~,idx] = min(hypot(x - xy(1), y - xy(2)));
                 Q = [x(idx) y(idx)];
@@ -481,9 +483,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             [Ns,Nc] = size(coefsX);
             
             % There are at most 2Nc-2 solutions per piece
-            coder.varsize('tau', Ns*(2*Nc-2));
-            coder.varsize('idx', Ns*(2*Nc-2));
-            coder.varsize('pv', Ns*(2*Nc-2));
+            coder.varsize('tau', 'idx', 'pv', Ns*(2*Nc-2));
             tau = zeros(0,1);
             idx = zeros(0,1);
             pv = zeros(0,1);
@@ -841,14 +841,19 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             obj = SplinePath(s.breaks, s.coefs, s.lengths);
         end%fcn
         
-        function c = getBusDef()
+        function c = getBusDef(N, M)
+        % GETBUSDEF     Return bus information.
+        %   C = GETBUSDEF(N,M) returns the bus information cell C for a
+        %   SplinePath of at most N segments and degree M-1.
+        %
+        %   See also Path2D/getBusDef.
             BusName = 'SBus_SplinePath';
             HeaderFile = '';
             Description = '';
             BusElements = {...
-                {'breaks',      101, 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
-                {'coefs', [2,100,4], 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
-                {'lengths',     100, 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
+                {'breaks',    N+1, 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
+                {'coefs', [2 N M], 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
+                {'lengths',     N, 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
                 };
             c = {{BusName,HeaderFile,Description,BusElements}};
         end%fcn
