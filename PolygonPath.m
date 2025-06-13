@@ -1122,6 +1122,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function c = getBusDef(N)
+        % GETBUSDEF     Return bus information.
+        %   C = GETBUSDEF(N) returns the bus information cell C for a
+        %   PolynomialPath of at most N-1 segments.
+        %
+        %   See also Path2D/getBusDef.
             BusName = 'SBus_PolygonPath';
             HeaderFile = '';
             Description = '';

@@ -49,6 +49,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   xy2Path - Construct path from cartesian coordinates.
 %   circle - Construct circle.
 %   straight - Construct straight path.
+%   getBusDef - Get bus defintion.
 %
 %   See also PolygonPath, SplinePath.
     
@@ -105,7 +106,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         
         function tau = sampleDomain(obj, arg)
         %SAMPLEDOMAIN   Sample domain of path.
-        %   
         %   TAU = SAMPLEDOMAIN(OBJ,ARG) returns the path parameter TAU
         %   sampled over the domain of path OBJ depending on the class of
         %   ARG: if ARG is 
@@ -673,6 +673,15 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         % XY2PATH    Path object from cartesian coordinates.
         %   OBJ = <ClassName>.XY2PATH(X,Y) instantiates the path OBJ
         %   from x/y data.
+            error('Not implemented!')
+        end%fcn
+        
+        function c = getBusDef(varargin) %#ok<STOUT>
+        % GETBUSDEF     Return bus information.
+        %   C = GETBUSDEF(VARARGIN) returns the cell array C containing bus
+        %   information. 
+        %
+        %   See also Simulink.Bus.cellToObject.
             error('Not implemented!')
         end%fcn
     end
