@@ -30,7 +30,7 @@ classdef PointProjectionTest < matlab.unittest.TestCase
         end%fcn
         
         function testMultipleSolutions(testCase)
-            obj = PolygonPath.circle(3, [-pi pi]/2, 10);
+            obj = PolygonPath.circle(3, [-pi pi]/2, 9);
             [Q,idx,tau,dphi] = pointProjection(obj, [0 0], [], false);
             
             N = 9; % One solution per path segment
@@ -50,7 +50,7 @@ classdef PointProjectionTest < matlab.unittest.TestCase
         end%fcn
         
         function testCircuitPath(testCase)
-            obj = PolygonPath.circle(3, [0 2*pi], 15);
+            obj = PolygonPath.circle(3, [0 2*pi], 14);
             assert(obj.IsCircuit)
             [Q,idx,tau,dphi] = pointProjection(obj, [0 0], [], false);
             

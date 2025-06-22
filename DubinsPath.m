@@ -120,6 +120,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             c = obj.MapType2Char(obj.SegmentTypes + 2);
         end%fcn
         
+        function obj = derivative(obj, n)
+            error('Not implemeted!')
+        end%fcn
+        
         function [tauL,tauU] = domain(obj)
             
             if isempty(obj)

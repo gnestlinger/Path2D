@@ -1,9 +1,9 @@
-function [xr,yr,idx] = ramerDouglasPeucker(x, y, eps)
+function idx = ramerDouglasPeucker(x, y, epsilon)
 %RDP    Ramer-Douglas-Peucker point reduction.
-%    [XR,YR] = RDP(X,Y,EPS) applies the Ramer-Douglas-Peuker point
-%    reduction algorithm to waypoints (X,Y) with parameter EPS. None of
-%    the removed waypoints has a distance greater than EPS to the
-%    resulting path!
+%    IDX = RDP(X,Y,EPS) applies the Ramer-Douglas-Peuker point reduction
+%    algorithm to the waypoints (X,Y) with parameter EPS. None of the
+%    removed waypoints has a distance greater than EPS to the resulting
+%    path. 
 %    
 %    [___,IDX] = RDP(X,Y,EPS) returns an array IDX so that XR = X(IDX) and
 %    YR = Y(IDX).
@@ -21,9 +21,9 @@ keepIdx = true(1, N);
 dprec(1, N);
 
 function dprec(idx0, idx1)
-	d = perpendicularDistance(x(idx0:idx1), y(idx0:idx1));
+	d = perpDist(x(idx0:idx1), y(idx0:idx1));
 	[val_max,idx_max] = max(abs(d));
-	if val_max > eps
+	if val_max > epsilon
 		% Split waypoints at IDX_SPLIT and call recursion with those two
 		% resulting segments until we end in the else statement.
 		idx_split = idx_max + idx0 - 1;
@@ -36,26 +36,6 @@ function dprec(idx0, idx1)
 	end%if
 end%fcn
 
-idx = find(keepIdx);
-xr = x(idx);
-yr = x(idx);
-
-end%fcn
-
-
-function d = perpendicularDistance(x, y)
-% Calculate the perpendicular distance for all points to the line through
-% the terminal points. See:
-% https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Line_defined_by_two_points
-x1 = x(1);
-y1 = y(1);
-dx = x(end) - x1;
-dy = y(end) - y1;
-h = hypot(dx, dy);
-if h ~= 0
-    d = abs(dx*(y-y1) - dy*(x-x1))/h;
-else
-    d = hypot(x-x1, y-y1);
-end
+idx = (keepIdx);
 
 end%fcn

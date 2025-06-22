@@ -14,11 +14,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 % 
 %   PolygonPath methods:
 %   PolygonPath - Constructor.
+%   discreteFrechetDist - Discrete Frechet distance.
 %   fitCircle - Fit circle to path.
 %   fitStraight - Fit straight line to path.
 %   interp - Interpolate path.
 %   perpendicularDistance - Distance of path waypoints to line.
 %   rdp - Ramer-Douglas-Peucker point reduction.
+%   rdpIter - Iterative Ramer-Douglas-Peucker line simplification.
 %   write2file - Write path to file.
 %   See superclass for more methods.
 % 
@@ -43,7 +45,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
     
     
     methods
-        
         function obj = PolygonPath(x, y, head, curv, isCircuit)
         %POLYGONPATH    Create polygon path object.
         %   OBJ = POLYGONPATH() creates an empty path.
@@ -53,7 +54,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %   The path parameter is inherited according to
         %   [0,1,...,N-1], where N =numel(X) = numel(Y) = numel(HEAD) =
         %   numel(CURV).
-        %
+        % 
         %   OBJ = POLYGONPATH(___,ISCIRCUIT) set to true if the path is a
         %   circuit.
         %
@@ -113,7 +114,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
             [Q,idx,tau,dphi] = obj.pointProjection(xy, [], doPlot);
             N = numel(obj.x);
-            assert(all(idx) < N)
+            assert(all(idx < N))
             if isempty(Q)
                 % Take the waypoint closest to point of interest
                 [~,minIdx] = min(hypot(obj.x - xy(1), obj.y - xy(2)));
@@ -149,6 +150,27 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
+        function obj = derivative(obj, n)
+            
+            if nargin < 2
+                n = 1;
+            elseif n > 1
+                error('N>1 not implemented!')
+            end
+            
+            if (n < 1) || obj.isempty()
+                return
+            end
+            
+            % This approach also works for paths defined at a single point
+            h = obj.head;
+            obj.x = cos(h);
+            obj.y = sin(h);
+            obj.curv(:) = 0;
+            obj.IsCircuit = false;
+            
+        end%fcn
+        
         function [tauL,tauU] = domain(obj)
             if isempty(obj)
                 tauL = NaN;
@@ -177,7 +199,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 y = obj.y;
                 head = obj.head;
                 curv = obj.curv;
-                curvDs = obj.estiamteCurvDs();
+                curvDs = obj.estimateCurvDs();
                 tau = (0:numel(x)-1)';
                 return
             end
@@ -190,7 +212,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 binIdxSat = max(min(binIdx-1, N-1), 1);
                 
                 % Linear interpolation
-                lin = [obj.x obj.y obj.head obj.curv obj.estiamteCurvDs()];
+                lin = [obj.x obj.y obj.head obj.curv obj.estimateCurvDs()];
                 xyhc = lin(binIdxSat,:) + bsxfun(@times, ...
                     tau - tauAct(binIdxSat), ...
                     lin(binIdxSat+1,:) - lin(binIdxSat,:));
@@ -205,7 +227,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 
             elseif N > 0 % Just one sample point (no extrapolation)
                 xyhc = repmat(...
-                    [obj.x(1) obj.y(1) obj.head(1) obj.curv(1) obj.estiamteCurvDs()], ...
+                    [obj.x(1) obj.y(1) obj.head(1) obj.curv(1) obj.estimateCurvDs()], ...
                     numel(tau), 1);
                 xyhc(tau ~= 0,:) = NaN;
                 tau(tau ~= 0) = NaN;
@@ -248,17 +270,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %    
         %   See also POLYGONPATH/FITSTRAIGHT.
             
-            % Extract x/y data
-            xsub = obj.x;
-            ysub = obj.y;
-            
-            method = 'Kasa';
-            switch method
-                case 'Kasa'
-                    [xc,yc,R,e] = fitCircle_Kasa(xsub, ysub);
-                otherwise
-                    % 
-            end%switch
+            [xc,yc,R,e] = fitCircle_Kasa(obj.x, obj.y);
             
             % Create POLYGONPATH object
             objc = PolygonPath.circle(R, [0 2*pi], N);
@@ -321,6 +333,45 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 legend('-DynamicLegend')
             end%if
             
+        end%fcn
+        
+        function d = discreteFrechetDist(obj, Q, distFcn)
+        %DISCRETEFRECHETDIST    Compute the discrete Fréchet distance.
+        %   D = DISCRETEFRECHETDIST(OBJ, Q) returns the discrete frechet
+        %   distance D for the PolygonPath object OBJ and an N-by-2 matrix
+        %   Q of coordinates.
+        %
+        %   D = DISCRETEFRECHETDIST(___,DISTFCN) allows to define a custom
+        %   distance function DISTFCN as an anonymous function, e.g.
+        %       @(dpq) hypot(dpq(:,1), dpq(:,2))
+        %   which is the default value.
+        
+            if nargin < 3 % Define default metric
+                distFcn = @(dpq) hypot(dpq(:,1), dpq(:,2));
+            end
+            
+            D = coder.nullcopy(-ones(numel(obj.x), size(Q,1)));
+            
+            % Fill the first row/column with cumulative maximum of
+            % distances from P0 to Qi/Pi to Q0.
+            dP0toQ = distFcn([obj.x(1) - Q(:,1), obj.y(1) - Q(:,2)]);
+            D(1,:) = cummax(dP0toQ);
+            dQ0toP = distFcn([obj.x - Q(1,1), obj.y - Q(1,2)]);
+            D(:,1) = cummax(dQ0toP);
+            
+            % Since the first row/column are already filled, the remaining
+            % elements of the distance matrix can be calculated without
+            % branching.
+            for i = 2:size(D,1)
+                Pi = [obj.x(i) obj.y(i)];
+                for j = 2:size(D,2)
+                    d = distFcn(Pi - Q(j,:));
+                    dTmp = [D(i-1,j) D(i-1,j-1) D(i,j-1)];
+                    D(i,j) = max(d, min(dTmp));
+                end
+            end
+            
+            d = D(end,end);
         end%fcn
         
         function [xy,Q,idx,tau] = frenet2cart(obj, sd, doPlot)
@@ -526,18 +577,18 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function d = perpendicularDistance(obj, P0, P1, doPlot)
         %PERPENDICULARDISTANCE    Perpendicular distance to line.
-        %    D = PERPENDICULARDISTANCE(OBJ,P1,P2) calculate the
-        %    perpendicular distance D for all waypoints of OBJ to the line
-        %    passing through P1 and P2.
+        %   D = PERPENDICULARDISTANCE(OBJ,P1,P2) calculate the
+        %   perpendicular distance D for all waypoints of OBJ to the line
+        %   passing through P1 and P2.
+        %   
+        %   D = PERPENDICULARDISTANCE(...,DOPLOT) also shows a plot of
+        %   results if DOPLOT evaluates to TRUE.
         % 
-        %    D = PERPENDICULARDISTANCE(...,DOPLOT) also shows a plot of
-        %    results if DOPLOT evaluates to TRUE.
-        %
-        %    NOTE: The distance for waypoints of OBJ to the left/right of
-        %    the line from P1 to P2 is positive/negative.
+        %   NOTE: The distance for waypoints of OBJ to the left/right of
+        %   the line from P1 to P2 is positive/negative.
         %    
-        %    See also
-        %    https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Line_defined_by_two_points
+        %   See also
+        %   https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Line_defined_by_two_points
             
             % Handle input arguments
             narginchk(1, 4)
@@ -681,23 +732,71 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function [obj,idx] = rdp(obj, eps)
-        %RDP    Ramer-Douglas-Peucker point reduction.
-        %    OBJR = RDP(OBJ,EPS) applies the Ramer-Douglas-Peuker point
-        %    reduction algorithm to path OBJ with parameter EPS. None of
-        %    the removed waypoints has a distance greater than EPS to the
-        %    resulting path!
+        function [obj,idx] = rdp(obj, epsilon)
+        %RDP    Recursive Ramer-Douglas-Peucker polyline simplification.
+        %   OBJR = RDP(OBJ,EPS) applies the Ramer-Douglas-Peuker point
+        %   reduction algorithm to path OBJ with parameter EPS. None of the
+        %   removed waypoints has a distance greater than EPS to the
+        %   resulting path!
         %    
-        %    [OBJR,IDX] = RDP(OBJ,EPS) returns an array IDX so that OBJR =
-        %    SELECT(OBJ, IDX).
+        %   [OBJR,IDX] = RDP(OBJ,EPS) returns an array IDX so that OBJR =
+        %   SELECT(OBJ, IDX).
         %
             
             % The actual implementation is moved to a separate file,
             % otherwise its nested function would block code generation for
             % all class methods in older MATLAB releases!
-            [~,~,idx] = ramerDouglasPeucker(obj.x, obj.y, eps);
-            obj = obj.select(idx);
+            keepIdx = ramerDouglasPeucker(obj.x, obj.y, epsilon);
+            obj = obj.select(keepIdx);
+            idx = find(keepIdx);
             
+        end%fcn
+        
+        function [obj,idx] = rdpIter(obj, epsilon)
+        %RDPITER    Iterative Ramer-Douglas-Peucker algorithm.
+        %   OBJR = RDPITER(OBJ,EPS)
+        %
+        %   Use this implementation if code-generation is required!
+        %
+        %   See also PolygonPath/rdp.
+        
+            N = numel(obj.x);
+            if N < 3
+                return
+            end
+            
+            % Initialize a logical array indicating which waypoints to keep
+            keep = false(N,1);
+            keep([1 end]) = true;
+            
+            % Track the segments to be checked. Each row is of the form
+            % [start index, end index]. No upper bound is set for the
+            % number of segments, since this would need to be a
+            % compile-time constant.
+            coder.varsize('segments', [inf 2], [true false]);
+            segments = [1 N];
+            
+            while ~isempty(segments)
+                % Work on the end segment
+                idx0 = segments(end,1);
+                idx1 = segments(end,2);
+                segments(end,:) = [];
+                
+                dists = perpDist(obj.x(idx0:idx1), obj.y(idx0:idx1));
+                [dMax,idxMax] = max(dists);
+                
+                if ~isempty(dMax) && (dMax > epsilon)
+                    idxSplit = idxMax + idx0 - 1; % Offset to absolute index
+                    
+                    % Set index where to split the segment to be kept and
+                    % add the two new segments to the stack
+                    keep(idxSplit) = true;
+                    segments = [segments; idx0 idxSplit; idxSplit idx1]; %#ok<AGROW>
+                end
+            end
+            
+            obj = obj.select(keep);
+            idx = find(keep);
         end%fcn
         
         function obj = reverse(obj)
@@ -811,7 +910,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %WRITE2FILE		Write path to file.
         %	WRITE2FILE(OBJ,FN) writes waypoints OBJ to file with filename
         %	FN (specify extension!).
-        %	
+        %   
             
             % Open file with write-permission
             [~,~,fileExt] = fileparts(fn);
@@ -834,7 +933,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         function s = toStruct(obj)
             s = struct('x',obj.x, 'y',obj.y, 'head',obj.head, 'curv',obj.curv);
         end%fcn
-        
     end%methods
     
     
@@ -843,7 +941,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             s = [0; obj.ArcLengths];
         end%fcn
         
-        function curvDs = estiamteCurvDs(obj)
+        function curvDs = estimateCurvDs(obj)
         % Estimate change of curvature w.r.t. change in path length.
             ds = gradient1D(obj.arcLengths0());
             ds(ds < eps) = eps; % Avoid division by zero
@@ -853,18 +951,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
     
     
     methods (Static)
-        
         function obj = circle(r, phi01, N)
-        %CIRCLE     Create circle.
-        %   OBJ = POLYGONPATH.CIRCLE(R) creates a path object OBJ
-        %   describing a circle of radius R.
-        %   
-        %   OBJ = POLYGONPATH.CIRCLE(R, PHI01) sets the initial and final
-        %   angle to PHI01(1) and PHI01(2) respectively. Default value is
-        %   [0; 2*pi];
-        %   
-        %   OBJ = POLYGONPATH.CIRCLE(R, PHI01, N) creates the circle using
-        %   N samples. Default value is N = 100.
             
             if nargin < 3
                 N = 100;
@@ -872,9 +959,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             if nargin < 2
                 phi01 = [0; 2*pi];
             end
-            t = linspace(phi01(1), phi01(2), N)';
+            t = linspace(phi01(1), phi01(2), N+1)';
             signPhi = sign(phi01(2) - phi01(1));
-            obj = PolygonPath(r*cos(t), r*sin(t), t+signPhi*pi/2, signPhi*repmat(1/r,N,1));
+            obj = PolygonPath(r*cos(t), r*sin(t), ...
+                t + signPhi*pi/2, ...
+                signPhi*repmat(1/r, N+1, 1));
             
             % Set exact path length
             obj.ArcLengths = abs(t(2:end) - t(1))*r; % r*phi where phi=0,...,2*pi
@@ -885,7 +974,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %   OBJ = POLYGONPATH.CLOTHOID(L, PHI01, N) creates a clothoid path
         %   of length L, initial curvature CURV01(1) and end curvature
         %   CURV01(2) at N equidistant sample points.
-        %
+        % 
         %   OBJ = POLYGONPATH.CLOTHOID(___,MODE) allows to select different
         %   calculation methods. Possible values are 'Heald', 'Quad'.
         %   
@@ -952,9 +1041,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             N2 = N - 2*N13;
             
             % Create individual circles
-            c1 = PolygonPath.circle(r, signW*[pi/2 pi/2-a] + phi0, N13+1);
-            c2 = PolygonPath.circle(r, signW*[-a-pi/2 pi/2+a] + phi0, N2);
-            c3 = PolygonPath.circle(r, signW*[a-pi/2 -pi/2] + phi0, N13+1);
+            c1 = PolygonPath.circle(r, signW*[pi/2 pi/2-a] + phi0, N13);
+            c2 = PolygonPath.circle(r, signW*[-a-pi/2 pi/2+a] + phi0, N2-1);
+            c3 = PolygonPath.circle(r, signW*[a-pi/2 -pi/2] + phi0, N13);
             c3.head = c3.head - 2*pi;
             
             % Shift before appending
@@ -991,7 +1080,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function obj = pp2Path(pp, tau, polyDeg)
-            
+        % PP2PATH    Path object from piecewise polynomial.
+        %   OBJ = PolygonPath.PP2PATH(PP,TAU) instantiates the path OBJ
+        %   from piecewise polynomial struct PP sampled at TAU.
+        %   
+        %   See also MKPP.
+        
             if nargin < 3
                 [~,~,~,polyOrd] = unmkpp(pp);
                 polyDeg = polyOrd - 1;
@@ -1028,6 +1122,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function c = getBusDef(N)
+        % GETBUSDEF     Return bus information.
+        %   C = GETBUSDEF(N) returns the bus information cell C for a
+        %   PolynomialPath of at most N-1 segments.
+        %
+        %   See also Path2D/getBusDef.
             BusName = 'SBus_PolygonPath';
             HeaderFile = '';
             Description = '';
@@ -1039,7 +1138,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 };
             c = {{BusName,HeaderFile,Description,BusElements}};
         end%fcn
-        
     end%methods
     
 end%class

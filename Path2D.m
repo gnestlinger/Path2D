@@ -12,6 +12,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 % 
 %   Path2D methods (modify path object):
 %   append - Append paths.
+%   derivative - Derivative of path.
 %   restrict - Restrict path domain.
 %   reverse - Reverse path.
 %   rotate - Rotate path.
@@ -35,6 +36,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   pointProjection - Point projection on path.
 %   s2tau - Path length to path parameter.
 %   termPoints - Terminal points.
+%   vectorField - Vector field towards path.
 % 
 %   Path2D visualization methods:
 %   plot - Plot the path.
@@ -45,7 +47,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   ll2Path - Construct path from latitude/longitude coordinates.
 %   pp2Path - Construct path from piecewise polynomial.
 %   xy2Path - Construct path from cartesian coordinates.
+%   circle - Construct circle.
 %   straight - Construct straight path.
+%   getBusDef - Get bus defintion.
 %
 %   See also PolygonPath, SplinePath.
     
@@ -62,7 +66,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
     
     
     methods
-        
         function obj = Path2D()
         %PATH2D     Construct a PATH2D class instance.
         end%Constructor
@@ -71,7 +74,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         % CUMLENGTHS    Cumulative path segment lengths.
         %   S = CUMLENGTHS(OBJ) returns the vector S of cumulative path
         %   segment lengths.
-        %
+        %   
         %   See also LENGTH.
         
             s = obj.ArcLengths;
@@ -81,7 +84,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         % ISEMPTY   Check if path is empty.
         %   FLAG = ISEMPTY(OBJ) returns true if the path's domain is
         %   undefined, i.e. domain(OBJ) returns NaN, and false otherwise.
-        %
+        %   
         %   See also DOMAIN.
         
             flag = (obj.numel() < 1);
@@ -91,7 +94,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         % LENGTH    Path length.
         %   S = LENGTH(OBJ) returns the arc length S >= 0 of the path OBJ.
         %   For empty paths, S = 0.
-        %
+        %   
         %   See also CUMLENGTHS.
         
             if isempty(obj.ArcLengths)
@@ -103,7 +106,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         
         function tau = sampleDomain(obj, arg)
         %SAMPLEDOMAIN   Sample domain of path.
-        %
         %   TAU = SAMPLEDOMAIN(OBJ,ARG) returns the path parameter TAU
         %   sampled over the domain of path OBJ depending on the class of
         %   ARG: if ARG is 
@@ -128,10 +130,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
                     end%if
                     
                 case {'uint8', 'uint16', 'uint32', 'uint64'}
-                        tau = linspace(tau0, tau1, arg)';
+                    tau = linspace(tau0, tau1, arg)';
                     
                 otherwise
-                   error('Unsupported data type for argument ARG!')
+                    error('Unsupported data type for argument ARG!')
             end%switch
             
         end%fcn
@@ -144,33 +146,105 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         
             [P0,P1] = obj.termPoints();
             obj.IsCircuit = (norm(P1 - P0) < ths);
+        end%fcn
+        
+        function [Fx,Fy] = vectorField(obj, x, y, kf, doPlot)
+        %VECTORFIELD    Vector field towards path.
+        %   [FX,FY] = VECTORFIELD(OBJ, X, Y) computes the vector field
+        %   F(X,Y) = [Fx;Fy] for the pairs (X,Y) that points towards the
+        %   path OBJ.
+        %
+        %   [___] = VECTORFIELD(___, K) lets you specify the scaling of the
+        %   normal over the tangential component of the vector field.
+        %   Default value: 1.
+        %   
+        %   EXAMPLES: 
+        %    po = PolygonPath.straight([0 0], [10 5]);
+        %    [x,y] = meshgrid(linspace(-5,15,41), linspace(-5,10,31));
+        %    po.vectorField(x, y, 1, true);
+        % 
+        %    po = SplinePath.circle(3, [0 2*pi], 6);
+        %    [x,y] = meshgrid(linspace(-5,5,21), linspace(-5,5,21));
+        %    po.vectorField(x, y, 1, true);
+        % 
+        %   REFERENCES:
+        %    [1] A. M. C. Rezende, V. M. Goncalves and L. C. A. Pimenta,
+        %    "Constructive Time-Varying Vector Fields for Robot
+        %    Navigation," in IEEE Transactions on Robotics, vol. 38, no. 2,
+        %    pp. 852-867, April 2022, doi: 10.1109/TRO.2021.3093674.
+            
+            assert(isequal(size(x), size(y)))
+            
+            if nargin < 4
+                kf = 1;
+            end
+            
+            if obj.isempty()
+                Fx = NaN(size(x));
+                Fy = NaN(size(y));
+                return
+            end
+            
+            [n,d,tau] = obj.closestUniquePointOnPath(x, y);
+            
+            % Obtain the normal vector from the closest point on the path
+            n = bsxfun(@rdivide, [x(:) y(:)] - n, d + eps);
+            
+            % Since we calculate the tangent vector T = [tx ty] from the
+            % derivative of the path, T always points in the direction of
+            % the path w.r.t. increasing path parameter!
+            PathObjT = obj.derivative();
+            [tx,ty] = PathObjT.eval(tau);
+            
+            % In general, the path parameter is not the path length.
+            % Therefore, we must normalize the tangent vector
+            Th = hypot(tx, ty);
+            
+            fhG = @(D,kf) 2/pi*atan(kf*D);
+%             fhG = @(D,kf) D./sqrt(kf + D.^2);
+            G = fhG(d, kf);
+            H = sqrt(1 - G.^2);
+            Fx = -G.*n(:,1) + H.*(tx./Th);
+            Fy = -G.*n(:,2) + H.*(ty./Th);
+            
+            Fx = reshape(Fx, size(x));
+            Fy = reshape(Fy, size(y));
+            
+            if (nargin > 4) && doPlot
+                obj.plot('r', 'LineWidth',2);
+                hold on
+                quiver(x, y, Fx, Fy, 'k');
+%                 contour(x, y, reshape(d, size(x)));
+                hold off
+            end
             
         end%fcn
+        
         
         %%% Plot methods
         function [hr,axr] = plot(varargin)
         %PLOT   Plot path.
-        %    PLOT(OBJ) plots the path OBJ in terms of x over y.
-        %
-        %    PLOT(OBJ,DTAU) specify path parameter increment to be plotted.
+        %   PLOT(OBJ) plots the path OBJ in terms of x over y.
+        %   
+        %   PLOT(OBJ,DTAU) specify path parameter increment to be plotted.
         %    
-        %    PLOT(OBJ,S) additionally applies the line specification S.
+        %   PLOT(OBJ,S) additionally applies the line specification S.
         %
-        %    PLOT(OBJ,DTAU,S) specify DTAU before any line specification.
+        %   PLOT(OBJ,DTAU,S) specify DTAU before any line specification.
         %
-        %    PLOT(...,NAME,VALUE) specifies line properties using one or
-        %    more Name,Value pair arguments.
+        %   PLOT(...,NAME,VALUE) specifies line properties using one or
+        %   more Name,Value pair arguments.
         %
-        %    PLOT(AX,...) plots into the axes with handle AX.
+        %   PLOT(AX,...) plots into the axes with handle AX.
         %    
-        %    [H,AX] = PLOT(...) returns the handle H to lineseries objects
-        %    and axes handle AX.
+        %   [H,AX] = PLOT(...) returns the handle H to lineseries objects
+        %   and axes handle AX.
         %    
-        %    The line specification S is a character string supported by the
-        %    standard PLOT command. For example
-        %        PLOT(OBJ, 'LineWidth',2, 'Color',[.6 0 0]) 
-        %    will plot a dark red line using a line width of 2 points.
-        %
+        %   The line specification S is a character string supported by the
+        %   standard PLOT command. For example
+        %       PLOT(OBJ, 'LineWidth',2, 'Color',[.6 0 0]) 
+        %   will plot a dark red line using a line width of 2 points.
+        %   
         %   See also PLOTG2, PLOTTANGENT.
             
             [ax,obj,dtau,opts] = parsePlotInputs(varargin{:});
@@ -239,21 +313,21 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             
         end%fcn
         
-        function [hr,axr] = plottangent(varargin) 
+        function [hr,axr] = plottangent(varargin)
         %PLOTTANGENT    Plot path and tangents.
-        %    PLOTTANGENT(OBJ,TAU) plots the path and tangents at the path
-        %    parameters TAU and highlights the path coordinates at TAU. If
-        %    TAU is empty, tangents are plotted for the path's terminal
-        %    points.
+        %   PLOTTANGENT(OBJ,TAU) plots the path and tangents at the path
+        %   parameters TAU and highlights the path coordinates at TAU. If
+        %   TAU is empty, tangents are plotted for the path's terminal
+        %   points.
         %    
-        %    [H,AX] = PLOTTANGENT(...) returns a handle array H to
-        %    lineseries objects and the axes handle AX. Here, H(1,1) is the
-        %    path-handle, H(i+1,1) and H(i+1,2) the marker- and the
-        %    tangent-handle of TAU(i) respectively.
+        %   [H,AX] = PLOTTANGENT(...) returns a handle array H to
+        %   lineseries objects and the axes handle AX. Here, H(1,1) is the
+        %   path-handle, H(i+1,1) and H(i+1,2) the marker- and the
+        %   tangent-handle of TAU(i) respectively.
         %    
-        %    For Syntax see also PATH2D/PLOT.
-        %
-        %    See also PATH2D/PLOT, PATH2D/PLOTG2.
+        %   For Syntax see also PATH2D/PLOT.
+        %   
+        %   See also PATH2D/PLOT, PATH2D/PLOTG2.
             
             [ax,obj,tau,opts] = parsePlotInputs(varargin{:});
             if isempty(ax) || ~ishghandle(ax)
@@ -329,12 +403,72 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             end
             
         end%fcn
-        
-    end%methods
+    end
     
+    methods (Access = private)
+        function [Q,d,tau] = closestUniquePointOnPath(obj, X, Y)
+        %   For all points (x,y) find the closest unique point Q on the
+        %   path, if it exists. Otherwise, return NaN.
+        %   
+        %   [1] A. M. C. Rezende, V. M. Goncalves and L. C. A. Pimenta,
+        %   "Constructive Time-Varying Vector Fields for Robot Navigation,"
+        %   in IEEE Transactions on Robotics, vol. 38, no. 2, pp. 852-867,
+        %   April 2022, doi: 10.1109/TRO.2021.3093674.
+        
+            assert(isequal(size(X), size(Y)))
+            
+            [C0,C1] = obj.termPoints();
+            [tau0,tau1] = obj.domain();
+            isCircuit = obj.IsCircuit;
+            
+            % Given the parameterized path C(s). For each point (x,y), we
+            % find the path paramter s* such that C(s*):=Q is the closest
+            % point on the path (orthogonal projection). Therefore, PQ is
+            % the normal vector.
+            Q = coder.nullcopy(zeros(numel(X), 2));
+            d = coder.nullcopy(zeros(numel(X), 1));
+            tau = coder.nullcopy(zeros(numel(X), 1));
+            for i = 1:numel(X)
+                xi = X(i);
+                yi = Y(i);
+                
+                % Solve Eq. (1)-(3): Find the path parameter/point on path
+                % that has the minimum distance to point Pi
+                [Qi,~,taui] = obj.pointProjection([xi yi]);
+                if isCircuit && (numel(taui) > 1) 
+                    % If the path is a circuit, and two or more solutions
+                    % are found, check if the first and last solution refer
+                    % to the same point. (In case point projection returned
+                    % repeated solutions)
+                    if isequal([tau0 tau1], [taui(1) taui(end)])
+                        Qi(end,:) = [];
+                        taui(end) = [];
+                    end
+                end
+                if isempty(taui)
+                    % Consider endpoints of path
+                    if isCircuit
+                        Qi = C0';
+                        taui = tau0;
+                    else
+                        Qi = [C0'; C1'];
+                        taui = [tau0; tau1];
+                    end
+                end
+                
+                % Check for singleton (unique) solution from a set of
+                % solutions
+                [dMin,QMin,tauMin] = getSingletonSolution(Qi, xi, yi, taui);
+                
+                Q(i,:) = QMin;
+                d(i) = dMin;
+                tau(i) = tauMin;
+            end%for
+            
+        end%fcn
+    end
     
     methods (Abstract)
-        
         % APPEND    Append paths.
         %   OBJ = append(OBJ0,OBJ1,...,OBJN) appends paths OBJ to OBJN in
         %   the given order creating path OBJ.
@@ -350,6 +484,18 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %
         %    See also FRENET2CART, POINTPROJECTION.
         [sd,Q,idx,tau] = cart2frenet(obj, xy, phiMax)
+        
+        % DERIVATIVE    Derivative of path.
+        %   OBJD = DERIVATIVE(OBJ,N) returns the Nth derivative OBJD of the
+        %   path OBJ w.r.t. the path parameter.
+        %
+        %   Note: The result OBJD represents the tangent of the path OBJ,
+        %   that can be queried for a given value of the path parameter via
+        %   eval(). As a consequence, OBJD is not meaningful in terms of a
+        %   path.
+        %
+        %   See also EVAL.
+        objD = derivative(obj, n)
         
         % DOMAIN    Domain of the path.
         %   [TAUL,TAUU] = DOMAIN(OBJ) returns the lower and upper domain
@@ -483,12 +629,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   (initial point) and P1 (end point) of size 2-by-1. For empty
         %   paths NaNs are returned.
         [P0,P1] = termPoints(obj)
-        
-    end%methods
-    
-    
+    end
+      
     methods (Static)
-        
         function obj = ll2Path(lat, lon) %#ok<STOUT,INUSD>
         % LL2PATH    Path object from LAT/LON coordinates.
         %   OBJ = <ClassName>.LL2PATH(LAT, LON) instantiates the path OBJ
@@ -496,12 +639,26 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             error('Not implemented!')
         end%fcn
         
-        function obj = pp2Path(pp, tay, polyDeg) %#ok<STOUT,INUSD>
+        function obj = pp2Path(pp, varargin) %#ok<STOUT,INUSD>
         % PP2PATH    Path object from piecewise polynomial.
-        %   OBJ = <ClassName>.PP2PATH(PP,TAU) instantiates the path OBJ
-        %   from piecewise polynomial struct PP.
+        %   OBJ = <ClassName>.PP2PATH(PP,VARARGIN) instantiates the path
+        %   OBJ from piecewise polynomial struct PP.
         %   
         %   See also MKPP.
+            error('Not implemented!')
+        end%fcn
+        
+        function obj = circle(r, phi01, N) %#ok<STOUT,INUSD>
+        %CIRCLE     Create circle.
+        %   OBJ = <ClassName>.CIRCLE(R) creates a path object OBJ
+        %   describing a circle of radius R.
+        %   
+        %   OBJ = <ClassName>.CIRCLE(R, PHI01) sets the initial and final
+        %   angle to PHI01(1) and PHI01(2) respectively. Default value is
+        %   [0, 2*pi].
+        %
+        %   OBJ = <ClassName>.CIRCLE(R, PHI01, N) creates a circle using N
+        %   path segments.
             error('Not implemented!')
         end%fcn
         
@@ -519,6 +676,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             error('Not implemented!')
         end%fcn
         
-    end%methods
+        function c = getBusDef(varargin) %#ok<STOUT>
+        % GETBUSDEF     Return bus information.
+        %   C = GETBUSDEF(VARARGIN) returns the cell array C containing bus
+        %   information. 
+        %
+        %   See also Simulink.Bus.cellToObject.
+            error('Not implemented!')
+        end%fcn
+    end
     
 end%class
