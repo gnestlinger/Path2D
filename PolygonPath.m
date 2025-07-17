@@ -171,6 +171,45 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
+        function d = discreteFrechetDist(obj, Q, distFcn)
+        %DISCRETEFRECHETDIST    Compute the discrete Fréchet distance.
+        %   D = DISCRETEFRECHETDIST(OBJ, Q) returns the discrete frechet
+        %   distance D for the PolygonPath object OBJ and an N-by-2 matrix
+        %   Q of coordinates.
+        %
+        %   D = DISCRETEFRECHETDIST(___,DISTFCN) allows to define a custom
+        %   distance function DISTFCN as an anonymous function, e.g.
+        %       @(dpq) hypot(dpq(:,1), dpq(:,2))
+        %   which is the default value.
+        
+            if nargin < 3 % Define default metric
+                distFcn = @(dpq) hypot(dpq(:,1), dpq(:,2));
+            end
+            
+            D = coder.nullcopy(-ones(numel(obj.x), size(Q,1)));
+            
+            % Fill the first row/column with cumulative maximum of
+            % distances from P0 to Qi/Pi to Q0.
+            dP0toQ = distFcn([obj.x(1) - Q(:,1), obj.y(1) - Q(:,2)]);
+            D(1,:) = cummax(dP0toQ);
+            dQ0toP = distFcn([obj.x - Q(1,1), obj.y - Q(1,2)]);
+            D(:,1) = cummax(dQ0toP);
+            
+            % Since the first row/column are already filled, the remaining
+            % elements of the distance matrix can be calculated without
+            % branching.
+            for i = 2:size(D,1)
+                Pi = [obj.x(i) obj.y(i)];
+                for j = 2:size(D,2)
+                    d = distFcn(Pi - Q(j,:));
+                    dTmp = [D(i-1,j) D(i-1,j-1) D(i,j-1)];
+                    D(i,j) = max(d, min(dTmp));
+                end
+            end
+            
+            d = D(end,end);
+        end%fcn
+
         function [tauL,tauU] = domain(obj)
             if isempty(obj)
                 tauL = NaN;
@@ -333,45 +372,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 legend('-DynamicLegend')
             end%if
             
-        end%fcn
-        
-        function d = discreteFrechetDist(obj, Q, distFcn)
-        %DISCRETEFRECHETDIST    Compute the discrete Fréchet distance.
-        %   D = DISCRETEFRECHETDIST(OBJ, Q) returns the discrete frechet
-        %   distance D for the PolygonPath object OBJ and an N-by-2 matrix
-        %   Q of coordinates.
-        %
-        %   D = DISCRETEFRECHETDIST(___,DISTFCN) allows to define a custom
-        %   distance function DISTFCN as an anonymous function, e.g.
-        %       @(dpq) hypot(dpq(:,1), dpq(:,2))
-        %   which is the default value.
-        
-            if nargin < 3 % Define default metric
-                distFcn = @(dpq) hypot(dpq(:,1), dpq(:,2));
-            end
-            
-            D = coder.nullcopy(-ones(numel(obj.x), size(Q,1)));
-            
-            % Fill the first row/column with cumulative maximum of
-            % distances from P0 to Qi/Pi to Q0.
-            dP0toQ = distFcn([obj.x(1) - Q(:,1), obj.y(1) - Q(:,2)]);
-            D(1,:) = cummax(dP0toQ);
-            dQ0toP = distFcn([obj.x - Q(1,1), obj.y - Q(1,2)]);
-            D(:,1) = cummax(dQ0toP);
-            
-            % Since the first row/column are already filled, the remaining
-            % elements of the distance matrix can be calculated without
-            % branching.
-            for i = 2:size(D,1)
-                Pi = [obj.x(i) obj.y(i)];
-                for j = 2:size(D,2)
-                    d = distFcn(Pi - Q(j,:));
-                    dTmp = [D(i-1,j) D(i-1,j-1) D(i,j-1)];
-                    D(i,j) = max(d, min(dTmp));
-                end
-            end
-            
-            d = D(end,end);
         end%fcn
         
         function [xy,Q,idx,tau] = frenet2cart(obj, sd, doPlot)
@@ -698,9 +698,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function [obj,tau0,tau1] = restrict(obj, tau0, tau1)
+        function [obj2,tau0,tau1] = restrict(obj, tau0, tau1)
             
             if isempty(obj) || isempty([tau0(:); tau1(:)])
+                obj2 = obj;
                 return
             end
             
@@ -724,11 +725,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 'tau0 >= tau1')
             
             [x,y,~,h,c] = obj.eval([tau0 tau1]);
-            obj = obj.select(idx0:idx1);
-            obj.x([1 end]) = x;
-            obj.y([1 end]) = y;
-            obj.head([1 end]) = h;
-            obj.curv([1 end]) = c;
+            obj2 = obj.select(idx0:idx1);
+            obj2.x([1 end]) = x;
+            obj2.y([1 end]) = y;
+            obj2.head([1 end]) = h;
+            obj2.curv([1 end]) = c;
             
         end%fcn
         
@@ -938,6 +939,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
     
     methods (Access = private)
         function s = arcLengths0(obj)
+            coder.inline('always')
             s = [0; obj.ArcLengths];
         end%fcn
         
@@ -946,6 +948,18 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             ds = gradient1D(obj.arcLengths0());
             ds(ds < eps) = eps; % Avoid division by zero
             curvDs = gradient1D(obj.curv)./ds;
+        end%fcn
+    end
+    
+    
+    methods (Access = {?Path2D})
+        function s = lengthImpl(obj, tau0, tau1)
+            
+            s = interp1(obj.arcLengths0(), tau0 + 1);
+            if nargin > 2
+                s = abs(interp1(obj.arcLengths0(), tau1 + 1) - s);
+            end
+            
         end%fcn
     end
     

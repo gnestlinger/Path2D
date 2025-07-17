@@ -90,17 +90,25 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             flag = (obj.numel() < 1);
         end%fcn
         
-        function s = length(obj)
+        function s = length(obj, varargin)
         % LENGTH    Path length.
         %   S = LENGTH(OBJ) returns the arc length S >= 0 of the path OBJ.
         %   For empty paths, S = 0.
+        %   
+        %   S = LENGTH(OBJ,TAU) returns the arc length from the initial
+        %   point till the point at path parameter TAU.
+        %   
+        %   S = LENGTH(OBJ,TAU0,TAU1) returns the arc length between the
+        %   points at path parameter TAU0 and TAU1.
         %   
         %   See also CUMLENGTHS.
         
             if isempty(obj.ArcLengths)
                 s = 0;
-            else
+            elseif nargin == 1
                 s = obj.ArcLengths(end);
+            else
+                s = obj.lengthImpl(varargin{:});
             end
         end%fcn
         

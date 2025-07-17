@@ -346,54 +346,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
         end%fcn
         
-        function [xy,tau,errFlag] = intersectLine(obj, O, psi, doPlot)
-            
-            obj1 = obj.shift(-O).rotate(-psi);
-            
-            breaks = obj1.Breaks;
-            coefsY = permute(obj1.Coefs(2,:,:), [2 3 1]);
-            
-            % There are at most Nc-1 real roots (i.e. solutions) per piece
-            [Ns,Nc] = size(coefsY);
-            coder.varsize('tau', Ns*(Nc-1));
-            tau = zeros(0,1);
-            
-            % The first pieces except the last are defined over half open
-            % intervals [b0,b1)
-            b0 = breaks(1);
-            for i = 1:Ns-1
-                b1 = breaks(i+1);
-                ri = getRealRootsWithinBounds(coefsY(i,:), @lt, b1-b0);
-                tau = [tau; ri + b0]; %#ok<AGROW>
-                b0 = b1;
-            end%for
-            
-            % The last piece is defined over the closed interval [b0,b1]
-            ri = getRealRootsWithinBounds(coefsY(end,:), @le, breaks(end)-b0);
-            tau = [tau; ri + b0];
-            
-            tau = sort(tau, 'ascend');
-            errFlag = isempty(tau);
-            [x,y] = obj.eval(tau);
-            xy = [x,y];
-            
-            if (nargin > 3) && doPlot
-                [~,ax] = plot(obj);
-                hold on
-                
-                [r1,r2] = scaleTangentToAxis(xlim, ylim, O, psi);
-                Pstart  = [O(1) + r2*cos(psi); O(2) + r2*sin(psi)];
-                Pstop   = [O(1) + r1*cos(psi); O(2) + r1*sin(psi)];
-                h = plot(gca, [Pstart(1) Pstop(1)], [Pstart(2) Pstop(2)], ...
-                    'DisplayName','Line');
-                plot(O(1), O(2), 'o', 'Color',get(h,'Color'), 'DisplayName','O')
-                
-                plot(ax, xy(:,1), xy(:,2), 'kx', 'DisplayName','Intersections')
-                hold off
-            end%if
-            
-        end%fcn
-        
         function [xy,tau,errFlag] = intersectCircle(obj, C, r, doPlot)
             
             obj = obj.shift(-C);
@@ -442,16 +394,51 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             end%if
             
         end%fcn
-        
-        function s = length(obj, tau)
+
+        function [xy,tau,errFlag] = intersectLine(obj, O, psi, doPlot)
             
-            if nargin < 2 % Call superclass method
-                s = length@Path2D(obj);
-            else % Some undocumented & untested stuff
-                idx = find(tau > obj.Breaks, 1, 'last');
-                taus = linspace(obj.Breaks(idx), tau, 100);
-                xy = diff(ppval(obj.mkpp(), taus), 1, 2);
-                s = obj.ArcLengths(idx) + hypot(xy(1,:), xy(2,:));
+            obj1 = obj.shift(-O).rotate(-psi);
+            
+            breaks = obj1.Breaks;
+            coefsY = permute(obj1.Coefs(2,:,:), [2 3 1]);
+            
+            % There are at most Nc-1 real roots (i.e. solutions) per piece
+            [Ns,Nc] = size(coefsY);
+            coder.varsize('tau', Ns*(Nc-1));
+            tau = zeros(0,1);
+            
+            % The first pieces except the last are defined over half open
+            % intervals [b0,b1)
+            b0 = breaks(1);
+            for i = 1:Ns-1
+                b1 = breaks(i+1);
+                ri = getRealRootsWithinBounds(coefsY(i,:), @lt, b1-b0);
+                tau = [tau; ri + b0]; %#ok<AGROW>
+                b0 = b1;
+            end%for
+            
+            % The last piece is defined over the closed interval [b0,b1]
+            ri = getRealRootsWithinBounds(coefsY(end,:), @le, breaks(end)-b0);
+            tau = [tau; ri + b0];
+            
+            tau = sort(tau, 'ascend');
+            errFlag = isempty(tau);
+            [x,y] = obj.eval(tau);
+            xy = [x,y];
+            
+            if (nargin > 3) && doPlot
+                [~,ax] = plot(obj);
+                hold on
+                
+                [r1,r2] = scaleTangentToAxis(xlim, ylim, O, psi);
+                Pstart  = [O(1) + r2*cos(psi); O(2) + r2*sin(psi)];
+                Pstop   = [O(1) + r1*cos(psi); O(2) + r1*sin(psi)];
+                h = plot(gca, [Pstart(1) Pstop(1)], [Pstart(2) Pstop(2)], ...
+                    'DisplayName','Line');
+                plot(O(1), O(2), 'o', 'Color',get(h,'Color'), 'DisplayName','O')
+                
+                plot(ax, xy(:,1), xy(:,2), 'kx', 'DisplayName','Intersections')
+                hold off
             end%if
             
         end%fcn
@@ -736,6 +723,24 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             end
             s = cumsum(s);
             
+        end%fcn
+    end
+    
+    
+    methods (Access = {?Path2D})
+        function s = lengthImpl(obj, tau0, tau1)
+            if nargin < 3
+                tau01 = [obj.Breaks(1) tau0];
+            else
+                tau01 = sort([tau0 tau1], 'ascend');
+            end
+            if (tau01(1) < obj.Breaks(1)) || (tau01(2) > obj.Breaks(end))
+                s = nan;
+                return
+            end
+            
+            ppd = obj.derivative().mkpp();
+            s = pplen(ppd, tau01(1), tau01(2));
         end%fcn
     end%methods
     
