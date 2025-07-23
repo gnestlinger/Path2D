@@ -21,6 +21,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %   perpendicularDistance - Distance of path waypoints to line.
 %   rdp - Ramer-Douglas-Peucker point reduction.
 %   rdpIter - Iterative Ramer-Douglas-Peucker line simplification.
+%   simplify - Simplify path.
 %   write2file - Write path to file.
 %   See superclass for more methods.
 % 
@@ -878,6 +879,22 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
+        function obj = simplify(obj)
+        %SIMPLIFY   Simplify path.
+        %   OBJ = SIMPLIFY(OBJ) removes intermediate points from line
+        %   segments of the path OBJ.
+        
+            h = atan2(diff(obj.y), diff(obj.x));
+            dh = [true; diff(h); true];
+            keep = (dh ~= 0);
+
+            obj.x = obj.x(keep);
+            obj.y = obj.y(keep);
+            obj.head = obj.head(keep);
+            obj.curv = obj.curv(keep);
+            obj.ArcLengths = obj.ArcLengths(keep(2:end));
+        end%fcn
+
         function [tau,idx] = s2tau(obj, s)
             
             sObj = obj.arcLengths0();
