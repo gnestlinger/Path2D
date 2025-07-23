@@ -54,7 +54,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   See also PolygonPath, SplinePath.
     
     properties (SetAccess = protected)
-        % ISCIRCUIT - Logical indicating if path is a circuit
+        % IsCircuit - Logical indicating if path is a circuit
         IsCircuit = false
     end
     
@@ -69,6 +69,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         function obj = Path2D()
         %PATH2D     Construct a PATH2D class instance.
         end%Constructor
+        
+        function obj = set.ArcLengths(obj, val)
+            assert(numel(val) == obj.numel())
+            obj.ArcLengths = val(:);
+        end%fcn
         
         function s = cumlengths(obj)
         % CUMLENGTHS    Cumulative path segment lengths.

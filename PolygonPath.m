@@ -437,11 +437,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             % strictly increasing
             assert(all(diff(tau) > 0))
             
-            xyhcs = interp1(0:N-1, ...
+            xyhcs = interp1(...
                 [obj.x, obj.y, obj.head, obj.curv, obj.arcLengths0()], ...
-                tau(:), varargin{:});
+                tau(:) + 1, varargin{:});
             obj = PolygonPath(xyhcs(:,1), xyhcs(:,2), xyhcs(:,3), xyhcs(:,4));
-            obj.ArcLengths = xyhcs(:,5);
+            obj.ArcLengths = xyhcs(2:end,5);
             
         end%fcn
         
@@ -804,11 +804,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
             for i = 1:builtin('numel', obj)
                 obji = obj(i);
+                if obji.numel() < 1
+                    continue
+                end
                 obji.x = flip(obji.x);
                 obji.y = flip(obji.y);
                 obji.head = flip(obji.head) + pi;
                 obji.curv = -flip(obji.curv);
-                obji.ArcLengths = [-flip(obji.ArcLengths(1:end-1)); 0] + obji.length();
+                obji.ArcLengths = cumsum(flip(diff(obji.arcLengths0())));
                 obj(i) = obji;
             end%for
             

@@ -77,6 +77,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             breaks = obj.Breaks;
             coefs = obj.Coefs;
             arcLen = obj.ArcLengths;
+            [~,P1] = obj.termPoints();
             breaks2 = obj2.Breaks;
             coefs2 = obj2.Coefs;
             
@@ -88,10 +89,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 cat(3, zeros(2,n1,k2-k1), coefs), ...
                 cat(3, zeros(2,n2,k1-k2), coefs2));
             
-            [~,P1] = obj.termPoints();
-            P0 = obj2.termPoints();
-            ds = sqrt( sum((P0 - P1).^2) );
-            obj.ArcLengths = [arcLen; obj2.ArcLengths(2:end) + arcLen(end) + ds];
+            dP = obj2.termPoints() - P1;
+            ds = hypot(dP(1), dP(2));
+            obj.ArcLengths = [arcLen; obj2.ArcLengths + arcLen(end) + ds];
             
         end%fcn
         
