@@ -71,7 +71,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         end%Constructor
         
         function obj = set.ArcLengths(obj, val)
-            assert(numel(val) == obj.numel())
+            if coder.target('matlab')
+                % Without the if-statement, this breaks Simulink code-gen
+                % in some cases (tested with R2014b)
+                assert(numel(val) == obj.numel(), ...
+                    'Incorrect length of ArcLengths property!')
+            end
             obj.ArcLengths = val(:);
         end%fcn
         
