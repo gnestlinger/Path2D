@@ -879,22 +879,25 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function obj = simplify(obj)
+        function [obj,keep] = simplify(obj)
         %SIMPLIFY   Simplify path.
         %   OBJ = SIMPLIFY(OBJ) removes intermediate points from line
         %   segments of the path OBJ.
-        
+        %
+        %   [OBJ,KEEP] = SIMPLIFY(OBJ) returns a logical vector KEEP
+        %   indicating which waypoints are kept.
+            
             h = atan2(diff(obj.y), diff(obj.x));
             dh = [true; diff(h); true];
             keep = (dh ~= 0);
-
+            
             obj.x = obj.x(keep);
             obj.y = obj.y(keep);
             obj.head = obj.head(keep);
             obj.curv = obj.curv(keep);
             obj.ArcLengths = obj.ArcLengths(keep(2:end));
         end%fcn
-
+        
         function [tau,idx] = s2tau(obj, s)
             
             sObj = obj.arcLengths0();

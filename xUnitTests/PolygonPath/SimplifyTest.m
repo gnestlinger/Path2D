@@ -7,7 +7,7 @@ classdef SimplifyTest < matlab.unittest.TestCase
             % Create a line with intermediate points
             obj0 = PolygonPath.xy2Path(0:10, 0:10);
             
-            obj1 = obj0.simplify();
+            [obj1,keep] = obj0.simplify();
             
             % The terminal points must match
             [exp0,exp1] = obj0.termPoints();
@@ -20,6 +20,8 @@ classdef SimplifyTest < matlab.unittest.TestCase
             
             % Exactly two points, i.e. one segment, must survive
             verifyEqual(testCase, obj1.numel(), 1)
+            
+            verifySize(testCase, keep, [obj0.numel()+1 1])
         end%fcn
         
         function testNothingToRemove(testCase)
@@ -31,7 +33,10 @@ classdef SimplifyTest < matlab.unittest.TestCase
                 [0 1 1 2 2 3 3 4 4], ...
                 [0 0 1 1 2 2 3 3 4]);
             
-            verifyEqual(testCase, obj0, obj0.simplify())
+            [obj1,keep] = obj0.simplify();
+            
+            verifyEqual(testCase, obj0, obj1)
+            verifySize(testCase, keep, [obj0.numel()+1 1])
         end%fcn
     end
     
