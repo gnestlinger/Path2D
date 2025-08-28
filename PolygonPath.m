@@ -76,7 +76,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 obj.ArcLengths = zeros(0,1);
             else
                 obj.ArcLengths = cumsum(hypot(diff(x(:),1,1), diff(y(:),1,1)));
-            end
+                end
             
             if nargin < 5
                 obj = obj.setIsCircuit(1e-5);
@@ -980,6 +980,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
             s = interp1(obj.arcLengths0(), tau0 + 1);
             if nargin > 2
+                assert(isequal(size(tau0), size(tau1)), ...
+                    'Path2D:SizeMismatch', ...
+                    'Path parameter argument sizes mismatch!')
                 s = abs(interp1(obj.arcLengths0(), tau1 + 1) - s);
             end
             

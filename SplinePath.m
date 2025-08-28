@@ -589,7 +589,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function [tau,idx] = s2tau(obj, s)
             
-            if obj.length() < eps % Zero-length path
+            if obj.isempty() || (obj.length() < eps) % Zero-length path
                 tau = nan(size(s));
                 idx = zeros(size(s), 'uint32');
                 if ~obj.isempty()
@@ -730,17 +730,19 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
     methods (Access = {?Path2D})
         function s = lengthImpl(obj, tau0, tau1)
             if nargin < 3
-                tau01 = [obj.Breaks(1) tau0];
-            else
-                tau01 = sort([tau0 tau1], 'ascend');
-            end
-            if (tau01(1) < obj.Breaks(1)) || (tau01(2) > obj.Breaks(end))
-                s = nan;
-                return
+                tau1 = tau0;
+                tau0(:) = obj.Breaks(1);
             end
             
-            ppd = obj.derivative().mkpp();
-            s = pplen(ppd, tau01(1), tau01(2));
+            assert(isequal(size(tau0), size(tau1)), ...
+                    'Path2D:SizeMismatch', ...
+                    'Path parameter argument sizes mismatch!')
+            
+            ppd = ppdiff(obj.mkpp());
+            s = coder.nullcopy(zeros(size(tau0)));
+            for i = 1:numel(s)
+                s(i) = pplen(ppd, tau0(i), tau1(i));
+            end
         end%fcn
     end%methods
     

@@ -103,7 +103,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         function s = length(obj, varargin)
         % LENGTH    Path length.
         %   S = LENGTH(OBJ) returns the arc length S >= 0 of the path OBJ.
-        %   For empty paths, S = 0.
+        %   For empty paths, S = NaN.
         %   
         %   S = LENGTH(OBJ,TAU) returns the arc length from the initial
         %   point till the point at path parameter TAU.
@@ -111,15 +111,37 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   S = LENGTH(OBJ,TAU0,TAU1) returns the arc length between the
         %   points at path parameter TAU0 and TAU1.
         %   
+        %   If provided, the size of S matches the size of TAU or TAU0 and
+        %   TAU1. Consequently, the sizes of TAU0 and TAU1 must match.
+        %   
         %   See also CUMLENGTHS.
         
-            if isempty(obj.ArcLengths)
-                s = 0;
-            elseif nargin == 1
-                s = obj.ArcLengths(end);
-            else
-                s = obj.lengthImpl(varargin{:});
+            if nargin == 1 % Syntax length()
+                if isempty(obj.ArcLengths)
+                    s = 0;
+                else
+                    s = obj.ArcLengths(end);
+                end
+            else % Syntax length(tau) or length(tau0,tau1)
+                if isempty(obj.ArcLengths)
+                    s = zeros(size(varargin{1}));
+                else
+                    s = obj.lengthImpl(varargin{:});
+                end
             end
+            
+            % Set to NaN for extrapolated values
+            [a,b] = obj.domain();
+            if isnan(a) % This catches empty paths
+                s(:) = nan;
+            elseif nargin == 2
+                s(varargin{1} < a | varargin{1} > b) = nan;
+            elseif nargin == 3
+                s(...
+                    min(varargin{1},varargin{2}) < a | ...
+                    max(varargin{1},varargin{2}) > b) = nan;
+            end
+            
         end%fcn
         
         function tau = sampleDomain(obj, arg)
