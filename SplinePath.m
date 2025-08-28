@@ -282,6 +282,39 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
         end%fcn
         
+        function tau = findMaxCurvature(obj, ~)
+        %FINDMAXCURVATURE   Find all local extrema of path curvature.
+        %   TAU = FINDMAXCURVATURE(OBJ) returns the path parameterss TAU
+        %   for which the path's curvature is an extremum.
+        %
+        %   This implementation does not rely on polynomial root-finding,
+        %   instead the solutions are found by considering finite
+        %   differences.
+        
+        % d(Curvature)/dtau = 1/(...)*(...
+        %   y^(3)*x'^3 + y'^2 (3x''*y'' - x^(3)*y') + x'*y'*(3x''^2 - 3y''^2 + y^(3)*y') + x'^2*(-x^(3)y' - 3x''y'')
+        %   )
+            
+            breaks = obj.Breaks;
+            Ns = obj.numel();
+            coder.varsize('tau', [inf 1], [true false])
+            tau = zeros(0,1);
+            b0 = breaks(1);
+            for i = 1:Ns % Loop over spline segments
+                b1 = breaks(i+1);
+                [~,~,taui,~,curv] = obj.eval(linspace(b0, b1, 1e3));
+                dc = diff(curv);
+                
+                % This condition misses extrema at the terminal points of
+                % path segments
+                isExtremum = [false; diff(sign(dc))~=0; false];
+                tau = [tau; sort(taui(isExtremum), 'ascend')]; %#ok<AGROW>
+                
+                b0 = b1;
+            end%for
+            
+        end%fcn
+        
         function tau = findZeroCurvature(obj, ~)
         %FINDZEROCURVATURE  Find path parameter w.r.t to zero curvature.
         %   TAU = FINDZEROCURVATURE(OBJ) returns the path parameters TAU
