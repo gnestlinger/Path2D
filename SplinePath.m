@@ -13,6 +13,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 %   See superclasses.
 % 
 %   SPLINEPATH static methods:
+%   bezier2Path - Spline path from Bezier control points.
 %   See superclasses.
 % 
 %   See also PATH2D, MKPP.
@@ -794,6 +795,41 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             [breaks,coefs,nbrSeg,polyOrd,dim] = unmkpp(pp);
             assert(dim == 2, 'Spline must be 2D valued!')
             obj = SplinePath(breaks, reshape(coefs, 2, nbrSeg, polyOrd), varargin{:});
+        end%fcn
+        
+        function obj = bezier2Path(P)
+        % BEZIER2PATH   Path object from Bezier control.
+        %   OBJ = SplinePath.BEZIER2PATH(P) instantiates the path OBJ from
+        %   an array P of Bezier control points. P is of size
+        %   2-by-NP-by-NO, where NP is the number of spline segments and NO
+        %   the polynomial order.
+        %
+        %   Example:
+        %    SplinePath.bezier2Path(cat(3, ...
+        %       [0 0; 2 0; 5 1; 10 1]', [10 1; 15 1; 18 0; 20 0]'))
+            
+            [nr,nc,np] = size(P);
+            assert(nr == 2, 'SplinePath:bezier2Path', 'Control points must be 2D!')
+            
+            % Precompute binomial coefficients
+            binom_n_i = arrayfun(@(i) nchoosek(nc-1, i), 0:nc-1);
+            
+            coefs = zeros(size(P));
+            for j = 1:np
+                1;
+                for i = 0:nc-1
+                    binomi = binom_n_i(i+1);
+                    for k = 0:nc-1-i
+                        power = i + k;
+                        sign = (-1)^k;
+                        c = nchoosek(nc-1-i, k);
+                        coefs(:,power+1,j) = coefs(:,power+1,j) + P(:,i+1,j)*(binomi*c*sign);
+                    end
+                end
+            
+            end
+            obj = SplinePath(0:np, permute(flip(coefs, 2), [1 3 2]));
+            
         end%fcn
         
         function obj = circle(r, phi01, N)
