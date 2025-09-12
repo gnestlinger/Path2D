@@ -811,22 +811,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             [nr,nc,np] = size(P);
             assert(nr == 2, 'SplinePath:bezier2Path', 'Control points must be 2D!')
             
-            % Precompute binomial coefficients
-            binom_n_i = arrayfun(@(i) nchoosek(nc-1, i), 0:nc-1);
-            
             coefs = zeros(size(P));
-            for j = 1:np
-                1;
-                for i = 0:nc-1
-                    binomi = binom_n_i(i+1);
-                    for k = 0:nc-1-i
-                        power = i + k;
-                        sign = (-1)^k;
-                        c = nchoosek(nc-1-i, k);
-                        coefs(:,power+1,j) = coefs(:,power+1,j) + P(:,i+1,j)*(binomi*c*sign);
-                    end
+            for i = 0:nc-1
+                bi = nchoosek(nc-1, i);
+                for k = 0:nc-1-i
+                    c = bi*nchoosek(nc-1-i, k)*(-1)^k;
+                    coefs(:,i+k+1,:) = coefs(:,i+k+1,:) + P(:,i+1,:)*c;
                 end
-            
             end
             obj = SplinePath(0:np, permute(flip(coefs, 2), [1 3 2]));
             
