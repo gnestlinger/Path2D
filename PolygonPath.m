@@ -522,12 +522,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             yPath = xyPath(:,2);
             
             % Find indexes where the paths y-component changes sign. SIGN
-            % returns 0 only for arguments that eare exactly equal to zero.
+            % returns 0 only for arguments that are exactly equal to zero.
             % We try to catch values almost equal to zero via a magic
             % threshold.
             signs1 = int8(sign(yPath)); 
-            signs2 = abs(yPath) > 1e-12;
-            idxs0 = find(any(diff([signs1,signs2], 1, 1), 2));
+            signs2 = abs(yPath) > 1e-16;
+            idxs0 = find(any(diff([signs1 signs2], 1, 1), 2));
             if isempty(idxs0) % No intersection of path/line
                 xy = zeros(0, 2);
                 tau = zeros(0,1);
