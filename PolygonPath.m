@@ -556,18 +556,21 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             end%if
             
             if (nargin > 3) && doPlot
-                [~,ax] = plot(obj, 'Marker','.','MarkerSize',8);
-                hold on
+                [~,ax] = plot(obj, 'Marker','.', 'MarkerSize',8);
+                npState = get(ax, 'NextPlot');
+                set(ax, 'NextPlot','add')
                 
-                [r1,r2] = scaleTangentToAxis(xlim, ylim, O, psi);
+                [r1,r2] = scaleTangentToAxis(xlim(), ylim(), O, psi);
                 Pstart  = [O(1) + r2*cos(psi); O(2) + r2*sin(psi)];
                 Pstop   = [O(1) + r1*cos(psi); O(2) + r1*sin(psi)];
-                h = plot(gca, [Pstart(1) Pstop(1)], [Pstart(2) Pstop(2)], ...
+                h = plot(ax, [Pstart(1) Pstop(1)], [Pstart(2) Pstop(2)], ...
                     'Displayname','Line');
-                plot(O(1), O(2), 'o', 'Color',get(h,'Color'), 'Displayname','O')
+                plot(ax, O(1), O(2), 'o', 'Color',get(h,'Color'), ...
+                    'Displayname','O')
                 
-                plot(ax, xy(:,1), xy(:,2), 'kx', 'DisplayName','Intersections')
-                hold off
+                plot(ax, xy(:,1), xy(:,2), 'kx', ...
+                    'DisplayName','Intersections')
+                set(ax, 'NextPlot',npState)
             end%if
             
         end%fcn
