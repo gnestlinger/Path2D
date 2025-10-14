@@ -15,6 +15,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %   PolygonPath methods:
 %   PolygonPath - Constructor.
 %   discreteFrechetDist - Discrete Frechet distance.
+%   findSelfIntersections - Find intersecting path segments.
 %   fitCircle - Fit circle to path.
 %   fitStraight - Fit straight line to path.
 %   interp - Interpolate path.
@@ -293,6 +294,46 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
+        function [idxs,taus] = findSelfIntersections(obj, doPlot)
+        %FINDSELFINTERSECTIONS  Find intersecting path segments - Experimental!
+        %   IDXS = FINDSELFINTERSECTIONS(OBJ) returns an array of size
+        %   N-by-2 of indexes IDXS, where each row reports an intersection
+        %   between two segments.
+        %   
+        %   Note: If a segment I has intersections with segments J1 < J2 <
+        %   J3 < ..., only the first intersection [I J1] is returned!
+            
+            N = obj.numel();
+            idxs = zeros(0,2);
+            taus = zeros(0,2);
+            for i = 1:N-1
+                P0 = [obj.x(i) obj.y(i)];
+                P1 = [obj.x(i+1) obj.y(i+1)];
+                
+                for j = i+1:N
+                    Q0 = [obj.x(j) obj.y(j)];
+                    Q1 = [obj.x(j+1) obj.y(j+1)];
+                    [~,tauIJ] = lineLineIntersection(P0, P1, Q0, Q1);
+                    if all(tauIJ > 0 & tauIJ < 1)
+                        % Segment i has an intersection with segment j
+                        idxs = [idxs; [i j]]; %#ok<AGROW>
+                        taus = [taus; tauIJ(1) + i - 1, tauIJ(2) + j - 1]; %#ok<AGROW>
+                        break
+                    end
+                end
+            end
+            
+            if (nargin > 1) && doPlot
+                [~,ax] = obj.plot();
+                npState = get(ax, 'NextPlot');
+                set(ax, 'NextPlot','add')
+                [xI,yI] = obj.eval(taus(:,1));
+                plot(ax, xI, yI, 'o', 'DisplayName','Intersections')
+                set(ax, 'NextPlot',npState)
+            end
+            
+        end%fcn
+        
         function [objc,e,xc,yc,R] = fitCircle(obj, N, doPlot)
         %FITCIRCLE  Fit a circle to PolygonPath.
         %   [OBJC,E,XC,YC,R] = FITCIRCLE(OBJ,N) fits a circle with
@@ -319,10 +360,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
             % Plot if requested
             if (nargin > 2) && doPlot
-                plot(obj, 'b-', 'MarkerSize',10, 'DisplayName','PolygonPath');
-                hold on
-                plot(objc, 'Color','k', 'DisplayName','Circle');
-                hold off
+                [~,ax] = plot(obj, 'b-', 'MarkerSize',10);
+                npState = get(ax, 'NextPlot');
+                set(ax, 'NextPlot','add')
+                plot(ax, objc, 'Color','k', 'DisplayName','Circle');
+                set(ax, 'NextPlot',npState)
                 legend('-DynamicLegend')
             end%if
             
@@ -366,10 +408,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             end
             
             if (nargin > 1) && doPlot % Plot if requested
-                plot(obj, 'r', 'Marker','.', 'DisplayName','PolygonPath');
-                hold on
-                plot(objs, 'b', 'Marker','o', 'DisplayName','Straight');
-                hold off
+                [~,ax] = plot(obj, 'r', 'Marker','.');
+                npState = get(ax, 'NextPlot');
+                set(ax, 'NextPlot','add');
+                plot(ax, objs, 'b', 'Marker','o', 'DisplayName','Straight');
+                set(ax, 'NextPlot',npState);
                 legend('-DynamicLegend')
             end%if
             
@@ -398,16 +441,17 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             xy = Q + bsxfun(@times, sd(:,2), [-u(:,2), u(:,1)]);
             
             if (nargin > 2) && doPlot
-                plot(obj, 'Marker','.', 'MarkerSize',15, 'DisplayName','PolygonPath');
-                hold on
-                plot(xy(:,1), xy(:,2), 'o', 'DisplayName','xy');
-                plot(Q(:,1), Q(:,2), 'kx', 'DisplayName','Q');
-                hold off
+                [~,ax] = plot(obj, 'Marker','.', 'MarkerSize',15);
+                npState = get(ax, 'NextPlot');
+                set(ax, 'NextPlot','add');
+                plot(ax, xy(:,1), xy(:,2), 'o', 'DisplayName','xy');
+                plot(ax, Q(:,1), Q(:,2), 'kx', 'DisplayName','Q');
+                set(ax, 'NextPlot',npState);
                 legend('-DynamicLegend')
             end%if
             
         end%fcn
-        
+
         function flag = isempty(obj)
         % ISEMPTY   Check if path is empty.
         %   FLAG = ISEMPTY(OBJ) returns true if the path contains no
@@ -503,11 +547,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 
             if (nargin > 3) && doPlot
                 [~,ax] = plot(obj, 'Marker','.');
-                hold on
+                npState = get(ax, 'NextPlot');
+                set(ax, 'NextPlot','add');
                 phi = 0:pi/100:2*pi;
                 plot(ax, r*cos(phi) + C(1), r*sin(phi) + C(2), 'DisplayName','Circle');
                 plot(ax, xy(:,1), xy(:,2), 'kx', 'DisplayName','Intersections')
-                hold off
+                set(ax, 'NextPlot',npState);
             end%if
             
         end%fcn
@@ -688,16 +733,17 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             dphi = zeros(numel(idx), 1);
             
             if (nargin > 3) && doPlot
-                plot(obj, 'Marker','.', 'MarkerSize',8, 'DisplayName','RefPath');
-                hold on
-                plot(obj.x(1), obj.y(1), 'g.', 'MarkerSize',18, 'DisplayName','Initial point');
-                plot(poi(1), poi(2), 'ro', 'DisplayName','PoI')
-                plot(Q(:,1), Q(:,2), 'kx', 'DisplayName','Q')
+                [~,ax] = plot(obj, 'Marker','.', 'MarkerSize',8, 'DisplayName','RefPath');
+                npState = get(ax, 'NextPlot');
+                set(ax, 'NextPlot','add');
+                plot(ax, obj.x(1), obj.y(1), 'g.', 'MarkerSize',18, 'DisplayName','Initial point');
+                plot(ax, poi(1), poi(2), 'ro', 'DisplayName','PoI')
+                plot(ax, Q(:,1), Q(:,2), 'kx', 'DisplayName','Q')
                 legend('-DynamicLegend');
-                plot(...
+                plot(ax, ...
                     [Q(:,1)'; repmat([poi(1) NaN], size(Q,1),1)'],...
                     [Q(:,2)'; repmat([poi(2) NaN], size(Q,1),1)'], 'k:'); 
-                hold off
+                set(ax, 'NextPlot',npState);
             end%if
             
         end%fcn
@@ -932,7 +978,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 P1 = [obj.x(end);  obj.y(end)];
             end
         end%fcn
-        
+
         function write2file(obj, fn)
         %WRITE2FILE		Write path to file.
         %	WRITE2FILE(OBJ,FN) writes waypoints OBJ to file with filename
@@ -1014,9 +1060,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function obj = clothoid(L, curv01, N, MODE)
         %CLOTHOID   Create clothoid path.
-        %   OBJ = POLYGONPATH.CLOTHOID(L, PHI01, N) creates a clothoid path
+        %   OBJ = POLYGONPATH.CLOTHOID(L,CURV01,N) creates a clothoid path
         %   of length L, initial curvature CURV01(1) and end curvature
-        %   CURV01(2) at N equidistant sample points.
+        %   CURV01(2), at N equidistant sample points.
         % 
         %   OBJ = POLYGONPATH.CLOTHOID(___,MODE) allows to select different
         %   calculation methods. Possible values are 'Heald', 'Quad'.

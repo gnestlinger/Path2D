@@ -13,6 +13,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   Path2D methods (modify path object):
 %   append - Append paths.
 %   derivative - Derivative of path.
+%   frenetOffset - Instantiate PolygonPath from given path and offsets.
 %   restrict - Restrict path domain.
 %   reverse - Reverse path.
 %   rotate - Rotate path.
@@ -90,6 +91,43 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             s = obj.ArcLengths;
         end%fcn
         
+        function [objNew,tau] = frenetOffset(obj, sd)
+        %FRENETOFFSET   PolygonPath from path object and offsets.
+        %   POBJ = FRENETOFFSET(OBJ, SD) returns a PolygonPath POBJ from
+        %   frenet offsets D applied at lengths S, specified as an array of
+        %   size N-by-2, to the path OBJ.
+        %
+        %   POBJ = FRENETOFFSET(OBJ, D) applies the frenet offsets D, of
+        %   size N-by-1, evenly distributed along the domain of OBJ.
+        %
+        %   See also PolygonPath.
+
+            % We instantiate the new path via xy2Path(), which requires at
+            % least two samples.
+            [tau0,tau1] = obj.domain();
+            assert(tau1 > tau0, 'Domain must be non-singular!');
+            
+            N = size(sd, 1);
+            if size(sd,2) > 1
+                tau = obj.s2tau(sd(:,1));
+                d = sd(:,2);
+            else % Only normal component d of frenet coordinates is given
+                tau = linspace(tau0, tau1, N)';
+                d = sd(:,1);
+            end
+
+            assert(numel(d) == numel(tau))
+            [x,y,~,h] = obj.eval(tau);
+
+            % Instantiate PolygonPath object
+            if N > 1
+                objNew = PolygonPath.xy2Path(x - d.*sin(h), y + d.*cos(h));
+            else
+                objNew = PolygonPath(x - d.*sin(h), y + d.*cos(h), h, zeros(N,1));
+            end
+
+        end%fcn
+
         function flag = isempty(obj)
         % ISEMPTY   Check if path is empty.
         %   FLAG = ISEMPTY(OBJ) returns true if the path's domain is
