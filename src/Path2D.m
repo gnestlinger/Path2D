@@ -105,7 +105,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             % We instantiate the new path via xy2Path(), which requires at
             % least two samples.
             [tau0,tau1] = obj.domain();
-            assert(tau1 > tau0, 'Domain must be non-singular!');
+            assert(tau1 > tau0, 'Path2D:SingularDomain', ...
+                'Domain must be non-singular!');
             
             N = size(sd, 1);
             if size(sd,2) > 1

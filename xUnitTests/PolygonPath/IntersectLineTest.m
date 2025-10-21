@@ -2,6 +2,8 @@ classdef IntersectLineTest < matlab.unittest.TestCase
     
     properties (TestParameter)
         Offset = {0 1e1 1e2 1e3 1e4 1e5}
+        
+        DPhi = {0 -2*pi}
     end
     
     
@@ -35,28 +37,24 @@ classdef IntersectLineTest < matlab.unittest.TestCase
             
         end%fcn
         
-        function testIntersectionInitPoint(testCase, Offset)
+        function testIntersectionInitPoint(testCase, Offset, DPhi)
             
-            obj0 = PolygonPath.xy2Path([0 2 10] + Offset, [0 0 1] + Offset);
-            P0 = obj0.termPoints();
+            obj0 = PolygonPath.xy2Path([0 2 10 20] + Offset, [0 0 1 1] + Offset);
             
             % Intersection with initial point
-            [act,tau] = intersectLine(obj0, [2 -2] + Offset, 3*pi/4, false);
-            exp = P0';
-            verifyEqual(testCase, act, exp, 'AbsTol',1e-12);
+            [act,tau] = intersectLine(obj0, [2 -2] + Offset, 3*pi/4 + DPhi, false);
+            verifyEqual(testCase, act, [0 0] + Offset, 'AbsTol',1e-12);
             verifyEqual(testCase, tau, 0, 'AbsTol',1e-15);
         end
         
-        function testIntersectionEndPoint(testCase, Offset)
+        function testIntersectionEndPoint(testCase, Offset, DPhi)
             
-            obj0 = PolygonPath.xy2Path([0 2 10] + Offset, [0 0 1] + Offset);
-            [~,P1] = obj0.termPoints();
+            obj0 = PolygonPath.xy2Path([-10 0 2 10] + Offset, [1 0 0 1] + Offset);
             
             % Intersection with end point
-            [act,tau] = intersectLine(obj0, [10 0] + Offset, pi/2, false);
-            exp = P1';
-            verifyEqual(testCase, act, exp, 'AbsTol',1e-12);
-            verifyEqual(testCase, tau, 2);
+            [act,tau] = intersectLine(obj0, [10 0] + Offset, pi/2 + DPhi, false);
+            verifyEqual(testCase, act, [10 1] + Offset, 'AbsTol',1e-12);
+            verifyEqual(testCase, tau, 3);
         end%fcn
         
         function testIntersectionWithWaypoint(testCase, Offset)
@@ -64,12 +62,53 @@ classdef IntersectLineTest < matlab.unittest.TestCase
         % the path. This situation can cause redundant solutions, i.e. end
         % of segment k and start of segmen i+1.
         
-            obj0 = PolygonPath.xy2Path([0 1 2] + Offset, [0 1 2] + Offset);
-        
+            obj0 = PolygonPath.xy2Path([-1 0 1 2] + Offset, [0 0 1 2] + Offset);
+            
             [act,tau] = intersectLine(obj0, [2 0] + Offset, 3*pi/4, false);
             
             verifyEqual(testCase, act, [1 1] + Offset, 'AbsTol',1e-12);
+            verifyEqual(testCase, tau, 2);
+        end%fcn
+        
+        function testSignReturnsZero(testCase)
+        % Test where sign() returns zero.
+        
+            obj0 = PolygonPath.xy2Path(0:4, 0:4);
+            
+            [act,tau] = intersectLine(obj0, [0 2], 0, false);
+            
+            verifyEqual(testCase, act, [2 2]);
+            verifyEqual(testCase, tau, 2);
+        end%fcn
+        
+        function testTouchingIntersection(testCase)
+            
+            obj0 = PolygonPath.xy2Path([-1 1 2], [0.1 pi -exp(1)]);
+            
+            [act,tau] = intersectLine(obj0, [0 pi], 0, false);
+            
+            verifyEqual(testCase, act, [1 pi]);
             verifyEqual(testCase, tau, 1);
+        end%fcn
+        
+        function testForUniqueSolutions(testCase)
+            
+            d = load('testLineIntersection.mat');
+            obj0 = PolygonPath.fromStruct(d.Path);
+            x = d.x;
+            y = d.y;
+            h = d.h;
+            
+            idx = [];
+            for i = 1:numel(x)
+                [act,tau] = intersectLine(obj0, [x(i) y(i)], h(i) + pi/2, false);
+                
+                if size(act,1) > 1 || numel(tau) > 1
+                    idx = [idx; i];
+                end
+            end
+            
+            verifyEmpty(testCase, idx, 'Redundant solutions!');
         end%fcn
     end
     

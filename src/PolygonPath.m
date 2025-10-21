@@ -507,7 +507,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
             % Each path segment is written as a line P(t) = P0 + t*(P1-P0)
             % from its initial point P0 to its end point P1, where t =
-            % 0,..,1. This results in
+            % [0,1]. This results in
             %   [x0 + t(x1-x0)]^2 + [y0 + t(y1-y0)]^2 = r^2
             % which requires solving a quadratic polynomial 
             %   a*t^2 + b*t + c = 0
@@ -560,19 +560,23 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         function [xy,tau,errFlag] = intersectLine(obj, O, psi, doPlot)
             
             % Shift by line origin O and rotate so that the line is
-            % horizontal
+            % horizontal -> We can find intersections by checking where the
+            % path's y-components equals zero!
             R = rotmat2D(psi);
             xyPath = [obj.x - O(1), obj.y - O(2)] * R;
             xPath = xyPath(:,1);
             yPath = xyPath(:,2);
             
-            % Find indexes where the paths y-component changes sign. SIGN
-            % returns 0 only for arguments that are exactly equal to zero.
-            % We try to catch values almost equal to zero via a magic
-            % threshold.
-            signs1 = int8(sign(yPath)); 
-            signs2 = abs(yPath) > 1e-16;
-            idxs0 = find(any(diff([signs1 signs2], 1, 1), 2));
+            % Find segment indexes where the paths y-component (A) changes
+            % sign or (B) equals zero using sign(), which returns 0 only
+            % for inputs that are exactly equal to zero. We try to catch
+            % values almost equal to zero via a magic threshold.
+            signsA = int8(sign(yPath)); 
+            signsB = abs(yPath) <= eps(O(1));
+            signsA(signsB) = int8(0);
+            idxs0 = find([abs(diff(signsA)) > 1; false] | signsB);
+            idxs0 = min(idxs0, obj.numel());
+            
             if isempty(idxs0) % No intersection of path/line
                 xy = zeros(0, 2);
                 tau = zeros(0,1);
@@ -937,8 +941,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %   indicating which waypoints are kept.
             
             h = atan2(diff(obj.y), diff(obj.x));
-            dh = [true; diff(h); true];
-            keep = (dh ~= 0);
+            keep = [true; (diff(h) ~= 0); true];
             
             obj.x = obj.x(keep);
             obj.y = obj.y(keep);

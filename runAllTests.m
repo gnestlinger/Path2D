@@ -12,6 +12,7 @@ path2RootFolder = path2RootFolder(1:end-numel(mfilename()));
 % Add current folder to path - this is needed for pre R2019a releases that
 % don't support Matlab Projects
 addpath([path2RootFolder, 'src'])
+addpath([path2RootFolder, 'xUnitTests' filesep() 'testdata'])
 
 % Create and run the test suite
 testSuite = matlab.unittest.TestSuite.fromFolder(...
