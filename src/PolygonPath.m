@@ -950,28 +950,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             obj.ArcLengths = obj.ArcLengths(keep(2:end));
         end%fcn
         
-        function [tau,idx] = s2tau(obj, s)
-            
-            sObj = obj.arcLengths0();
-            N = numel(sObj);
-            if N < 2
-                % Paths with less than 2 waypoints have length 0
-                tau = nan(size(s));
-                idx = zeros(size(s), 'uint32');
-                return
-            end
-            
-            if obj.IsCircuit
-                s = mod(s, obj.length());
-            end
-            [~,idx] = histc(s, [sObj;inf]); %#ok<HISTC>
-            idx = min(max(uint32(idx), 1), N-1);
-            
-            ds = s - reshape(sObj(idx), size(s));
-            tau = double(idx-1) + ds./reshape(sObj(idx+1) - sObj(idx), size(s));
-            
-        end%fcn
-        
         function [P0,P1] = termPoints(obj)
             if isempty(obj)
                 P0 = [NaN; NaN];
@@ -981,7 +959,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 P1 = [obj.x(end);  obj.y(end)];
             end
         end%fcn
-
+        
         function write2file(obj, fn)
         %WRITE2FILE		Write path to file.
         %	WRITE2FILE(OBJ,FN) writes waypoints OBJ to file with filename
@@ -1013,31 +991,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
     
     
     methods (Access = private)
-        function s = arcLengths0(obj)
-            coder.inline('always')
-            s = [0; obj.ArcLengths];
-        end%fcn
-        
         function curvDs = estimateCurvDs(obj)
         % Estimate change of curvature w.r.t. change in path length.
             ds = gradient1D(obj.arcLengths0());
             ds(ds < eps) = eps; % Avoid division by zero
             curvDs = gradient1D(obj.curv)./ds;
-        end%fcn
-    end
-    
-    
-    methods (Access = {?Path2D})
-        function s = lengthImpl(obj, tau0, tau1)
-            
-            s = interp1(obj.arcLengths0(), tau0 + 1);
-            if nargin > 2
-                assert(isequal(size(tau0), size(tau1)), ...
-                    'Path2D:SizeMismatch', ...
-                    'Path parameter argument sizes mismatch!')
-                s = abs(interp1(obj.arcLengths0(), tau1 + 1) - s);
-            end
-            
         end%fcn
     end
     

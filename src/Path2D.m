@@ -93,11 +93,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         
         function [objNew,tau] = frenetOffset(obj, sd)
         %FRENETOFFSET   PolygonPath from path object and offsets.
-        %   POBJ = FRENETOFFSET(OBJ, SD) returns a PolygonPath POBJ from
+        %   POBJ = FRENETOFFSET(OBJ,SD) returns a PolygonPath POBJ from
         %   frenet offsets D applied at lengths S, specified as an array of
         %   size N-by-2, to the path OBJ.
         %
-        %   POBJ = FRENETOFFSET(OBJ, D) applies the frenet offsets D, of
+        %   POBJ = FRENETOFFSET(OBJ,D) applies the frenet offsets D, of
         %   size N-by-1, evenly distributed along the domain of OBJ.
         %
         %   See also PolygonPath.
@@ -183,6 +183,43 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             
         end%fcn
         
+        function [tau,idx] = s2tau(obj, s)
+        % S2TAU     Path length to path parameter.
+        %   TAU = S2TAU(OBJ,S) converts the path lengths S to the path
+        %   parameters TAU, such that the path OBJ, evaluated at TAU has
+        %   length S.
+        %
+        %   [___,IDX] = S2TAU(___) also returns the index IDX of the
+        %   corresponding path segment.
+        %
+        %   Input S can be of any size and can exceed [0,L], where L is the
+        %   path length. In this case, TAU is linearly extrapolated and IDX
+        %   is saturated to [0,N], where N is the number of path segments.
+        
+        %   Note: This is the default implementation for paths where length
+        %   is piecewise linear in path parameter (e.g. Polygon, Dubins).
+        %   If not, re-implement in subclass.
+            
+            sObj = obj.arcLengths0();
+            N = numel(sObj);
+            if N < 2
+                % Paths with less than 2 waypoints have length 0
+                tau = nan(size(s));
+                idx = zeros(size(s), 'uint32');
+                return
+            end
+            
+            if obj.IsCircuit
+                s = mod(s, obj.length());
+            end
+            [~,idx] = histc(s, [sObj;inf]); %#ok<HISTC>
+            idx = min(max(uint32(idx), 1), N-1);
+            
+            ds = s - reshape(sObj(idx), size(s));
+            tau = double(idx-1) + ds./reshape(sObj(idx+1) - sObj(idx), size(s));
+            
+        end%fcn
+        
         function tau = sampleDomain(obj, arg)
         %SAMPLEDOMAIN   Sample domain of path.
         %   TAU = SAMPLEDOMAIN(OBJ,ARG) returns the path parameter TAU
@@ -219,7 +256,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         
         function obj = setIsCircuit(obj, ths)
         %SETISCIRCUIT   Sets property IsCircuit
-        %   OBJ = SETISCIRCUIT(OBJ, THS) sets property IsCircuit to true if
+        %   OBJ = SETISCIRCUIT(OBJ,THS) sets property IsCircuit to true if
         %   the distance between the path's terminal points is smaller than
         %   THS, and to false otherwise.
         
@@ -229,11 +266,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         
         function [Fx,Fy] = vectorField(obj, x, y, kf, doPlot)
         %VECTORFIELD    Vector field towards path.
-        %   [FX,FY] = VECTORFIELD(OBJ, X, Y) computes the vector field
-        %   F(X,Y) = [Fx;Fy] for the pairs (X,Y) that points towards the
-        %   path OBJ.
+        %   [FX,FY] = VECTORFIELD(OBJ,X,Y) computes the vector field F(X,Y)
+        %   = [Fx;Fy] for the pairs (X,Y) that points towards the path OBJ.
         %
-        %   [___] = VECTORFIELD(___, K) lets you specify the scaling of the
+        %   [___] = VECTORFIELD(___,K) lets you specify the scaling of the
         %   normal over the tangential component of the vector field.
         %   Default value: 1.
         %   
@@ -484,6 +520,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         end%fcn
     end
     
+    methods (Access = protected)
+        function s = arcLengths0(obj)
+            coder.inline('always')
+            s = [0; obj.ArcLengths];
+        end%fcn
+    end
+    
     methods (Access = private)
         function [Q,d,tau] = closestUniquePointOnPath(obj, X, Y)
         %   For all points (x,y) find the closest unique point Q on the
@@ -544,6 +587,24 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
                 tau(i) = tauMin;
             end%for
             
+        end%fcn
+    end
+    
+    methods (Access = {?Path2D})
+        function s = lengthImpl(obj, tau0, tau1)
+        %LENGTHIMPL     Path length w.r.t. path parameter.
+        %
+        %   Note: This is the default implementation for paths where length
+        %   is piecewise linear in path parameter (e.g. Polygon, Dubins).
+        %   If not, re-implement in subclass.
+        
+            s = interp1(obj.arcLengths0(), tau0 + 1);
+            if nargin > 2
+                assert(isequal(size(tau0), size(tau1)), ...
+                    'Path2D:SizeMismatch', ...
+                    'Path parameter argument sizes mismatch!')
+                s = abs(interp1(obj.arcLengths0(), tau1 + 1) - s);
+            end
         end%fcn
     end
     
@@ -675,19 +736,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   OBJ = ROTATE(OBJ) rotates the path by the negative of it's
         %   initial slope.
         obj = rotate(obj, phi)
-        
-        % S2TAU     Path length to path parameter.
-        %   TAU = S2TAU(OBJ, S) converts the path lengths S to the path
-        %   parameters TAU, such that the path OBJ, evaluated at TAU has
-        %   length S.
-        %
-        %   [___,IDX] = S2TAU(___) also returns the index IDX of the
-        %   corresponding path segment.
-        %
-        %   Input S can be of any size and can exceed [0,L], where L is the
-        %   path length. In this case, TAU is linearly extrapolated and IDX
-        %   is saturated to [0,N], where N is the number of path segments.
-        [tau,idx] = s2tau(obj, s)
         
         % SELECT    Select path elements.
         %   OBJ = SELECT(OBJ,IDXS) selects the path elements IDXS of path
