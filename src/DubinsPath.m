@@ -275,31 +275,31 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             
         end%fcn
         
-        function [tau,idx] = s2tau(obj, s)
-            
-            if obj.length() < eps % Zero-length path
-                tau = nan(size(s));
-                idx = zeros(size(s), 'uint32');
-                if ~obj.isempty()
-                    theIdx = abs(s) < eps;
-                    tau(theIdx) = 0;
-                    idx(theIdx) = 1;
-                end
-                return
-            end
-            
-            if obj.IsCircuit
-                s = mod(s, obj.length());
-            end
-            
-            S = obj.ArcLengths;
-            [~,tmp] = histc(s, [0;S;inf]); %#ok<HISTC>
-            idx = min(max(uint32(tmp), 1), numel(S));
-            
-            S = [0; S];
-            ds = s - reshape(S(idx), size(s));
-            tau = double(idx-1) + ds./reshape(S(idx+1) - S(idx), size(s));
-        end%fcn
+%         function [tau,idx] = s2tau(obj, s)
+%             
+%             if obj.length() < eps % Zero-length path
+%                 tau = nan(size(s));
+%                 idx = zeros(size(s), 'uint32');
+%                 if ~obj.isempty()
+%                     theIdx = abs(s) < eps;
+%                     tau(theIdx) = 0;
+%                     idx(theIdx) = 1;
+%                 end
+%                 return
+%             end
+%             
+%             if obj.IsCircuit
+%                 s = mod(s, obj.length());
+%             end
+%             
+%             S = obj.ArcLengths;
+%             [~,tmp] = histc(s, [0;S;inf]); %#ok<HISTC>
+%             idx = min(max(uint32(tmp), 1), numel(S));
+%             
+%             S = [0; S];
+%             ds = s - reshape(S(idx), size(s));
+%             tau = double(idx-1) + ds./reshape(S(idx+1) - S(idx), size(s));
+%         end%fcn
         
         function [P0,P1] = termPoints(obj)
             
