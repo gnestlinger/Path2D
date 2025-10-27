@@ -53,6 +53,8 @@ help SplinePath  % Spline path
 ```
 
 ## Examples
+See the [examples] (https://github.com/gnestlinger/Path2D/tree/main/examples) folder.
+
 ### Intersection of spline path with a circle
 <img src="https://user-images.githubusercontent.com/84226458/233801288-a0665561-353f-4edc-a8e8-89793ea8414b.svg" width="500">
 
