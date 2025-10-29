@@ -21,6 +21,8 @@ Two well-known path tracking controllers are the Pure Pursuit [1] and the Stanle
 To generalize the computation of the path tracking error (and therefore the interface of the local path planner and the path tracking controller), [3] has proposed a classification of path tracking error definitions and also listed the required path operations (e.g. intersection of line/circle with path).
 This repository implements these operations (and other such as frenet transformation) for different represenations of 2-dimensional paths.
 
+Run this [example](https://github.com/gnestlinger/Path2D/blob/main/examples/exPathTrackErr.m) for a comparison of Pure Pursuit and Stanley path tracking models.
+
 ## Quick Start
 ```matlab
 % Example: Create a PolygonPath from waypoints and visualize the path
@@ -53,7 +55,7 @@ help SplinePath  % Spline path
 ```
 
 ## Examples
-See the [examples] (https://github.com/gnestlinger/Path2D/tree/main/examples) folder.
+See the [examples](https://github.com/gnestlinger/Path2D/tree/main/examples) folder.
 
 ### Intersection of spline path with a circle
 <img src="https://user-images.githubusercontent.com/84226458/233801288-a0665561-353f-4edc-a8e8-89793ea8414b.svg" width="500">
