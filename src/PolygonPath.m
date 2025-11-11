@@ -807,7 +807,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function [obj,idx] = rdpIter(obj, epsilon)
+        function [obj,keep] = rdpIter(obj, epsilon)
         %RDPITER    Iterative Ramer-Douglas-Peucker algorithm.
         %   OBJR = RDPITER(OBJ,EPS)
         %
@@ -816,13 +816,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %   See also PolygonPath/rdp.
         
             N = numel(obj.x);
-            if N < 3
-                return
-            end
             
             % Initialize a logical array indicating which waypoints to keep
             keep = false(N,1);
             keep([1 end]) = true;
+            
+            if N < 3
+                return
+            end
             
             % Track the segments to be checked. Each row is of the form
             % [start index, end index]. No upper bound is set for the
@@ -851,7 +852,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             end
             
             obj = obj.select(keep);
-            idx = find(keep);
+            % idx = keep;
         end%fcn
         
         function obj = reverse(obj)
