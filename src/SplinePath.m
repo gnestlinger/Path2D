@@ -75,10 +75,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function obj = append(obj, obj2)
             
+            if obj.isempty()
+                ds = 0;
+            else
+                [~,P1] = obj.termPoints();
+                dP = obj2.termPoints() - P1;
+                ds = hypot(dP(1), dP(2)) + obj.length();
+            end
+            
             breaks = obj.Breaks;
             coefs = obj.Coefs;
-            arcLen = obj.ArcLengths;
-            [~,P1] = obj.termPoints();
             breaks2 = obj2.Breaks;
             coefs2 = obj2.Coefs;
             
@@ -90,9 +96,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 cat(3, zeros(2,n1,k2-k1), coefs), ...
                 cat(3, zeros(2,n2,k1-k2), coefs2));
             
-            dP = obj2.termPoints() - P1;
-            ds = hypot(dP(1), dP(2));
-            obj.ArcLengths = [arcLen; obj2.ArcLengths + arcLen(end) + ds];
+            obj.ArcLengths = [obj.ArcLengths; obj2.ArcLengths + ds];
             
         end%fcn
         
@@ -141,6 +145,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 dphi = abs(pi/2 - abs(atan2(ux.*dy - uy.*dx, ux.*dx + uy.*dy)));
             end
             
+        end%fcn
+        
+        function obj = clear(obj)
+            obj.Breaks = 0;
+            obj.Coefs(:,1:end,:) = [];
+            obj.ArcLengths = zeros(0,1);
+            obj.IsCircuit = false;
         end%fcn
         
         function obj = derivative(obj, n)

@@ -77,7 +77,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 obj.ArcLengths = zeros(0,1);
             else
                 obj.ArcLengths = cumsum(hypot(diff(x(:),1,1), diff(y(:),1,1)));
-                end
+            end
             
             if nargin < 5
                 obj = obj.setIsCircuit(1e-5);
@@ -150,6 +150,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 dphi = abs(pi/2 - abs(atan2(ux.*dy - uy.*dx, ux.*dx + uy.*dy)));
             end
             
+        end%fcn
+        
+        function obj = clear(obj)
+            obj.x = [];
+            obj.y = [];
+            obj.head = [];
+            obj.curv = [];
+            obj.ArcLengths = [];
         end%fcn
         
         function obj = derivative(obj, n)
@@ -1158,6 +1166,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function obj = xy2Path(x, y)
+            
+            % We cannot estimate heading/curvature from a single waypoint
+            assert(numel(x) ~= 1 && numel(y) ~= 1, ...
+                'XY2PATH:X and Y must not be scalars!')
+            
             [~,g1XY] = gradient([x(:) y(:)]);
             [~,g2XY] = gradient(g1XY);
             gx = g1XY(:,1);
