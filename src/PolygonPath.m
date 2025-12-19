@@ -153,11 +153,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function obj = clear(obj)
-            obj.x = [];
-            obj.y = [];
-            obj.head = [];
-            obj.curv = [];
-            obj.ArcLengths = [];
+            obj.x(:,:) = [];
+            obj.y(:,:) = [];
+            obj.head(:,:) = [];
+            obj.curv(:,:) = [];
+            obj.ArcLengths(:,:) = [];
         end%fcn
         
         function obj = derivative(obj, n)
