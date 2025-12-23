@@ -119,9 +119,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 [~,idx] = min(hypot(x - xy(1), y - xy(2)));
                 Q = [x(idx) y(idx)];
                 tau = breaks(idx);
-                if idx == numel(breaks) - 1
+                if idx(1) == numel(breaks) - 1
                     % Avoid out of range indexing
-                    idx = idx - 1; 
+                    idx = idx(1) - 1; 
                 end
             end%if
             
