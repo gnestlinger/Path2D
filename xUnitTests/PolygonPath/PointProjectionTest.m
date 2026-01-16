@@ -29,6 +29,36 @@ classdef PointProjectionTest < matlab.unittest.TestCase
             testCase.verifySize(dphi, [1 1]);
         end%fcn
         
+        function testInitalSolution(testCase)
+        % Test initial solutions with a 2-waypoint path
+        
+            P0 = [0 0];
+            P1 = [10 0];
+            obj = PolygonPath.straight(P0, P1);
+            
+            % Initial point solution
+            [Q,idx,tau,dphi] = pointProjection(obj, P0 + [0 1], [], false);
+            verifyEqual(testCase, Q, P0);
+            verifyEqual(testCase, idx, 1);
+            verifyEqual(testCase, tau, 0);
+            verifySize(testCase, dphi, [1 1]);
+        end%fcn
+        
+        function testEndlSolution(testCase)
+        % Test end solutions with a 2-waypoint path
+        
+            P0 = [0 0];
+            P1 = [10 0];
+            obj = PolygonPath.straight(P0, P1);
+            
+            % End point solution
+            [Q,idx,tau,dphi] = pointProjection(obj, P1 + [0 1], [], false);
+            verifyEqual(testCase, Q, P1, 'RelTol',1e-14);
+            verifyEqual(testCase, idx, 1);
+            verifyEqual(testCase, tau, 1, 'RelTol',3e-16);
+            verifySize(testCase, dphi, [1 1]);
+        end%fcn
+        
         function testMultipleSolutions(testCase)
             obj = PolygonPath.circle(3, [-pi pi]/2, 9);
             [Q,idx,tau,dphi] = pointProjection(obj, [0 0], [], false);

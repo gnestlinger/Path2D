@@ -717,8 +717,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
             % To find Q, two conditions must be satisfied: 
             % https://de.wikipedia.org/wiki/Orthogonalprojektion
-            %    (1) Q = P0 + lambda * u, where u := P1-P0
-            %    (2) dot(Q-POI, u) = 0
+            %   (1) Q = P0 + lambda * u, where u := P1-P0
+            %   (2) dot(Q-POI, u) = 0
             % Inserting (1) into (2) yields 
             %   lambda = dot(POI - P0, u)/dot(u, u)
             P0 = [X(1:end-1), Y(1:end-1)];
@@ -732,8 +732,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             %   compile-time assumption was vector(vector) indexing." for
             %   2-element paths (i.e. scalar lambdas).
             % idx = find((lambdas >= 0) & [lambdas(1:end-1) < 1; lambdas(end) <= 1]);
-            lambdas(end) = lambdas(end) - eps(lambdas(end));
-            idx = find((lambdas >= 0) & (lambdas < 1));
+            if numel(lambdas) > 1
+                lambdas(end) = lambdas(end) - eps(lambdas(end));
+            end
+            idx = find((lambdas(1:end-1) >= 0) & (lambdas(1:end-1) < 1));
+            if (lambdas(end) >= 0) && (lambdas(end) <= 1)
+                idx(end+1) = numel(lambdas);
+            end
             
             % For paths with 2 elements, find can return an array of size
             % 0-by-0 which would raise an error in BSXFUN. Avoid by
