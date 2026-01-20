@@ -44,7 +44,7 @@ classdef PointProjectionTest < matlab.unittest.TestCase
             verifySize(testCase, dphi, [1 1]);
         end%fcn
         
-        function testEndlSolution(testCase)
+        function testEndSolution(testCase)
         % Test end solutions with a 2-waypoint path
         
             P0 = [0 0];

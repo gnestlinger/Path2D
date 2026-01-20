@@ -735,8 +735,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             if numel(lambdas) > 1
                 lambdas(end) = lambdas(end) - eps(lambdas(end));
             end
-            idx = find((lambdas(1:end-1) >= 0) & (lambdas(1:end-1) < 1));
-            if (lambdas(end) >= 0) && (lambdas(end) <= 1)
+            
+            idx = find((lambdas >= 0) & (lambdas < 1));
+            if lambdas(end) == 1
+                % To be true, lambdas must be scalar and therefore the path
+                % have two waypoints
                 idx(end+1) = numel(lambdas);
             end
             
