@@ -29,6 +29,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %   PolygonPath static methods:
 %   circle - Circle path.
 %   clothoid - Clothoid path.
+%   curv2Path - Instantiate path from curvature profile.
 %   omegaTurn - Omega shaped turn path.
 %   See superclasses.
 % 
@@ -1139,6 +1140,25 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             y1 = P1(2);
             h = atan2(y1-y0, x1-x0);
             obj = PolygonPath([x0 x1], [y0 y1], [h h], [0 0], false);
+        end%fcn
+        
+        
+        function obj = curv2Path(cs, xy0, psi0)
+        %CURV2PATH  Create path from discrete curvature samples.
+        %   OBJ = CURV2PATH(CS,XY0,PSI0) creates a path OBJ from an N-by-2
+        %   array CS of discrete curvature samples at path length samples
+        %   with an initial position XY0 and heading PSI0.
+        %   
+        %   This algorithm uses cumulative trapezoid integration method!
+
+            % Integrate curvature to get heading
+            psi = psi0 + cumtrapz(cs(:,2), cs(:,1));
+
+            % Integrate cos(theta) and sin(theta) to get x,y
+            xy = bsxfun(@plus, xy0(:)', ...
+                cumtrapz(cs(:,2), [cos(psi) sin(psi)]));
+            
+            obj = PolygonPath(xy(:,1), xy(:,2), psi, cs(:,1));
         end%fcn
         
         function obj = ll2Path(lat, lon)
