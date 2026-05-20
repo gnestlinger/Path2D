@@ -904,6 +904,27 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             obj = SplinePath([0 1], reshape(coefs', [2 1 Nc]));
         end%fcn
         
+       function obj = eta2(P, eta)
+       % ETA2   G2 continuous spline.
+       %    OBJ = SplinePath.ETA2(P,ETA)
+       % 
+       %    References:
+       %     A. Piazzi and C. Guarino Lo Bianco, "Quintic G²-splines for
+       %     trajectory planning of autonomous vehicles," Proceedings of
+       %     the IEEE Intelligent Vehicles Symposium 2000, Dearborn, MI,
+       %     USA, 2000, pp. 198-203, doi: 10.1109/IVS.2000.898341.
+
+            % The number of spline segments
+            N = size(P,2) - 1;
+                        
+            coefs = coder.nullcopy(zeros(2,N,6));
+            for i = 1:N
+                coefs(:,i,:) = eta2Segment(eta, P(:,i), P(:,i+1));
+            end
+            obj = SplinePath(0:N, coefs);
+            
+        end%fcn
+        
         function obj = straight(P0, P1)
             x0 = P0(1);
             y0 = P0(2);
