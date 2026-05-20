@@ -1,7 +1,14 @@
 classdef AppendTestSpline < matlab.unittest.TestCase
 
+    properties (TestParameter)
+        PathEmpty = {SplinePath()}
+        PathStraight = {SplinePath.straight([1 2], [5 4])}
+    end
+
+
+
     methods (Test)
-        function testAppend(testCase)
+        function testAppendNonEmpty(testCase)
             
             % Create two "arbitrary" single segment paths with different
             % polynomial degrees
@@ -33,6 +40,24 @@ classdef AppendTestSpline < matlab.unittest.TestCase
             
             % The path lengths must match
             verifyEqual(testCase, obj.length(), obj0.length() + obj1.length())
+        end%fcn
+
+        function testAppendToEmptyPath(testCase, PathEmpty, PathStraight)
+        % Append non-empty path to empty path.
+
+            obj = PathEmpty.append(PathStraight);
+            verifyEqual(testCase, obj.Breaks, PathStraight.Breaks)
+            verifyEqual(testCase, obj.Coefs(:,:,end-1:end), PathStraight.Coefs)
+            verifyEqual(testCase, obj.cumlengths(), PathStraight.cumlengths())
+        end%fcn
+
+        function testAppendEmptyPath(testCase, PathEmpty, PathStraight)
+        % Append empty path to non-empty path.
+
+            obj = PathStraight.append(PathEmpty);
+            verifyEqual(testCase, obj.Breaks, PathStraight.Breaks)
+            verifyEqual(testCase, obj.Coefs(:,:,end-1:end), PathStraight.Coefs)
+            verifyEqual(testCase, obj.cumlengths(), PathStraight.cumlengths())
         end%fcn
     end
     

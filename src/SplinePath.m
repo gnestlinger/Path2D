@@ -75,10 +75,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function obj = append(obj, obj2)
             
+            if obj.isempty()
+                ds = 0;
+            else
+                [~,P1] = obj.termPoints();
+                dP = obj2.termPoints() - P1;
+                ds = hypot(dP(1), dP(2)) + obj.length();
+            end
+            
             breaks = obj.Breaks;
             coefs = obj.Coefs;
-            arcLen = obj.ArcLengths;
-            [~,P1] = obj.termPoints();
             breaks2 = obj2.Breaks;
             coefs2 = obj2.Coefs;
             
@@ -90,9 +96,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 cat(3, zeros(2,n1,k2-k1), coefs), ...
                 cat(3, zeros(2,n2,k1-k2), coefs2));
             
-            dP = obj2.termPoints() - P1;
-            ds = hypot(dP(1), dP(2));
-            obj.ArcLengths = [arcLen; obj2.ArcLengths + arcLen(end) + ds];
+            obj.ArcLengths = [obj.ArcLengths; obj2.ArcLengths + ds];
             
         end%fcn
         
@@ -115,9 +119,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 [~,idx] = min(hypot(x - xy(1), y - xy(2)));
                 Q = [x(idx) y(idx)];
                 tau = breaks(idx);
-                if idx == numel(breaks) - 1
+                if idx(1) == numel(breaks) - 1
                     % Avoid out of range indexing
-                    idx = idx - 1; 
+                    idx = idx(1) - 1; 
                 end
             end%if
             
@@ -141,6 +145,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 dphi = abs(pi/2 - abs(atan2(ux.*dy - uy.*dx, ux.*dx + uy.*dy)));
             end
             
+        end%fcn
+        
+        function obj = clear(obj)
+            obj.Breaks = 0;
+            obj.Coefs(:,1:end,:) = [];
+            obj.ArcLengths = zeros(0,1);
+            obj.IsCircuit = false;
         end%fcn
         
         function obj = derivative(obj, n)
@@ -891,6 +902,27 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             coefs = flip([A1;A2]\[P0; P1], 1);
             obj = SplinePath([0 1], reshape(coefs', [2 1 Nc]));
+        end%fcn
+        
+       function obj = eta2(P, eta)
+       % ETA2   G2 continuous spline.
+       %    OBJ = SplinePath.ETA2(P,ETA)
+       % 
+       %    References:
+       %     A. Piazzi and C. Guarino Lo Bianco, "Quintic G²-splines for
+       %     trajectory planning of autonomous vehicles," Proceedings of
+       %     the IEEE Intelligent Vehicles Symposium 2000, Dearborn, MI,
+       %     USA, 2000, pp. 198-203, doi: 10.1109/IVS.2000.898341.
+
+            % The number of spline segments
+            N = size(P,2) - 1;
+                        
+            coefs = coder.nullcopy(zeros(2,N,6));
+            for i = 1:N
+                coefs(:,i,:) = eta2Segment(eta, P(:,i), P(:,i+1));
+            end
+            obj = SplinePath(0:N, coefs);
+            
         end%fcn
         
         function obj = straight(P0, P1)

@@ -29,6 +29,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
 %   PolygonPath static methods:
 %   circle - Circle path.
 %   clothoid - Clothoid path.
+%   curv2Path - Instantiate path from curvature profile.
 %   omegaTurn - Omega shaped turn path.
 %   See superclasses.
 % 
@@ -77,7 +78,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 obj.ArcLengths = zeros(0,1);
             else
                 obj.ArcLengths = cumsum(hypot(diff(x(:),1,1), diff(y(:),1,1)));
-                end
+            end
             
             if nargin < 5
                 obj = obj.setIsCircuit(1e-5);
@@ -150,6 +151,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 dphi = abs(pi/2 - abs(atan2(ux.*dy - uy.*dx, ux.*dx + uy.*dy)));
             end
             
+        end%fcn
+        
+        function obj = clear(obj)
+            obj.x(:,:) = [];
+            obj.y(:,:) = [];
+            obj.head(:,:) = [];
+            obj.curv(:,:) = [];
+            obj.ArcLengths(:,:) = [];
         end%fcn
         
         function obj = derivative(obj, n)
@@ -709,8 +718,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
             % To find Q, two conditions must be satisfied: 
             % https://de.wikipedia.org/wiki/Orthogonalprojektion
-            %    (1) Q = P0 + lambda * u, where u := P1-P0
-            %    (2) dot(Q-POI, u) = 0
+            %   (1) Q = P0 + lambda * u, where u := P1-P0
+            %   (2) dot(Q-POI, u) = 0
             % Inserting (1) into (2) yields 
             %   lambda = dot(POI - P0, u)/dot(u, u)
             P0 = [X(1:end-1), Y(1:end-1)];
@@ -724,8 +733,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             %   compile-time assumption was vector(vector) indexing." for
             %   2-element paths (i.e. scalar lambdas).
             % idx = find((lambdas >= 0) & [lambdas(1:end-1) < 1; lambdas(end) <= 1]);
-            lambdas(end) = lambdas(end) - eps(lambdas(end));
+            if numel(lambdas) > 1
+                lambdas(end) = lambdas(end) - eps(lambdas(end));
+            end
+            
             idx = find((lambdas >= 0) & (lambdas < 1));
+            if lambdas(end) == 1
+                % To be true, lambdas must be scalar and therefore the path
+                % have two waypoints
+                idx(end+1) = numel(lambdas);
+            end
             
             % For paths with 2 elements, find can return an array of size
             % 0-by-0 which would raise an error in BSXFUN. Avoid by
@@ -807,7 +824,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             
         end%fcn
         
-        function [obj,idx] = rdpIter(obj, epsilon)
+        function [obj,keep] = rdpIter(obj, epsilon)
         %RDPITER    Iterative Ramer-Douglas-Peucker algorithm.
         %   OBJR = RDPITER(OBJ,EPS)
         %
@@ -816,13 +833,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %   See also PolygonPath/rdp.
         
             N = numel(obj.x);
-            if N < 3
-                return
-            end
             
             % Initialize a logical array indicating which waypoints to keep
             keep = false(N,1);
             keep([1 end]) = true;
+            
+            if N < 3
+                return
+            end
             
             % Track the segments to be checked. Each row is of the form
             % [start index, end index]. No upper bound is set for the
@@ -851,7 +869,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             end
             
             obj = obj.select(keep);
-            idx = find(keep);
+            % idx = keep;
         end%fcn
         
         function obj = reverse(obj)
@@ -1124,6 +1142,25 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             obj = PolygonPath([x0 x1], [y0 y1], [h h], [0 0], false);
         end%fcn
         
+        
+        function obj = curv2Path(cs, xy0, psi0)
+        %CURV2PATH  Create path from discrete curvature samples.
+        %   OBJ = CURV2PATH(CS,XY0,PSI0) creates a path OBJ from an N-by-2
+        %   array CS of discrete curvature samples at path length samples
+        %   with an initial position XY0 and heading PSI0.
+        %   
+        %   This algorithm uses cumulative trapezoid integration method!
+
+            % Integrate curvature to get heading
+            psi = psi0 + cumtrapz(cs(:,2), cs(:,1));
+
+            % Integrate cos(theta) and sin(theta) to get x,y
+            xy = bsxfun(@plus, xy0(:)', ...
+                cumtrapz(cs(:,2), [cos(psi) sin(psi)]));
+            
+            obj = PolygonPath(xy(:,1), xy(:,2), psi, cs(:,1));
+        end%fcn
+        
         function obj = ll2Path(lat, lon)
             [x,y] = ll2utm(lat(:), lon(:)); % Convert from lat/lon to UTM
             obj = PolygonPath.xy2Path(x, y);
@@ -1157,6 +1194,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         end%fcn
         
         function obj = xy2Path(x, y)
+            
+            % We cannot estimate heading/curvature from a single waypoint
+            assert(numel(x) ~= 1 && numel(y) ~= 1, ...
+                'XY2PATH:X and Y must not be scalars!')
+            
             [~,g1XY] = gradient([x(:) y(:)]);
             [~,g2XY] = gradient(g1XY);
             gx = g1XY(:,1);

@@ -12,6 +12,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 % 
 %   Path2D methods (modify path object):
 %   append - Append paths.
+%   clear - Clear path.
 %   derivative - Derivative of path.
 %   frenetOffset - Instantiate PolygonPath from given path and offsets.
 %   restrict - Restrict path domain.
@@ -624,6 +625,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %
         %    See also FRENET2CART, POINTPROJECTION.
         [sd,Q,idx,tau] = cart2frenet(obj, xy, phiMax)
+        
+        % CLEAR     Clear path.
+        %   OBJ = CLEAR(OBJ) clears all segments from the path so that you
+        %   are left with an empty path.
+        obj = clear(obj)
         
         % DERIVATIVE    Derivative of path.
         %   OBJD = DERIVATIVE(OBJ,N) returns the Nth derivative OBJD of the
