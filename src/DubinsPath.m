@@ -65,7 +65,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
     
     
     methods
-        
         function obj = DubinsPath(startPose, types, lengths, R, isCircuit)
         %DUBINSPATH    Create Dubins path object.
         %   OBJ = DUBINSPATH() creates an empty path.
@@ -110,6 +109,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         
         function [sd,Q,idx,tau,dphi] = cart2frenet(obj, xy, ~, doPlot)
             error('Not implemented!')
+        end%fcn
+        
+        function obj = clear(obj)
+            obj.SegmentTypes(:) = [];
+            obj.SegmentLengths(:) = [];
         end%fcn
         
         function c = convertSegmentType2Char(obj)
@@ -344,12 +348,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             assert(isscalar(val) && isnumeric(val) && val > 0);
             obj.TurningRadius = double(val);
         end%fcn
-        
     end%methods
     
     
     methods (Access = private)
-        
         function [xyhc,tau] = evalImpl(obj, tau, extrap)
             
             N = obj.numel();
@@ -476,7 +478,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                 end
                 tau(i0:i1) = taui;
             end%for
-            
         end%fcn
         
         function objs = simplify(obj)
@@ -503,6 +504,20 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
     end
     
     methods (Static)
+        function obj = circle(r, phi01, ~)
+            P0 = [r*cos(phi01(1)) r*sin(phi01(1)), phi01(1)+pi/2];
+            P1 = [r*cos(phi01(2)) r*sin(phi01(2)), phi01(2)+pi/2];
+            obj = DubinsPath.connect(P0, P1, r);
+        end%fcn
+        
+        function obj = straight(P0, P1)
+            dP = P1 - P0;
+            phi = atan2(dP(2), dP(1));
+            
+            % Since the start/end point have the same heading, the radius
+            % is arbitrary..
+            obj = DubinsPath.connect([P0(1) P0(2) phi], [P1(1) P1(2) phi], 1);
+        end%fcn
         
         function obj = fromStruct(s)
         end%fcn
@@ -545,7 +560,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             obj = DubinsPath(C0, T(:, minIdx), L(:, minIdx)*R, R);
             
         end%fcn
-        
     end%methods
     
 end%class
