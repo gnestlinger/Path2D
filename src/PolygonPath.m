@@ -235,7 +235,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %EVAL   Evaluate path at path parameter.
         %   According to the definition of a polygonal chain, EVAL performs
         %   linear interpolation between the waypoints (x,y). It also uses
-        %   linear interpoation for the heading as well as curvature. The
+        %   linear interpolation for the heading as well as curvature. The
         %   derivative of the curvature w.r.t. path length is estimated via
         %   gradients.
         %
@@ -398,7 +398,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             objY = obj.y;
             N = numel(objX);
             
-            % Create (overdetermined) system of equations for the unknowns
+            % Create (over-determined) system of equations for the unknowns
             % y0 and y1, where 
             %   y(tau) = y0 + tau/(N-1)*(y1 - y0)
             s = obj.cumlengths();
@@ -525,7 +525,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             c = x0.^2 + y0.^2 - r^2;
             discriminant = b.^2 - 4*a.*c;
             
-            % Secant solutions (two solutions per segment)
+            %%% Case 1: Discriminant > 0
+            % We have two solutions from the quadratic equation (per
+            % segment), i.e. a secant line.
             isSecant = (discriminant > 0);
             xi = sqrt(discriminant(isSecant));
             tauSecant = 0.5*[...
@@ -534,11 +536,16 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             idxSecant = repmat(idxs(isSecant), [2,1]);
             isValidSec = ~((tauSecant < 0) | (tauSecant > 1));
             
-            % Tangent solutions (one solution per segment)
+            %%% Case 2: Discriminant = 0
+            % We have one solution from the quadratic equation (per
+            % segment), i.e. a tangent line.
             isTangent = ~((discriminant < 0) | isSecant); % (discriminant == 0)
-            tauTangent = 0.5*-b(isTangent)./a(isTangent);
+            tauTangent = -0.5*b(isTangent)./a(isTangent);
             idxTangent = idxs(isTangent);
             isValidTan = ~(tauTangent < 0) & (tauTangent < 1);
+            
+            %%% Case 3: Discriminant < 0
+            % Quadratic formula has complex solutions -> No intersections
             
             % Combined set of solutions
             tauLoc = [tauSecant(isValidSec); tauTangent(isValidTan)];
@@ -613,6 +620,19 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 errFlag = false;
             end%if
             
+%             % Alternative approach using matrix inversion
+%             Q1 = O(:) + [cos(psi); sin(psi)];
+%             tau = zeros(0,1);
+%             for i = 1:numel(obj)
+%                P0 = [obj.x(i) obj.y(i)]; 
+%                P1 = [obj.x(i+1) obj.y(i+1)];
+%                [~,tauPQ] = lineLineIntersection(P0, P1, O, Q1);
+%                taui = tauPQ(1);
+%                if taui >= 0 && taui <= 1
+%                    tau = [tau; taui + i - 1];
+%                end
+%             end
+            
             if (nargin > 3) && doPlot
                 [~,ax] = plot(obj, 'Marker','.', 'MarkerSize',8);
                 npState = get(ax, 'NextPlot');
@@ -679,7 +699,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             if (nargin > 3) && doPlot
                 % plot the path
                 plot(obj, 'b.', 'MarkerSize',10);
-                hold all
+                hold on
                 
                 % plot the line defined by points P1/P2
                 plot([P0(1) P1(1)], [P0(2) P1(2)], 'k', 'Marker','.');

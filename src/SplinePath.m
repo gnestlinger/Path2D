@@ -111,7 +111,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             [Q,idx,tau,dphi] = obj.pointProjection(xy, phiMax, doPlot);
             if isempty(Q) % Find the break point closest to point of interest
-                % SInce we index into breaks to obtain tau, breaks must be
+                % Since we index into breaks to obtain tau, breaks must be
                 % a column vector (such as tau from pointProjection()) to
                 % have no conflicting array sizes in code-gen.
                 breaks = obj.Breaks(:);
@@ -226,9 +226,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                     N = obj.numel();
                     tau = coder.nullcopy(zeros(N*M + 1, 1));
                     for i = 1:N
-                        % To avoid repeated break entries, overwrite end break
-                        % of preceeding segment with initial (and equal) break
-                        % of current segment
+                        % To avoid repeated break entries, overwrite end
+                        % break of preceding segment with initial (and
+                        % equal) break of current segment
                         ii = (i-1)*M + 1;
                         jj = ii + M;
                         tau(ii:jj) = linspace(breaks(i), breaks(i+1), M+1);
@@ -296,7 +296,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function tau = findMaxCurvature(obj, ~)
         %FINDMAXCURVATURE   Find all local extrema of path curvature.
-        %   TAU = FINDMAXCURVATURE(OBJ) returns the path parameterss TAU
+        %   TAU = FINDMAXCURVATURE(OBJ) returns the path parameters TAU
         %   for which the path's curvature is an extremum.
         %
         %   This implementation does not rely on polynomial root-finding,
@@ -737,7 +737,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
     
     methods (Access = private)
         function s = idxTau2s(obj, idx, tau)
-        % IDXTAU2S  Lenghts from path segment IDX and path parameter TAU.
+        % IDXTAU2S  Lengths from path segment IDX and path parameter TAU.
         
             tau0 = obj.Breaks(idx)';
 %             assert(all(tau0 < tau));
@@ -904,15 +904,39 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             obj = SplinePath([0 1], reshape(coefs', [2 1 Nc]));
         end%fcn
         
-       function obj = eta2(P, eta)
-       % ETA2   G2 continuous spline.
-       %    OBJ = SplinePath.ETA2(P,ETA)
-       % 
-       %    References:
-       %     A. Piazzi and C. Guarino Lo Bianco, "Quintic G²-splines for
-       %     trajectory planning of autonomous vehicles," Proceedings of
-       %     the IEEE Intelligent Vehicles Symposium 2000, Dearborn, MI,
-       %     USA, 2000, pp. 198-203, doi: 10.1109/IVS.2000.898341.
+        function obj = eta2(P, eta)
+        %ETA2   G2 continuous spline path.
+        %   OBJ = SplinePath.ETA2(P,ETA) constructs a G2-continuous spline
+        %   path OBJ connecting the sequence of points provided in P using
+        %   the parameter set ETA.
+        %   
+        %   Inputs:
+        %     P   - 4-by-(N+1) array of points [x; y; p; k] describing N
+        %           spline segments with positions (x,y) heading p and
+        %           curvature k at the break point.
+        %     ETA - Numeric parameter vector that controls per-segment
+        %           geometry. Two formats are supported:
+        %           * Full 4-element form: [eta1; eta2; eta3; eta4]
+        %             - eta1: scaling of the first-order tangential term at the start
+        %             - eta2: scaling of the first-order tangential term at the end
+        %             - eta3: parameter affecting second-derivative terms near the start
+        %             - eta4: parameter affecting second-derivative terms near the end
+        %           * Symmetric 2-element shortcut: [a; b]
+        %             - Internally expanded as [a; a; b; -b].
+        %   
+        %   Example:
+        %     % P is 2-by-(N+1) with N segments
+        %     P = [0 1 2; 0 0.5 0; 0 0 0; 0 0 0];
+        %     eta = [1.0; 0.5];
+        %     splineObj = SplinePath.eta2(P, eta);
+        %     splineObj.plot()
+        %   
+        %   References:
+        %    A. Piazzi and C. Guarino Lo Bianco, "Quintic G²-splines for
+        %    trajectory planning of autonomous vehicles," Proceedings of
+        %    the IEEE Intelligent Vehicles Symposium 2000, Dearborn, MI,
+        %    USA, 2000, pp. 198-203, doi: 10.1109/IVS.2000.898341.
+        %
 
             % The number of spline segments
             N = size(P,2) - 1;
