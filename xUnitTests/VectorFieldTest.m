@@ -28,7 +28,7 @@ classdef VectorFieldTest < matlab.unittest.TestCase
         % Test the size of return arguments for empty paths.
         
             [X,Y] = extractXY(xy);
-            [Fx,Fy] = PathEmpty.vectorField(X, Y, 1, true);
+            [Fx,Fy] = PathEmpty.vectorField(X, Y, 1, false);
             verifyEqual(testCase, Fx, NaN(size(X)));
             verifyEqual(testCase, Fy, NaN(size(Y)));
         end%fcn
@@ -37,7 +37,7 @@ classdef VectorFieldTest < matlab.unittest.TestCase
         % Test the size of return arguments for nonempty paths.
         
             [X,Y] = extractXY(xy);
-            [Fx,Fy] = PathStraight.vectorField(X, Y, 1);
+            [Fx,Fy] = PathStraight.vectorField(X, Y, 1, false);
             
             verifySize(testCase, Fx, size(X));
             verifySize(testCase, Fy, size(Y));
@@ -48,7 +48,7 @@ classdef VectorFieldTest < matlab.unittest.TestCase
         % checking the number of non-NaN values.
            
             [X,Y] = meshgrid(-5:5);
-            [Fx,Fy] = PathStraight.vectorField(X, Y, 1);
+            [Fx,Fy] = PathStraight.vectorField(X, Y, 1, false);
             
             import matlab.unittest.constraints.HasNaN
             verifyThat(testCase, [Fx Fy], ~HasNaN)
@@ -61,7 +61,7 @@ classdef VectorFieldTest < matlab.unittest.TestCase
             [X,Y] = meshgrid(-5:0.5:5);
             PathObj = PathCircle{1};
             nbrNaNs = PathCircle{2};
-            [Fx,Fy] = PathObj.vectorField(X, Y, 1);
+            [Fx,Fy] = PathObj.vectorField(X, Y, 1, false);
             
             verifyEqual(testCase, sum(isnan([Fx(:); Fy(:)])), nbrNaNs*2)
 %             import matlab.unittest.constraints.HasNaN

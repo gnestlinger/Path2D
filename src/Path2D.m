@@ -345,12 +345,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   PLOT(OBJ,DTAU) specify path parameter increment to be plotted.
         %    
         %   PLOT(OBJ,S) additionally applies the line specification S.
-        %
+        %   
         %   PLOT(OBJ,DTAU,S) specify DTAU before any line specification.
-        %
+        %   
         %   PLOT(...,NAME,VALUE) specifies line properties using one or
         %   more Name,Value pair arguments.
-        %
+        %   
         %   PLOT(AX,...) plots into the axes with handle AX.
         %    
         %   [H,AX] = PLOT(...) returns the handle H to lineseries objects
@@ -364,7 +364,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   See also PLOTG2, PLOTTANGENT.
             
             [ax,obj,dtau,opts] = parsePlotInputs(varargin{:});
-            [h,ax] = plotxy(ax, obj, dtau, opts{:});
+            [h,ax] = obj.plotxy(ax, dtau, opts{:});
             applyPlotxyStyles(ax);
             
             if nargout > 0
@@ -395,14 +395,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             npStatus = get(ax(1:3), 'NextPlot');
 %             set(ax(2:3), 'NextPlot','replace');
             for i = 1:N
-                
                 obji = obj(i);
                 
                 if i == 2
                     set(ax(1:3), 'NextPlot','add');
                 end
                 
-                [h(i,1),~,tau] = plotxy(ax(1), obji, dtau, opts{:});
+                [h(i,1),~,tau] = obji.plotxy(ax(1), dtau, opts{:});
                 [~,~,~,head,curv] = obji.eval(tau);
                 h(i,2) = plot(ax(2), tau, head, opts{:});
                 h(i,3) = plot(ax(3), tau, curv, opts{:});
@@ -471,7 +470,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             
             % Plot the path and get its axis limtis
             npStatus = get(ax, 'NextPlot');
-            [h(1,1),ax] = plotxy(ax, obj, [], opts{:});
+            [h(1,1),ax] = obj.plotxy(ax, [], opts{:});
             xLimits = xlim;
             yLimits = ylim;
             
@@ -588,6 +587,64 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
                 tau(i) = tauMin;
             end%for
             
+        end%fcn
+    
+        function [h,axh,tau] = plotxy(obj, axh, tauIn, varargin)
+        %PLOTXY     Plot path in the x/y plane.
+        %   PLOTXY(AXH,OBJ,TAU,VARARGIN) plots path OBJ into axes AXH
+        %   evaluated at TAU applying line specifications via VARARGIN.
+        % 
+        %   [H,AXH,TAU] = PLOTXY(___) return line handles H, axes handle H and path
+        %   parameter TAU.
+        %
+        %   NOTE: This method supports non-scalar inputs OBJ!
+
+            % Get current status of axes 'NextPlot' property
+            if isempty(axh) || ~ishghandle(axh)
+                axh = gca;
+            end%if
+            npState = get(axh, 'NextPlot');
+
+            isDisplayNameProvided = any(strcmp('DisplayName', varargin));
+
+            % Plot paths
+            N = builtin('numel', obj);
+            h = gobjects(N, 1);
+            for i = 1:N
+                if i == 2
+                    set(axh, 'NextPlot','add');
+                end%if
+
+                obji = obj(i);
+                if isempty(tauIn) || isempty(obji)
+                    [x,y,tau] = obji.eval();
+                else
+                    if isscalar(tauIn)
+                        tau = obji.sampleDomain(tauIn);
+                    else
+                        tau = tauIn(:);
+                    end
+                    [x,y] = obji.eval(tau);
+                end
+
+                if isDisplayNameProvided
+                    hi = plot(axh, x, y, varargin{:});
+                else
+                    if N > 1
+                        name = ['(',num2str(i),') ', class(obji)];
+                    else
+                        name = class(obji);
+                    end
+                    hi = plot(axh, x, y, varargin{:}, 'DisplayName',name);
+                end%if
+                if ~isempty(hi)
+                    h(i) = hi;
+                end
+            end%for
+
+            % Reset axes to initial state
+            set(axh, 'NextPlot',npState);
+
         end%fcn
     end
     
