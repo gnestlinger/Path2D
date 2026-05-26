@@ -45,7 +45,7 @@ end
 
 
 % Intersection points and angles around center
-xy = O(:)' + tau*d;
+xy = bsxfun(@plus, O(:)', tau*d);
 phi = atan2(xy(:,2) - C(2), xy(:,1) - C(1)); % in (-pi,pi]
 
 

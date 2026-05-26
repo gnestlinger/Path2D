@@ -440,7 +440,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                 
                 si = obj.SegmentLengths(i);
                 typei = obj.SegmentTypes(i);
-                dtau = taui - i + 1;
+                dtau = taui(:) - i + 1;
                 if typei == obj.LEFT
                     % Linear interpolation from h0 to h1 = h0 + si/R:
                     hi = h0 + si/R*dtau;
