@@ -26,6 +26,10 @@ printTopRule('=', numel(str))
 
 testRes = run(testSuite);
 
+if nargout < 1
+    disp(testRes)
+end
+
 end%fcn
 
 

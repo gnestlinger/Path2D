@@ -226,7 +226,56 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         end%fcn
         
         function [xy,tau,errFlag] = intersectLine(obj, O, psi, doPlot)
-            error('Not implemented!')
+            
+            xy = zeros(0,2);
+            tau = zeros(0,1);
+            r = obj.TurningRadius;
+            for i = 1:obj.numel()
+                [Ax,Ay,~,Ah] = obj.eval(i-1);
+                [Bx,By,~,Bh] = obj.eval(i);
+                
+                sig = double(sign(obj.SegmentTypes(i)));
+                if sig ~= 0 % Segment is a Circle
+                    phiA = Ah - pi/2;
+                    phiB = Bh - pi/2;
+                    
+                    C = points2CircleCenter([Ax;Ay], [Bx;By], r, sig);
+                    [xyi,~,si] = circularArcXline(C, r, sig*phiA, phiB - phiA, O, psi);
+                    
+                    % Compute normalized path parameter
+                    taui = si/obj.SegmentLengths(i);
+                    
+                    % Append 
+                    xy = [xy; xyi];
+                    tau = [tau; taui + i - 1];
+                else
+                    [xyi,taus] = lineSegXline([Ax Ay; Bx By], O, psi);
+                    if ~isempty(taus)
+                        xy = [xy; xyi];
+                        tau = [tau; taus(1) + i - 1];
+                    end
+                end
+            end
+            
+            % % At most two intersections per path segment!
+            % assert(size(xy, 1) <= (size(xyPath, 1)-1)*2)
+            % assert(size(xy, 1) == size(tau, 1))
+            
+            if (nargin > 3) && doPlot
+                [~,ax] = plot(obj, 'Marker','.');
+                npState = get(ax, 'NextPlot');
+                set(ax, 'NextPlot','add');
+                
+                [r1,r2] = scaleTangentToAxis(xlim(), ylim(), O, psi);
+                Pstart  = [O(1) + r2*cos(psi); O(2) + r2*sin(psi)];
+                Pstop   = [O(1) + r1*cos(psi); O(2) + r1*sin(psi)];
+                h = plot(ax, [Pstart(1) Pstop(1)], [Pstart(2) Pstop(2)], ...
+                    'Displayname','Line');
+                
+                plot(ax, xy(:,1), xy(:,2), 'kx', 'DisplayName','Intersections')
+                set(ax, 'NextPlot',npState)
+            end%if
+            
         end%fcn
         
         function n = numel(obj)
@@ -255,7 +304,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             for i = 1:builtin('numel', obj)
                 obj(i).InitialPos = R*obj(i).InitialPos;
                 obj(i).InitialAng = obj(i).InitialAng + phi;
-            end%for
+            end
             
         end%fcn
         
@@ -275,7 +324,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             % BUILTIN is supported for code-generation starting with R2017b
             for i = 1:builtin('numel', obj)
                 obj(i).InitialPos = obj(i).InitialPos + P;
-            end%for
+            end
             
         end%fcn
         
@@ -395,20 +444,20 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                 if typei == obj.LEFT
                     % Linear interpolation from h0 to h1 = h0 + si/R:
                     hi = h0 + si/R*dtau;
-                    [xi,yi,ci] = circleLeft(R, hi);
+                    [xi,yi,ci] = evalCircle(R, hi);
                     
                     % Explicitly calculate the terminal points of the
                     % current segment.. since they may not be included in
                     % the path parameter dtau
                     hEnd =  h0 + si/R;
-                    [xT,yT] = circleLeft(R, [h0 hEnd]);
+                    [xT,yT] = evalCircle(R, [h0 hEnd]);
                     
                 elseif typei == obj.RIGHT
                     % Linear interpolation from h0 to h1 = h0 - si/R:
                     hi = h0 - si/R*dtau;
-                    [xi,yi,ci] = circleRight(R, hi);
+                    [xi,yi,ci] = evalCircle(-R, hi);
                     hEnd = h0 - si/R;
-                    [xT,yT] = circleRight(R, [h0 hEnd]);
+                    [xT,yT] = evalCircle(-R, [h0 hEnd]);
                     
                 else % Straight segment
                     % Linear interpolation x0 + (x1-x0)*tau, where x0 = 0
@@ -436,7 +485,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                 y0 = yT(2) + dy;
                 h0 = hEnd;
                 
-                xyhc(logIdxi, :) = [xi yi hi ci zeros(size(xi))];
+                xyhc(logIdxi,:) = [xi yi hi ci zeros(size(xi))];
             end%for
             
             % Set return values to NaN outside path domain
@@ -564,6 +613,29 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
     
 end%class
 
+
+function [x,y,c] = evalCircle(r, head)
+%EVALCIRCLE 	Evaluate Dubins circle.
+
+% We can avoid calculating phi = head - pi/2 by using the identities
+%   cos(x - pi/2) = sin(x) and
+%   sin(x - pi/2) = -cos(x)
+x = r*sin(head);
+y = r*-cos(head);
+c = 1/r*ones(size(x));
+
+end%fcn
+
+function C = points2CircleCenter(A, B, r, sign)
+
+v = B - A;
+a = 0.5*hypot(v(1), v(2));
+h = sqrt(r^2 - a^2);
+v = v/norm(v);
+v = [-v(2); v(1)];
+C = 0.5*(A + B) - double(sign)*h*v;
+
+end%fcn
 
 function [w,s,l] = dubinsLSL(d, a, b)
 

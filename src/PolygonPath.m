@@ -508,10 +508,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
             [xy,tau] = lineSegXCircle([obj.x obj.y], C, r);
             errFlag = isempty(tau);
             
-%             % At most two intersections per path segment!
-%             assert(size(xy, 1) <= (numel(obj.x)-1)*2)
-%             assert(size(xy, 1) == size(tau, 1))
-                
+            % At most two intersections per path segment!
+            assert(size(xy, 1) <= (numel(obj.x)-1)*2)
+            assert(size(xy, 1) == size(tau, 1))
+            
             if (nargin > 3) && doPlot
                 [~,ax] = plot(obj, 'Marker','.');
                 npState = get(ax, 'NextPlot');

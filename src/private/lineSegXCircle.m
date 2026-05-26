@@ -52,8 +52,4 @@ tau = sort(segIdx - 1 + tauLoc, 'ascend');
 xy = interp1(xyPath, tau + 1);
 xy = bsxfun(@plus, xy, C(:)');
 
-% At most two intersections per path segment!
-assert(size(xy, 1) <= (size(xyPath, 1)-1)*2)
-assert(size(xy, 1) == size(tau, 1))
-
 end%fcn
