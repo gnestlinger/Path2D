@@ -33,7 +33,7 @@ classdef Cart2FrenetTest < matlab.unittest.TestCase
         end%fcn
         
         function testMultipleSolutions(testCase)
-            obj = PolygonPath.circle(3, [-pi pi]/2, 10);
+            obj = PolygonPath.circle(3, [-pi pi]/2, 9);
             [sd,Q,idx,tau,dphi] = obj.cart2frenet([0 0], [], false);
             
             N = 9; % One solution per path segment
@@ -78,7 +78,7 @@ classdef Cart2FrenetTest < matlab.unittest.TestCase
         end%fcn
         
         function testCircuitPath(testCase)
-            obj = PolygonPath.circle(3, [0 2*pi], 15);
+            obj = PolygonPath.circle(3, [0 2*pi], 14);
             assert(obj.IsCircuit)
             [sd,Q,idx,tau,dphi] = obj.cart2frenet([0 0], [], false);
             
@@ -93,7 +93,7 @@ classdef Cart2FrenetTest < matlab.unittest.TestCase
         end%fcn
         
         function testSignD(testCase)
-            obj = PolygonPath.circle(1, [0 2*pi], 9);
+            obj = PolygonPath.circle(1, [0 2*pi], 8);
             assert(obj.IsCircuit)
             [sd,Q,idx,tau,dphi] = obj.cart2frenet([1 0.5], false);
             

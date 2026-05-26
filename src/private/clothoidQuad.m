@@ -1,7 +1,7 @@
 function [x,y] = clothoidQuad(s, A)
 %CLOTHOIDQUAD   Numerical integration of clothoid.
 %   [X,Y] = CLOTHOIDQUAD(S,A) calculates the clothoid points Y(X) for
-%   the vector of curve length S using the chlothoid parameter A>0.
+%   the vector of curve length S using the clothoid parameter A>0.
 % 
 
 % Check input arguments

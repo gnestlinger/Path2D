@@ -13,6 +13,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
 %   See superclasses.
 % 
 %   SPLINEPATH static methods:
+%   bezier2Path - Spline path from Bezier control points.
 %   See superclasses.
 % 
 %   See also PATH2D, MKPP.
@@ -33,15 +34,17 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
     
     
     methods
-        
         function obj = SplinePath(breaks, coefs, s, isCircuit)
         %SPLINEPATH     Create spline path object.
         %   OBJ = SPLINEPATH(BREAKS,COEFS) creates a spline path OBJ with
         %   breaks BREAKS of size 1-by-(N+1) and coefficients COEFS of size
         %   2-by-N-by-K, where N is the number of spline segments and K-1
         %   the polynomial degree.
+        %   
+        %   OBJ = SPLINEPATH(___,S) sets the cumulative lengths of the
+        %   spline segments.
         %
-        %   OBJ = SPLINEPATH(___,ISCIRCUIT) set to true if the path is a
+        %   OBJ = SPLINEPATH(___,S,ISCIRCUIT) set to true if the path is a
         %   circuit.
         %
         
@@ -60,7 +63,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 s = obj.calcArcLength(breaks, coefs);
             end
             assert(numel(s) == size(coefs,2));
-            obj.ArcLengths = s;
+            obj.ArcLengths = s(:);
             
             if nargin < 4
                 obj = obj.setIsCircuit(1e-5);
@@ -72,21 +75,28 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function obj = append(obj, obj2)
             
+            if obj.isempty()
+                ds = 0;
+            else
+                [~,P1] = obj.termPoints();
+                dP = obj2.termPoints() - P1;
+                ds = hypot(dP(1), dP(2)) + obj.length();
+            end
+            
             breaks = obj.Breaks;
             coefs = obj.Coefs;
-            arcLen = obj.ArcLengths;
+            breaks2 = obj2.Breaks;
+            coefs2 = obj2.Coefs;
             
-            obj.Breaks = [breaks, breaks(end) + obj2.Breaks(2:end)];
+            obj.Breaks = [breaks, breaks(end) + breaks2(2:end) - breaks2(1)];
             
-            [~,~,k] = size(coefs);
-            [~,n2,k2] = size(obj2.Coefs);
-            assert(k2 <= k, 'Degree of path to append must not exceed degree of initial path!')
-            obj.Coefs = cat(2, coefs, cat(3, zeros(2,n2,k-k2), obj2.Coefs));
+            [~,n1,k1] = size(coefs);
+            [~,n2,k2] = size(coefs2);
+            obj.Coefs = cat(2, ...
+                cat(3, zeros(2,n1,k2-k1), coefs), ...
+                cat(3, zeros(2,n2,k1-k2), coefs2));
             
-            [~,P1] = obj.termPoints();
-            P0 = obj2.termPoints();
-            ds = sqrt( sum((P0 - P1).^2) );
-            obj.ArcLengths = [arcLen; obj2.ArcLengths(2:end) + arcLen(end) + ds];
+            obj.ArcLengths = [obj.ArcLengths; obj2.ArcLengths + ds];
             
         end%fcn
         
@@ -100,9 +110,19 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             end
             
             [Q,idx,tau,dphi] = obj.pointProjection(xy, phiMax, doPlot);
-            if isempty(Q)
-                % Find the waypoint closest to point of interest
-                error('Not implemented!')
+            if isempty(Q) % Find the break point closest to point of interest
+                % Since we index into breaks to obtain tau, breaks must be
+                % a column vector (such as tau from pointProjection()) to
+                % have no conflicting array sizes in code-gen.
+                breaks = obj.Breaks(:);
+                [x,y] = obj.eval(breaks);
+                [~,idx] = min(hypot(x - xy(1), y - xy(2)));
+                Q = [x(idx) y(idx)];
+                tau = breaks(idx);
+                if idx(1) == numel(breaks) - 1
+                    % Avoid out of range indexing
+                    idx = idx(1) - 1; 
+                end
             end%if
             
             % Get the orientation vector related with Q to calculate the
@@ -117,6 +137,21 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             sd = [obj.idxTau2s(idx, tau), ...
                 signD.*hypot(qp(:,1), qp(:,2))];
             
+            if isempty(dphi)
+                ux = u(:,1);
+                uy = u(:,2);
+                dx = qp(:,1);
+                dy = qp(:,2);
+                dphi = abs(pi/2 - abs(atan2(ux.*dy - uy.*dx, ux.*dx + uy.*dy)));
+            end
+            
+        end%fcn
+        
+        function obj = clear(obj)
+            obj.Breaks = 0;
+            obj.Coefs(:,1:end,:) = [];
+            obj.ArcLengths = zeros(0,1);
+            obj.IsCircuit = false;
         end%fcn
         
         function obj = derivative(obj, n)
@@ -129,6 +164,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             if nargin < 2
                 n = 1;
+            end
+            
+            if (n < 1) || obj.isempty()
+                return
             end
             
             c = obj.Coefs;
@@ -187,9 +226,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                     N = obj.numel();
                     tau = coder.nullcopy(zeros(N*M + 1, 1));
                     for i = 1:N
-                        % To avoid repeated break entries, overwrite end break
-                        % of preceeding segment with initial (and equal) break
-                        % of current segment
+                        % To avoid repeated break entries, overwrite end
+                        % break of preceding segment with initial (and
+                        % equal) break of current segment
                         ii = (i-1)*M + 1;
                         jj = ii + M;
                         tau(ii:jj) = linspace(breaks(i), breaks(i+1), M+1);
@@ -255,6 +294,39 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
         end%fcn
         
+        function tau = findMaxCurvature(obj, ~)
+        %FINDMAXCURVATURE   Find all local extrema of path curvature.
+        %   TAU = FINDMAXCURVATURE(OBJ) returns the path parameters TAU
+        %   for which the path's curvature is an extremum.
+        %
+        %   This implementation does not rely on polynomial root-finding,
+        %   instead the solutions are found by considering finite
+        %   differences.
+        
+        % d(Curvature)/dtau = 1/(...)*(...
+        %   y^(3)*x'^3 + y'^2 (3x''*y'' - x^(3)*y') + x'*y'*(3x''^2 - 3y''^2 + y^(3)*y') + x'^2*(-x^(3)y' - 3x''y'')
+        %   )
+            
+            breaks = obj.Breaks;
+            Ns = obj.numel();
+            coder.varsize('tau', [inf 1], [true false])
+            tau = zeros(0,1);
+            b0 = breaks(1);
+            for i = 1:Ns % Loop over spline segments
+                b1 = breaks(i+1);
+                [~,~,taui,~,curv] = obj.eval(linspace(b0, b1, 1e3));
+                dc = diff(curv);
+                
+                % This condition misses extrema at the terminal points of
+                % path segments
+                isExtremum = [false; diff(sign(dc))~=0; false];
+                tau = [tau; sort(taui(isExtremum), 'ascend')]; %#ok<AGROW>
+                
+                b0 = b1;
+            end%for
+            
+        end%fcn
+        
         function tau = findZeroCurvature(obj, ~)
         %FINDZEROCURVATURE  Find path parameter w.r.t to zero curvature.
         %   TAU = FINDZEROCURVATURE(OBJ) returns the path parameters TAU
@@ -303,8 +375,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
             [x,y] = obj.eval(tau, true);
             n = ppval(ppdiff(obj.mkpp()), tau)';
-            Q = [x,y];
-            xy = Q + bsxfun(@times, [-n(:,2), n(:,1)], sd(:,2)./sqrt(sum(n.^2, 2)));
+            Q = [x y];
+            xy = Q + bsxfun(@times, [-n(:,2) n(:,1)], sd(:,2)./sqrt(sum(n.^2, 2)));
             
             if (nargin > 2) && doPlot
                 obj.plot('DisplayName','SplinePath');
@@ -315,54 +387,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 plot(Q(:,1), Q(:,2), 'kx', 'DisplayName','Q');
                 hold off
                 legend('-DynamicLegend')
-            end%if
-            
-        end%fcn
-        
-        function [xy,tau,errFlag] = intersectLine(obj, O, psi, doPlot)
-            
-            obj1 = obj.shift(-O).rotate(-psi);
-            
-            breaks = obj1.Breaks;
-            coefsY = permute(obj1.Coefs(2,:,:), [2 3 1]);
-            
-            % There are at most Nc-1 real roots (i.e. solutions) per piece
-            [Ns,Nc] = size(coefsY);
-            coder.varsize('tau', Ns*(Nc-1));
-            tau = zeros(0,1);
-            
-            % The first pieces except the last are defined over half open
-            % intervals [b0,b1)
-            b0 = breaks(1);
-            for i = 1:Ns-1
-                b1 = breaks(i+1);
-                ri = getRealRootsWithinBounds(coefsY(i,:), @lt, b1-b0);
-                tau = [tau; ri + b0]; %#ok<AGROW>
-                b0 = b1;
-            end%for
-            
-            % The last piece is defined over the closed interval [b0,b1]
-            ri = getRealRootsWithinBounds(coefsY(end,:), @le, breaks(end)-b0);
-            tau = [tau; ri + b0];
-            
-            tau = sort(tau, 'ascend');
-            errFlag = isempty(tau);
-            [x,y] = obj.eval(tau);
-            xy = [x,y];
-            
-            if (nargin > 3) && doPlot
-                [~,ax] = plot(obj);
-                hold on
-                
-                [r1,r2] = scaleTangentToAxis(xlim, ylim, O, psi);
-                Pstart  = [O(1) + r2*cos(psi); O(2) + r2*sin(psi)];
-                Pstop   = [O(1) + r1*cos(psi); O(2) + r1*sin(psi)];
-                h = plot(gca, [Pstart(1) Pstop(1)], [Pstart(2) Pstop(2)], ...
-                    'DisplayName','Line');
-                plot(O(1), O(2), 'o', 'Color',get(h,'Color'), 'DisplayName','O')
-                
-                plot(ax, xy(:,1), xy(:,2), 'kx', 'DisplayName','Intersections')
-                hold off
             end%if
             
         end%fcn
@@ -415,16 +439,51 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             end%if
             
         end%fcn
-        
-        function s = length(obj, tau)
+
+        function [xy,tau,errFlag] = intersectLine(obj, O, psi, doPlot)
             
-            if nargin < 2 % Call superclass method
-                s = length@Path2D(obj);
-            else % Some undocumented & untested stuff
-                idx = find(tau > obj.Breaks, 1, 'last');
-                taus = linspace(obj.Breaks(idx), tau, 100);
-                xy = diff(ppval(obj.mkpp(), taus), 1, 2);
-                s = obj.ArcLengths(idx) + hypot(xy(1,:), xy(2,:));
+            obj1 = obj.shift(-O).rotate(-psi);
+            
+            breaks = obj1.Breaks;
+            coefsY = permute(obj1.Coefs(2,:,:), [2 3 1]);
+            
+            % There are at most Nc-1 real roots (i.e. solutions) per piece
+            [Ns,Nc] = size(coefsY);
+            coder.varsize('tau', Ns*(Nc-1));
+            tau = zeros(0,1);
+            
+            % The first pieces except the last are defined over half open
+            % intervals [b0,b1)
+            b0 = breaks(1);
+            for i = 1:Ns-1
+                b1 = breaks(i+1);
+                ri = getRealRootsWithinBounds(coefsY(i,:), @lt, b1-b0);
+                tau = [tau; ri + b0]; %#ok<AGROW>
+                b0 = b1;
+            end%for
+            
+            % The last piece is defined over the closed interval [b0,b1]
+            ri = getRealRootsWithinBounds(coefsY(end,:), @le, breaks(end)-b0);
+            tau = [tau; ri + b0];
+            
+            tau = sort(tau, 'ascend');
+            errFlag = isempty(tau);
+            [x,y] = obj.eval(tau);
+            xy = [x,y];
+            
+            if (nargin > 3) && doPlot
+                [~,ax] = plot(obj);
+                hold on
+                
+                [r1,r2] = scaleTangentToAxis(xlim, ylim, O, psi);
+                Pstart  = [O(1) + r2*cos(psi); O(2) + r2*sin(psi)];
+                Pstop   = [O(1) + r1*cos(psi); O(2) + r1*sin(psi)];
+                h = plot(gca, [Pstart(1) Pstop(1)], [Pstart(2) Pstop(2)], ...
+                    'DisplayName','Line');
+                plot(O(1), O(2), 'o', 'Color',get(h,'Color'), 'DisplayName','O')
+                
+                plot(ax, xy(:,1), xy(:,2), 'kx', 'DisplayName','Intersections')
+                hold off
             end%if
             
         end%fcn
@@ -456,9 +515,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             [Ns,Nc] = size(coefsX);
             
             % There are at most 2Nc-2 solutions per piece
-            coder.varsize('tau', Ns*(2*Nc-2));
-            coder.varsize('idx', Ns*(2*Nc-2));
-            coder.varsize('pv', Ns*(2*Nc-2));
+            coder.varsize('tau', 'idx', 'pv', Ns*(2*Nc-2));
             tau = zeros(0,1);
             idx = zeros(0,1);
             pv = zeros(0,1);
@@ -516,7 +573,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                     [Q(:,2)'; repmat([poi(2) NaN], size(Q,1),1)'], 'k:'); 
                 hold off
                 a = legend(ax); % For ~2019b
-                legend(a.String(1:4))
+                a.String(5:end) = '';
             end%if
             
         end%fcn
@@ -577,7 +634,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
         
         function [tau,idx] = s2tau(obj, s)
             
-            if obj.length() < eps % Zero-length path
+            if obj.isempty() || (obj.length() < eps) % Zero-length path
                 tau = nan(size(s));
                 idx = zeros(size(s), 'uint32');
                 if ~obj.isempty()
@@ -588,30 +645,31 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 return
             end
             
+            N = obj.numel();
+            S = obj.ArcLengths;
             if obj.IsCircuit
-                s = mod(s, obj.length());
+                s = mod(s, S(end));
             end
             
-            S = obj.ArcLengths;
-            idx = coder.nullcopy(zeros(size(s), 'uint32'));
-            for i = 1:numel(s)
-                idxs = find(s(i) < S, 1, 'first');
-                if isempty(idxs)
-                    idx(i) = obj.numel();
-                else
-                    idx(i) = idxs(1);
-                end
-            end%for
+            % Get the segment index
+            [~,idx] = histc(s, [-inf; S; inf]); %#ok<HISTC>
+            idx = min(uint32(idx), N);
             
-            % The points on the path (i.e. d=0) are given by the segment's
-            % initial point plus the remaining length along the current
-            % segment
-            S = [0; S];
-            ds = s - reshape(S(idx), size(s));
-            breaks = obj.Breaks';
-            tau0 = breaks(idx);
-            tau = reshape(tau0, size(s)) + ds.*...
-                reshape((breaks(idx+1) - tau0)./(S(idx+1) - S(idx)), size(s));
+            breaks = obj.Breaks;
+            pp = obj.mkpp();
+            tau = coder.nullcopy(zeros(size(s)));
+            S = circshift(S, 1);
+            S(1) = 0;
+            for i = 1:N % Loop over spline segments
+                if any(idx == i)
+                    taui = linspace(breaks(i), breaks(i+1), 1000);
+                    dxy = diff(ppval(pp, taui), 1, 2);
+                    ds = cumsum(hypot(dxy(1,:), dxy(2,:))); 
+                    tau(idx == i) = interp1([0 ds] + S(i), taui, s(idx == i), ...
+                        'linear','extrap');
+                end
+            end
+            
         end%fcn
         
         function obj = select(obj, idxs)
@@ -674,14 +732,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 'coefs',obj.Coefs, ...
                 'lengths',obj.ArcLengths);
         end%fcn
-        
     end%methods
     
     
     methods (Access = private)
-        
         function s = idxTau2s(obj, idx, tau)
-        % IDXTAU2S  Lenghts from path segment IDX and path parameter TAU.
+        % IDXTAU2S  Lengths from path segment IDX and path parameter TAU.
         
             tau0 = obj.Breaks(idx)';
 %             assert(all(tau0 < tau));
@@ -702,7 +758,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 coefs = obj.Coefs;
             end
             
-            N = size(coefs,2);
+            N = size(coefs, 2);
             pp = mkpp(breaks, coefs, 2);
             s = coder.nullcopy(zeros(N,1));
             for i = 1:N
@@ -713,23 +769,187 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             s = cumsum(s);
             
         end%fcn
-        
+    end
+    
+    
+    methods (Access = {?Path2D})
+        function s = lengthImpl(obj, tau0, tau1)
+            if nargin < 3
+                tau1 = tau0;
+                tau0(:) = obj.Breaks(1);
+            end
+            
+            assert(isequal(size(tau0), size(tau1)), ...
+                    'Path2D:SizeMismatch', ...
+                    'Path parameter argument sizes mismatch!')
+            
+            ppd = ppdiff(obj.mkpp());
+            s = coder.nullcopy(zeros(size(tau0)));
+            for i = 1:numel(s)
+                s(i) = pplen(ppd, tau0(i), tau1(i));
+            end
+        end%fcn
     end%methods
     
     
     methods (Static)
+        function obj = pp2Path(pp, varargin)
+        % PP2PATH    Path object from piecewise polynomial.
+        %   OBJ = SplinePath.PP2PATH(PP) instantiates the path OBJ
+        %   from piecewise polynomial struct PP.
+        %   
+        %   OBJ = SplinePath.PP2PATH(PP, VARARGIN) sets additional
+        %   constructor arguments via VARARGIN.
+        %
+        %   See also SPLINEPATH/SPLINEPATH, MKPP.
         
-        function obj = pp2Path(pp)
             [breaks,coefs,nbrSeg,polyOrd,dim] = unmkpp(pp);
             assert(dim == 2, 'Spline must be 2D valued!')
-            obj = SplinePath(breaks, reshape(coefs, 2, nbrSeg, polyOrd));
+            obj = SplinePath(breaks, reshape(coefs, 2, nbrSeg, polyOrd), varargin{:});
+        end%fcn
+        
+        function obj = bezier2Path(P)
+        % BEZIER2PATH   Path object from Bezier control.
+        %   OBJ = SplinePath.BEZIER2PATH(P) instantiates the path OBJ from
+        %   an array P of Bezier control points. P is of size
+        %   2-by-NP-by-NO, where NP is the number of spline segments and NO
+        %   the polynomial order.
+        %
+        %   Example:
+        %    SplinePath.bezier2Path(cat(3, ...
+        %       [0 0; 2 0; 5 1; 10 1]', [10 1; 15 1; 18 0; 20 0]'))
+            
+            [nr,nc,np] = size(P);
+            assert(nr == 2, 'SplinePath:bezier2Path', 'Control points must be 2D!')
+            
+            coefs = zeros(size(P));
+            for i = 0:nc-1
+                bi = nchoosek(nc-1, i);
+                for k = 0:nc-1-i
+                    c = bi*nchoosek(nc-1-i, k)*(-1)^k;
+                    coefs(:,i+k+1,:) = coefs(:,i+k+1,:) + P(:,i+1,:)*c;
+                end
+            end
+            obj = SplinePath(0:np, permute(flip(coefs, 2), [1 3 2]));
+            
+        end%fcn
+        
+        function obj = circle(r, phi01, N)
+        %CIRCLE     Create circle.
+        %
+        %   Reasonable circle fits are obtained for N >= 4 spline segments.
+        %
+        %   See also Path2D/circle, SPLINE.
+            
+            if nargin < 3
+                N = 3;
+            end    
+            if nargin < 2
+                phi01 = [0; 2*pi];
+            end
+            
+            % This will become the breaks vector
+            x = linspace(phi01(1), phi01(2), N+1);
+            
+            % Define sample points as well as the terminal derivatives
+            dy = @(phi) [-sin(phi); cos(phi)];
+            y = cat(2, dy(phi01(1)), [cos(x); sin(x)], dy(phi01(2)));
+            
+            % Create the circle
+            pp = spline(x, r*y);
+            obj = SplinePath.pp2Path(pp);
+            
+%             h = obj.plot('LineWidth',1, 'DisplayName','Spline');
+%             [xBreaks,yBreaks] = obj.eval(obj.Breaks);
+%             hold on
+%             plot(xBreaks, yBreaks, 'o', 'Color',get(h, 'Color'), 'DisplayName','Breaks')
+%             N = 100; % Samples per spline segment
+%             phi = linspace(0, 2, N*obj.numel())*pi;
+%             plot(r*cos(phi), r*sin(phi), 'r--', 'DisplayName','Circle');
+%             hold off
+            
+        end%fcn
+        
+        function obj = connect(P0, P1)
+        %CONNECT    Spline path from initial to target configuration.
+        %   OBJ = SplinePath.CONNECT(P0, P1) creates a polynomial path OBJ
+        %   connecting the inital/end configuration P0/P1, where Pi has as
+        %   many rows as differential boundary conditions, i.e.:
+        %       Pi = [xi yi;
+        %             dxi/dt dyi/dt;
+        %             ...
+        %             dxi/dt dyi/dt;
+        
+            % Number of boundary conditions at start/end
+            NBC0 = size(P0, 1);
+            NBC1 = size(P1, 1);
+            
+            % To have a well-define system of equations, we need one
+            % polynomial coefficient per boundary condition
+            Nc = NBC0 + NBC1;
+            
+            A1 = coder.nullcopy(zeros(NBC0, Nc));
+            A1(1,1) = 1;
+            for i = 2:NBC0
+                A1(i,i) = gamma(i); % gamma(n+1) = n!
+            end
+            
+            A2 = coder.nullcopy(zeros(NBC1, Nc));
+            A2(1,:) = 1;
+            for i = 2:NBC1
+                A2(i,:) = A2(i-1,:).*[zeros(1,i-2), 0:Nc+1-i];
+            end
+            
+            coefs = flip([A1;A2]\[P0; P1], 1);
+            obj = SplinePath([0 1], reshape(coefs', [2 1 Nc]));
+        end%fcn
+        
+        function obj = eta2(P, eta)
+        %ETA2   G2 continuous spline path.
+        %   OBJ = SplinePath.ETA2(P,ETA) constructs a G2-continuous spline
+        %   path OBJ connecting the sequence of points provided in P using
+        %   the parameter set ETA.
+        %   
+        %   Inputs:
+        %     P   - 4-by-(N+1) array of points [x; y; p; k] describing N
+        %           spline segments with positions (x,y) heading p and
+        %           curvature k at the break point.
+        %     ETA - Numeric parameter vector that controls per-segment
+        %           geometry. Two formats are supported:
+        %           * Full 4-element form: [eta1; eta2; eta3; eta4]
+        %             - eta1: scaling of the first-order tangential term at the start
+        %             - eta2: scaling of the first-order tangential term at the end
+        %             - eta3: parameter affecting second-derivative terms near the start
+        %             - eta4: parameter affecting second-derivative terms near the end
+        %           * Symmetric 2-element shortcut: [a; b]
+        %             - Internally expanded as [a; a; b; -b].
+        %   
+        %   Example:
+        %     % P is 2-by-(N+1) with N segments
+        %     P = [0 1 2; 0 0.5 0; 0 0 0; 0 0 0];
+        %     eta = [1.0; 0.5];
+        %     splineObj = SplinePath.eta2(P, eta);
+        %     splineObj.plot()
+        %   
+        %   References:
+        %    A. Piazzi and C. Guarino Lo Bianco, "Quintic G²-splines for
+        %    trajectory planning of autonomous vehicles," Proceedings of
+        %    the IEEE Intelligent Vehicles Symposium 2000, Dearborn, MI,
+        %    USA, 2000, pp. 198-203, doi: 10.1109/IVS.2000.898341.
+        %
+
+            % The number of spline segments
+            N = size(P,2) - 1;
+                        
+            coefs = coder.nullcopy(zeros(2,N,6));
+            for i = 1:N
+                coefs(:,i,:) = eta2Segment(eta, P(:,i), P(:,i+1));
+            end
+            obj = SplinePath(0:N, coefs);
+            
         end%fcn
         
         function obj = straight(P0, P1)
-        % STRAIGHT  Create straight path.
-        %   OBJ = SPLINEPATH.STRAIGHT(P0,P1) creates a straight path from
-        %   point P0 to P1.
-            
             x0 = P0(1);
             y0 = P0(2);
             x1 = P1(1);
@@ -738,25 +958,28 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
                 cat(3, [x1-x0; y1-y0], [x0; y0]), ...
                 hypot(x1-x0, y1-y0), ...
                 false);
-            
         end%fcn
         
         function obj = fromStruct(s)
             obj = SplinePath(s.breaks, s.coefs, s.lengths);
         end%fcn
         
-        function c = getBusDef()
+        function c = getBusDef(N, M)
+        % GETBUSDEF     Return bus information.
+        %   C = GETBUSDEF(N,M) returns the bus information cell C for a
+        %   SplinePath of at most N segments and degree M-1.
+        %
+        %   See also Path2D/getBusDef.
             BusName = 'SBus_SplinePath';
             HeaderFile = '';
             Description = '';
             BusElements = {...
-                {'breaks',      101, 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
-                {'coefs', [2,100,4], 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
-                {'lengths',     100, 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
+                {'breaks',    N+1, 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
+                {'coefs', [2 N M], 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
+                {'lengths',     N, 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
                 };
             c = {{BusName,HeaderFile,Description,BusElements}};
         end%fcn
-        
     end%methods
     
 end%class

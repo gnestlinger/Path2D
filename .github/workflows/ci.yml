@@ -34,4 +34,4 @@ jobs:
       - name: Run all tests
         uses: matlab-actions/run-command@v2
         with:
-          command: results = runtests('IncludeSubfolders', true); assertSuccess(results);
+          command: results = runtests('IncludeSubfolders', true); disp(results); assertSuccess(results);

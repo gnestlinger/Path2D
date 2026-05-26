@@ -1,46 +1,35 @@
 classdef XY2PathTest < matlab.unittest.TestCase
     
     properties(TestParameter)
-        x = {1:1:10, rand(10,1)}
-        y = {2:2:20, rand(10,1)}
+        XY = {...
+            {1:1:10, 2:2:20}; 
+            {linspace(-2,2,100), linspace(-2,2,100).^2}}
     end
-    
-    
-    methods (TestMethodSetup)
-        function setRandNumber(~)
-            rng(1);
-        end%fcn
-    end
-    
-    methods (TestMethodTeardown)
-        function resetRandNbr(~)
-            rng('default');
-        end%fcn
-    end
+
     
     
     methods(Test, ParameterCombination='exhaustive')
-        
-        function testXY2Path(testCase, x, y)
+        function testXY2Path(testCase, XY)
+            x = XY{1};
+            y = XY{2};
             [h,c] = originalAlgorithm(x, y);
             obj = PolygonPath.xy2Path(x, y);
             
-            testCase.verifyEqual(obj.x, x(:));
-            testCase.verifyEqual(obj.y, y(:));
-            testCase.verifyEqual(obj.head, h(:));
-            testCase.verifyEqual(obj.curv, c(:), 'AbsTol',1e-14);
+            verifyEqual(testCase, obj.x, x(:));
+            verifyEqual(testCase, obj.y, y(:));
+            verifyEqual(testCase, obj.head, h(:));
+            verifyEqual(testCase, obj.curv, c(:), 'AbsTol',1e-15);
         end%fcn
         
         function testArrayDims(testCase)
             exc = 'MATLAB:minrhs';
             a = 1:8;
             b = 1:9;
-            testCase.assertError(@() PolygonPath(a, b), exc);
-            testCase.assertError(@() PolygonPath(b, a), exc);
-            testCase.assertError(@() PolygonPath(a', b'), exc);
-            testCase.assertError(@() PolygonPath(b', a'), exc);
+            assertError(testCase, @() PolygonPath(a, b), exc);
+            assertError(testCase, @() PolygonPath(b, a), exc);
+            assertError(testCase, @() PolygonPath(a', b'), exc);
+            assertError(testCase, @() PolygonPath(b', a'), exc);
         end%fcn
-        
     end
     
 end%class
