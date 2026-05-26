@@ -156,7 +156,6 @@ classdef ConnectTestDubins < matlab.unittest.TestCase
             
             testCase.verifyFalse(dub.IsCircuit)
         end%fcn
-        
     end
     
 end%class
