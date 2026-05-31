@@ -22,6 +22,9 @@ function [xy,phi,s] = circularArcXline(C, r, phi0, dPhi, O, psi)
 %   See also LINESEGXCIRCLE.
 
 
+% Normalize psi to the interval [0, 2*pi)
+psi = mod(psi, 2*pi);
+
 % Direction vector of the line
 d = [cos(psi) sin(psi)];
 
@@ -43,19 +46,16 @@ else
     tau = -0.5*b;
 end
 
-
 % Intersection points and angles around center
 xy = bsxfun(@plus, O(:)', tau*d);
 phi = atan2(xy(:,2) - C(2), xy(:,1) - C(1)); % in (-pi,pi]
-
-
 
 % Normalize to [0,2pi)
 phi_2pi = mod(phi, 2*pi);
 phi0_2pi = mod(phi0, 2*pi);
 
 % Robust membership: forward angular distance from phi0 to tau in [0,2pi)
-absSweep = mod(dPhi, 2*pi);
+absSweep = min(abs(dPhi), 2*pi);
 epsAng = 1e-12;
 
 % if absSweep == 0
@@ -67,16 +67,17 @@ epsAng = 1e-12;
         deltaF = mod(phi_2pi - phi0_2pi, 2*pi);
         isOnArc = (deltaF >= -epsAng) & (deltaF <= absSweep + epsAng);
     else
-        % Negative sweep: backward motion; check forward distance from tau to phi0
-        deltaF_rev = mod(phi0_2pi - phi_2pi, 2*pi);
-        isOnArc = (deltaF_rev >= -epsAng) & (deltaF_rev <= absSweep + epsAng);
+        % Negative sweep: backward motion; accept forward delta <= absSweep
+        % Compute forward angular distance from phi to phi0 (i.e. how far
+        % you'd go if rotating forward from phi to reach phi0). If this
+        % distance is <= absSweep, then phi lies on the backward sweep.
+        deltaF = mod(phi0_2pi - phi_2pi, 2*pi);
+        isOnArc = (deltaF >= -epsAng) & (deltaF <= absSweep + epsAng);
     end
 % end
 
-
 phi = phi(isOnArc);
 xy = xy(isOnArc,:);
-
 
 % Compute signed angle from phi0 to intersection angle following the sweep
 % direction

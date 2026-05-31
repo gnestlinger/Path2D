@@ -236,16 +236,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                 
                 sig = double(sign(obj.SegmentTypes(i)));
                 if sig ~= 0 % Segment is a Circle
-                    phiA = Ah - pi/2;
-                    phiB = Bh - pi/2;
-                    
-                    C = points2CircleCenter([Ax;Ay], [Bx;By], r, sig);
-                    [xyi,~,si] = circularArcXline(C, r, sig*phiA, phiB - phiA, O, psi);
+                    C = head2CircleCenter([Ax;Ay], sig*r, Ah);
+                    [xyi,~,si] = circularArcXline(C, r, Ah - sig*pi/2, Bh - Ah, O, psi);
                     
                     % Compute normalized path parameter
                     taui = si/obj.SegmentLengths(i);
                     
-                    % Append 
+                    % Append
                     xy = [xy; xyi];
                     tau = [tau; taui + i - 1];
                 else
@@ -256,6 +253,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                     end
                 end
             end
+            errFlag = isempty(tau);
             
             % % At most two intersections per path segment!
             % assert(size(xy, 1) <= (size(xyPath, 1)-1)*2)
@@ -283,7 +281,48 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         end%fcn
         
         function [Q,idx,tau,dphi] = pointProjection(obj, poi, ~, doPlot)
-            error('Not implemented!')
+            
+            r = obj.TurningRadius;
+            
+            N = obj.numel();
+            Q = zeros(0,2);
+            idx = zeros(0,1);
+            tau = zeros(0,1);
+            for i = 1:N % Loop over path segments
+                [x01,y01,~,h01] = obj.eval([i-1 i]);
+                if obj.SegmentTypes(i) == 0
+                    p = PolygonPath(x01, y01, h01, [0;0]);
+                    [Qi,~,taui] = p.pointProjection(poi);
+                else
+                    sig = double(obj.SegmentTypes(i));
+                    C = head2CircleCenter([x01(1);y01(1)], sig*r, h01(1));
+                    psi = atan2(poi(2) - C(2), poi(1) - C(1));
+                    [Qi,~,si] = circularArcXline(C, r, h01(1) - sig*pi/2, diff(h01), C, psi);
+                    taui = si/obj.SegmentLengths(i);
+                end
+                
+                Q = [Q; Qi];
+                idx = [idx; repmat(i, [numel(taui) 1])];
+                tau = [tau; taui + i - 1];
+            end
+            dphi = zeros(numel(idx), 1);
+            
+            if (nargin > 3) && doPlot
+                [~,ax] = plot(obj, 'DisplayName','RefPath');
+                npState = get(ax, 'NextPlot');
+                set(ax, 'NextPlot','add');
+                plot(ax, obj.InitialPos(1), obj.InitialPos(2), 'g.', ...
+                    'MarkerSize',18, 'DisplayName','Initial point');
+                plot(ax, poi(1), poi(2), 'ro', 'DisplayName','PoI')
+                plot(ax, Q(:,1), Q(:,2), 'kx', 'DisplayName','Q')
+                legend('-DynamicLegend');
+                plot(ax, ...
+                    [Q(:,1)'; repmat([poi(1) NaN], size(Q,1),1)'],...
+                    [Q(:,2)'; repmat([poi(2) NaN], size(Q,1),1)'], 'k:', ...
+                    'DisplayName','Q-PoI'); 
+                set(ax, 'NextPlot',npState);
+            end%if
+            
         end%fcn
         
         function [obj,tau0,tau1] = restrict(obj, tau0, tau1)
@@ -291,7 +330,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         end%fcn
         
         function obj = reverse(obj)
-            error('Not implemented!')
+            [x1,y1,~,h1] = obj.eval(numel(obj));
+            obj.InitialPos = [x1; y1];
+            obj.InitialAng = h1 + pi;
+            obj.SegmentTypes = -flip(obj.SegmentTypes);
+            obj.SegmentLengths = flip(obj.SegmentLengths);
+            obj.ArcLengths = cumsum(obj.SegmentLengths)';
         end%fcn
         
         function obj = rotate(obj, phi)
@@ -309,7 +353,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         end%fcn
         
         function obj = select(obj, idxs)
-            error('Not implemented!')
+            obj.SegmentTypes = obj.SegmentTypes(idxs);
+            obj.SegmentLengths = obj.SegmentLengths(idxs);
+            obj.ArcLengths = cumsum(obj.SegmentLengths)';
         end%fcn
         
         function obj = shift(obj, P)
@@ -327,33 +373,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             end
             
         end%fcn
-        
-%         function [tau,idx] = s2tau(obj, s)
-%             
-%             if obj.length() < eps % Zero-length path
-%                 tau = nan(size(s));
-%                 idx = zeros(size(s), 'uint32');
-%                 if ~obj.isempty()
-%                     theIdx = abs(s) < eps;
-%                     tau(theIdx) = 0;
-%                     idx(theIdx) = 1;
-%                 end
-%                 return
-%             end
-%             
-%             if obj.IsCircuit
-%                 s = mod(s, obj.length());
-%             end
-%             
-%             S = obj.ArcLengths;
-%             [~,tmp] = histc(s, [0;S;inf]); %#ok<HISTC>
-%             idx = min(max(uint32(tmp), 1), numel(S));
-%             
-%             S = [0; S];
-%             ds = s - reshape(S(idx), size(s));
-%             tau = double(idx-1) + ds./reshape(S(idx+1) - S(idx), size(s));
-%         end%fcn
-        
+
         function [P0,P1] = termPoints(obj)
             
             if isempty(obj)
@@ -368,15 +388,19 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         end%fcn
         
         function write2file(obj, fn)
-        %WRITE2FILE		Write path to file.
-        %	WRITE2FILE(OBJ,FN) writes waypoints OBJ to file with filename
-        %	FN (specify extension!).
-        %	
+        %WRITE2FILE     Write path to file.
+        %   WRITE2FILE(OBJ,FN) writes waypoints OBJ to file with filename
+        %   FN (specify extension!).
+        %   
             error('Not implemented!')
         end%fcn
         
         function s = toStruct(obj)
-            error('Not implemented!')
+            s = struct(...
+                'turningRadius',obj.TurningRadius, ...
+                'segmentTypes',obj.SegmentTypes, ...
+                'segmentLengths',obj.SegmentLengths, ...
+                'initialPose',[obj.InitialPos; obj.InitialAng]);
         end%fcn
         
         %%% Set methods
@@ -569,9 +593,29 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         end%fcn
         
         function obj = fromStruct(s)
+            obj = DubinsPath(...
+                s.initialPose, ...
+                s.segmentTypes, ...
+                s.segmentLengths, ...
+                s.turningRadius);
         end%fcn
         
-        function c = getBusDef()
+        function c = getBusDef(N)
+        % GETBUSDEF     Return bus information.
+        %   C = GETBUSDEF(N) returns the bus information cell C for a
+        %   DubinsPath of at most N-1 segments.
+        %
+        %   See also Path2D/getBusDef.
+            BusName = 'SBus_DubinsPath';
+            HeaderFile = '';
+            Description = '';
+            BusElements = {...
+                {'turningRadius',   1, 'double', -1, 'real', 'Sample', 'Variable', [], [], 'm', ''},...
+                {'segmentTypes',    N, 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
+                {'segmentLengths',  N, 'double', -1, 'real', 'Sample', 'Variable', [], [], 'm', ''},...
+                {'initialPose',     3, 'double', -1, 'real', 'Sample', 'Variable', [], [], 'm/m/rad', ''},...
+                };
+            c = {{BusName,HeaderFile,Description,BusElements}};
         end%fcn
         
         function obj = connect(C0, C1, R)
@@ -610,12 +654,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             
         end%fcn
     end%methods
-    
 end%class
 
 
 function [x,y,c] = evalCircle(r, head)
-%EVALCIRCLE 	Evaluate Dubins circle.
+%EVALCIRCLE     Evaluate Dubins circle.
 
 % We can avoid calculating phi = head - pi/2 by using the identities
 %   cos(x - pi/2) = sin(x) and
@@ -626,15 +669,9 @@ c = 1/r*ones(size(x));
 
 end%fcn
 
-function C = points2CircleCenter(A, B, r, sign)
-
-v = B - A;
-a = 0.5*hypot(v(1), v(2));
-h = sqrt(r^2 - a^2);
-v = v/norm(v);
-v = [-v(2); v(1)];
-C = 0.5*(A + B) - double(sign)*h*v;
-
+function C = head2CircleCenter(P, r, head)
+coder.inline('always')
+C = P + r*[-sin(head); cos(head)];
 end%fcn
 
 function [w,s,l] = dubinsLSL(d, a, b)
