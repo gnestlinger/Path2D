@@ -4,8 +4,9 @@ classdef PointProjectionTestDubins < matlab.unittest.TestCase
         Dir = struct('Left',1, 'Right',-1)
     end
 
+
+    
     methods (Test)
-        
         function testUniqueSolutions(testCase)
         % Test for a unique solution.
         

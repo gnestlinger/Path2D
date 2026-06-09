@@ -108,7 +108,39 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         end%fcn
         
         function [sd,Q,idx,tau,dphi] = cart2frenet(obj, xy, ~, doPlot)
-            error('Not implemented!')
+            
+            if nargin < 4
+                doPlot = false;
+            end
+            
+            [Q,idx,tau,dphi] = obj.pointProjection(xy, [], doPlot);
+            if isempty(Q) % Find the break point closest to point of interest
+                [x,y] = obj.eval(0:numel(obj));
+                [~,minIdx] = min(hypot(x - xy(1), y - xy(2)));
+                Q = [x(minIdx) y(minIdx)];
+                tau = minIdx - 1;
+                idx = min(minIdx, numel(obj));
+            end
+            
+            % Get orientation vector at Q
+            [~,~,~,phi] = obj.eval(tau);
+            u = Q*0 + [cos(phi) sin(phi)];
+            
+            % Get sign via z-component of cross product U x (Q-XY)
+            qp = bsxfun(@minus, Q, xy(:)');
+            signD = sign(crossz(u, qp));
+            
+            sd = [obj.idxTau2s(idx, tau), ...
+                signD.*hypot(qp(:,1), qp(:,2))];
+            
+            if isempty(dphi)
+                ux = u(:,1);
+                uy = u(:,2);
+                dx = qp(:,1);
+                dy = qp(:,2);
+                dphi = abs(pi/2 - abs(atan2(ux.*dy - uy.*dx, ux.*dx + uy.*dy)));
+            end
+            
         end%fcn
         
         function obj = clear(obj)
@@ -223,6 +255,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         
         function [xy,tau,errFlag] = intersectCircle(obj, C, r, doPlot)
             error('Not implemented!')
+            
+            % See https://mathworld.wolfram.com/Circle-CircleIntersection.html
         end%fcn
         
         function [xy,tau,errFlag] = intersectLine(obj, O, psi, doPlot)
@@ -308,7 +342,11 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             dphi = zeros(numel(idx), 1);
             
             if (nargin > 3) && doPlot
-                [~,ax] = plot(obj, 'DisplayName','RefPath');
+                [~,breakIdx] = obj.sampleTau(100);
+                [~,ax] = plot(obj, 'DisplayName','RefPath', ...
+                    'Marker','.', ...
+                    'MarkerSize',10, ...
+                    'MarkerIndices',breakIdx);
                 npState = get(ax, 'NextPlot');
                 set(ax, 'NextPlot','add');
                 plot(ax, obj.InitialPos(1), obj.InitialPos(2), 'g.', ...
@@ -522,7 +560,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             
         end%fcn
         
-        function tau = sampleTau(obj, M)
+        function s = idxTau2s(obj, idx, tau)
+        %IDXTAU2S   Lengths from path segment IDX and path parameter TAU.
+            
+            stmp = [0; obj.ArcLengths];
+            s = stmp(idx) + obj.SegmentLengths(idx)'.*(tau - idx + 1);
+        end%fcn
+        
+        function [tau,breakIdx] = sampleTau(obj, M)
             
             % M samples per L/R segment, 1 sample per S segment and 1
             % additional sample for the final segment of any type
@@ -532,6 +577,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             Ns = sum((types == obj.STRAIGHT) & (lengths > 0));
             Nlr = Nnz - Ns;
             tau = coder.nullcopy(zeros(Nlr*M + Ns*1 + 1, 1));
+            breakIdx = coder.nullcopy(zeros(numel(obj), 1));
             
             i1 = 1;
             for i = 1:obj.numel()
@@ -550,6 +596,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                     taui = linspace(tau0, tau0 + 1, M+1)';
                 end
                 tau(i0:i1) = taui;
+                breakIdx(i) = i0;
             end%for
         end%fcn
         
