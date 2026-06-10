@@ -1,12 +1,18 @@
 classdef Cart2FrenetTestSpline < matlab.unittest.TestCase
     
+    properties (TestParameter)
+        DoPlot = {false}
+    end
+    
+    
+    
     methods (Test)
-        function testUniqueSolutions(testCase)
+        function testUniqueSolutions(testCase, DoPlot)
             cc = [-1/2 1 0];
             pp = mkpp([-2 0 2 4],[0 1 -2; -cc; 0 1 0; cc; 0 1 2; -cc], 2);
             obj = SplinePath.pp2Path(pp);
             
-            [sd,Q,idx,tau,dphi] = obj.cart2frenet([3 0], [], false);
+            [sd,Q,idx,tau,dphi] = obj.cart2frenet([3 0], [], DoPlot);
             testCase.verifyEqual(sd(1), 5.739, 'AbsTol',1e-4);
             testCase.verifyEqual(sd(2), -0.5);
             testCase.verifyEqual(Q, [3 -0.5], 'AbsTol',1e-12);
@@ -15,14 +21,14 @@ classdef Cart2FrenetTestSpline < matlab.unittest.TestCase
             testCase.verifyEqual(dphi, 0);
         end%fcn
         
-        function testTerminalSolutions(testCase)
+        function testTerminalSolutions(testCase, DoPlot)
 %             obj = SplinePath(0:3, cat(3, [1 1 1;0 0 0], [0 1 2; 1 1 1]));
             cc = [-1/2 1 0];
             pp = mkpp([0 2 4],[0 1 0; cc; 0 1 2; -cc], 2);
             obj = SplinePath.pp2Path(pp);
             
             % Initial point solution and others
-            [sd,Q,idx,tau,dphi] = obj.cart2frenet([1 -1], [], false);
+            [sd,Q,idx,tau,dphi] = obj.cart2frenet([1 -1], [], DoPlot);
             testCase.verifyEqual(sd(:,1), [0; 1.1478; 2.2956], 'AbsTol',2e-5);
             testCase.verifyEqual(sd(:,2), [sqrt(2); 1.5; sqrt(2)]);
             testCase.verifyEqual(Q, [0 0; 1 0.5; 2 0]);
@@ -32,7 +38,7 @@ classdef Cart2FrenetTestSpline < matlab.unittest.TestCase
             
             % End point solution and others; this call also tests the code
             % for repeated solutions!
-            [sd,Q,idx,tau,dphi] = obj.cart2frenet([3 1], [], false);
+            [sd,Q,idx,tau,dphi] = obj.cart2frenet([3 1], [], DoPlot);
             testCase.verifyEqual(sd(:,1), [2.2956 3.4434 4.5912]', 'AbsTol',5e-5);
             testCase.verifyEqual(sd(:,2), [-sqrt(2) -1.5 -sqrt(2)]');
             testCase.verifyEqual(Q, [2 0; 3 -0.5; 4 0]);
@@ -41,11 +47,11 @@ classdef Cart2FrenetTestSpline < matlab.unittest.TestCase
             testCase.verifyEqual(dphi, zeros(3,1));
         end%fcn
         
-        function testMultipleSolutions(testCase)
+        function testMultipleSolutions(testCase, DoPlot)
             cc = [-1/2 1 0];
             pp = mkpp([-2 0 2 4],[0 1 -2; -cc; 0 1 0; cc; 0 1 2; -cc], 2);
             obj = SplinePath.pp2Path(pp);
-            [sd,Q,idx,tau,dphi] = obj.cart2frenet([1 4], [], false);
+            [sd,Q,idx,tau,dphi] = obj.cart2frenet([1 4], [], DoPlot);
             
             testCase.verifyEqual(sd, [0.5104 -5.0421; 3.4434 -3.5; 6.3764 -5.0421], 'AbsTol',1e-3);
             testCase.verifyEqual(Q, [-1.6027 -0.3184; 1 0.5; 3.6027 -0.3184], 'AbsTol',1e-3);
@@ -54,13 +60,13 @@ classdef Cart2FrenetTestSpline < matlab.unittest.TestCase
             testCase.verifyEqual(dphi, zeros(3,1));
         end%fcn
         
-        function testFallbackSolution(testCase)
+        function testFallbackSolution(testCase, DoPlot)
             obj = SplinePath([0 1 2], ...
                 reshape([3 2 0; 0 2 0; 0 1 5; -1 0 2], 2, [], 3));
 %             [P0,P1] = obj.termPoints();
             
             % Fallback initial point
-            [sd,Q,idx,tau,dphi] = obj.cart2frenet([-1 -1], [], false);
+            [sd,Q,idx,tau,dphi] = obj.cart2frenet([-1 -1], [], DoPlot);
             verifySize(testCase, sd, [1 2]);
             verifySize(testCase, Q, [1 2]);
             verifySize(testCase, idx, [1 1]);
@@ -68,7 +74,7 @@ classdef Cart2FrenetTestSpline < matlab.unittest.TestCase
             verifySize(testCase, dphi, [1 1]);
             
             % Fallback end point
-            [sd,Q,idx,tau,dphi] = obj.cart2frenet([2 1], [], false);
+            [sd,Q,idx,tau,dphi] = obj.cart2frenet([2 1], [], DoPlot);
             verifySize(testCase, sd, [1 2]);
             verifySize(testCase, Q, [1 2]);
             verifySize(testCase, idx, [1 1]);
