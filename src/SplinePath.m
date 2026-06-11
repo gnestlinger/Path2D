@@ -100,6 +100,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) SplinePath < Path2D
             
         end%fcn
         
+        function b = breaks(obj)
+            b = obj.Breaks;
+        end%fcn
+        
         function [sd,Q,idx,tau,dphi] = cart2frenet(obj, xy, phiMax, doPlot)
             
             if nargin < 4

@@ -96,6 +96,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 [obj.curv; obj2.curv]);
         end%fcn
         
+        function b = breaks(obj)
+            b = 0:numel(obj.x);
+        end%fcn
+        
         function [sd,Q,idx,tau,dphi] = cart2frenet(obj, xy, ~, doPlot)
         %
         %   See also PATH2D/CART2FRENET.

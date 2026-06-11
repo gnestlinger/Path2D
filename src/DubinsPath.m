@@ -107,6 +107,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             error('Not implemented!')
         end%fcn
         
+        function b = breaks(obj)
+            b = 0:numel(obj.SegmentLengths);
+        end%fcn
+        
         function [sd,Q,idx,tau,dphi] = cart2frenet(obj, xy, ~, doPlot)
             
             if nargin < 4
@@ -275,17 +279,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                     
                     % Compute normalized path parameter
                     taui = si/obj.SegmentLengths(i);
-                    
-                    % Append
-                    xy = [xy; xyi];
-                    tau = [tau; taui + i - 1];
                 else
-                    [xyi,taus] = lineSegXline([Ax Ay; Bx By], O, psi);
-                    if ~isempty(taus)
-                        xy = [xy; xyi];
-                        tau = [tau; taus(1) + i - 1];
-                    end
+                    [xyi,taui] = lineSegXline([Ax Ay; Bx By], O, psi);
                 end
+                % Append
+                xy = [xy; xyi]; %#ok<AGROW>
+                tau = [tau; taui + i - 1]; %#ok<AGROW>
             end
             errFlag = isempty(tau);
             
@@ -301,7 +300,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                 [r1,r2] = scaleTangentToAxis(xlim(), ylim(), O, psi);
                 Pstart  = [O(1) + r2*cos(psi); O(2) + r2*sin(psi)];
                 Pstop   = [O(1) + r1*cos(psi); O(2) + r1*sin(psi)];
-                h = plot(ax, [Pstart(1) Pstop(1)], [Pstart(2) Pstop(2)], ...
+                plot(ax, [Pstart(1) Pstop(1)], [Pstart(2) Pstop(2)], ...
                     'Displayname','Line');
                 
                 plot(ax, xy(:,1), xy(:,2), 'kx', 'DisplayName','Intersections')
@@ -335,18 +334,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                     taui = si/obj.SegmentLengths(i);
                 end
                 
-                Q = [Q; Qi];
-                idx = [idx; repmat(i, [numel(taui) 1])];
-                tau = [tau; taui + i - 1];
+                Q = [Q; Qi]; %#ok<AGROW>
+                idx = [idx; repmat(i, [numel(taui) 1])]; %#ok<AGROW>
+                tau = [tau; taui + i - 1]; %#ok<AGROW>
             end
             dphi = zeros(numel(idx), 1);
             
             if (nargin > 3) && doPlot
-                [~,breakIdx] = obj.sampleTau(100);
-                [~,ax] = plot(obj, 'DisplayName','RefPath', ...
-                    'Marker','.', ...
-                    'MarkerSize',10, ...
-                    'MarkerIndices',breakIdx);
+                [~,ax] = plot(obj, 'DisplayName','RefPath');
                 npState = get(ax, 'NextPlot');
                 set(ax, 'NextPlot','add');
                 plot(ax, obj.InitialPos(1), obj.InitialPos(2), 'g.', ...
@@ -577,9 +572,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             Ns = sum((types == obj.STRAIGHT) & (lengths > 0));
             Nlr = Nnz - Ns;
             tau = coder.nullcopy(zeros(Nlr*M + Ns*1 + 1, 1));
-            breakIdx = coder.nullcopy(zeros(numel(obj), 1));
+            breakIdx = coder.nullcopy(zeros(numel(obj) + 1, 1));
             
             i1 = 1;
+            breakIdx(1) = 1;
             for i = 1:obj.numel()
                 si = lengths(i);
                 if si < eps
@@ -596,7 +592,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                     taui = linspace(tau0, tau0 + 1, M+1)';
                 end
                 tau(i0:i1) = taui;
-                breakIdx(i) = i0;
+                breakIdx(i+1) = i1;
             end%for
         end%fcn
         
