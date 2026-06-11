@@ -4,88 +4,90 @@ classdef IntersectLineTest < matlab.unittest.TestCase
         Offset = {0 1e1 1e2 1e3 1e4 1e5}
         
         DPhi = {0 -2*pi}
+        
+        DoPlot = {false}
     end
     
     
     
     methods (Test)
-        function testNoIntersection(testCase)
+        function testNoIntersection(testCase, DoPlot)
             
             obj0 = PolygonPath.xy2Path([0 1], [0 0]);
-            [act,tau] = intersectLine(obj0, [0 4], 2, false);
+            [act,tau] = intersectLine(obj0, [0 4], 2, DoPlot);
             exp = zeros(0,2);
             verifyEqual(testCase, act, exp);
             verifyEqual(testCase, tau, zeros(0,1));
         end%fcn
         
-        function testSingleIntersection(testCase)
+        function testSingleIntersection(testCase, DoPlot)
             
             obj0 = PolygonPath.xy2Path([-10 -2 0 4 10], [0 0 0 3 3]);
-            [act,tau] = intersectLine(obj0, [5 0], pi/2, false);
+            [act,tau] = intersectLine(obj0, [5 0], pi/2, DoPlot);
             exp = [5 3];
             verifyEqual(testCase, act, exp);
             verifyEqual(testCase, tau, 3+1/6);
         end%fcn
         
-        function testMultipleIntersections(testCase)
+        function testMultipleIntersections(testCase, DoPlot)
             
             obj0 = PolygonPath.xy2Path([0 5 8 8 5 0], [0 0 0 2 2 2]);
-            [act,tau] = intersectLine(obj0, [6 0], pi/2, false);
+            [act,tau] = intersectLine(obj0, [6 0], pi/2, DoPlot);
             exp = [6 0; 6 2];
             verifyEqual(testCase, act, exp, 'AbsTol',1e-12);
             verifyEqual(testCase, tau, [1+1/3;3+2/3]);
             
         end%fcn
         
-        function testIntersectionInitPoint(testCase, Offset, DPhi)
+        function testIntersectionInitPoint(testCase, Offset, DPhi, DoPlot)
             
             obj0 = PolygonPath.xy2Path([0 2 10 20] + Offset, [0 0 1 1] + Offset);
             
             % Intersection with initial point
-            [act,tau] = intersectLine(obj0, [2 -2] + Offset, 3*pi/4 + DPhi, false);
+            [act,tau] = intersectLine(obj0, [2 -2] + Offset, 3*pi/4 + DPhi, DoPlot);
             verifyEqual(testCase, act, [0 0] + Offset, 'AbsTol',1e-12);
             verifyEqual(testCase, tau, 0, 'AbsTol',1e-15);
         end
         
-        function testIntersectionEndPoint(testCase, Offset, DPhi)
+        function testIntersectionEndPoint(testCase, Offset, DPhi, DoPlot)
             
             obj0 = PolygonPath.xy2Path([-10 0 2 10] + Offset, [1 0 0 1] + Offset);
             
             % Intersection with end point
-            [act,tau] = intersectLine(obj0, [10 0] + Offset, pi/2 + DPhi, false);
+            [act,tau] = intersectLine(obj0, [10 0] + Offset, pi/2 + DPhi, DoPlot);
             verifyEqual(testCase, act, [10 1] + Offset, 'AbsTol',1e-12);
             verifyEqual(testCase, tau, 3);
         end%fcn
         
-        function testIntersectionWithWaypoint(testCase, Offset)
+        function testIntersectionWithWaypoint(testCase, Offset, DoPlot)
         % Test the intersection of a line with a non-terminal waypoint of
         % the path. This situation can cause redundant solutions, i.e. end
         % of segment k and start of segmen i+1.
         
             obj0 = PolygonPath.xy2Path([-1 0 1 2] + Offset, [0 0 1 2] + Offset);
             
-            [act,tau] = intersectLine(obj0, [2 0] + Offset, 3*pi/4, false);
+            [act,tau] = intersectLine(obj0, [2 0] + Offset, 3*pi/4, DoPlot);
             
             verifyEqual(testCase, act, [1 1] + Offset, 'AbsTol',1e-12);
             verifyEqual(testCase, tau, 2);
         end%fcn
         
-        function testSignReturnsZero(testCase)
+        function testSignReturnsZero(testCase, DoPlot)
         % Test where sign() returns zero.
         
             obj0 = PolygonPath.xy2Path(0:4, 0:4);
             
-            [act,tau] = intersectLine(obj0, [0 2], 0, false);
+            [act,tau] = intersectLine(obj0, [0 2], 0, DoPlot);
             
             verifyEqual(testCase, act, [2 2]);
             verifyEqual(testCase, tau, 2);
         end%fcn
         
-        function testTouchingIntersection(testCase)
+        function testTouchingIntersection(testCase, DoPlot)
             
             obj0 = PolygonPath.xy2Path([-1 1 2], [0.1 pi -exp(1)]);
             
-            [act,tau] = intersectLine(obj0, [0 pi], 0, false);
+            [act,tau] = intersectLine(obj0, [0 pi], 0, DoPlot);
             
             verifyEqual(testCase, act, [1 pi]);
             verifyEqual(testCase, tau, 1);

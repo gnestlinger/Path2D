@@ -1,41 +1,28 @@
-function [ax,obj,dtau,opts] = parsePlotInputs(varargin)
+function [axh,obj,dtau,opts] = parsePlotInputs(varargin)
 
-indAx = 0;
-indDtau = 0;
-indOpts = 0;
+% Init return values
+axh = gobjects(0,0);
+dtau = [];
+opts = {};
+
 for i = 1:nargin
     if isa(varargin{i}, 'Path2D') 
         % Handle via isa() to enter if-statement for subclasses
-        indObj = i;
+        obj = varargin{i};
         continue
     end
-
+    
     switch class(varargin{i})
         case 'matlab.graphics.axis.Axes'
-            indAx = i;
+            axh = varargin{i};
         case {'double','single','uint8', 'uint16', 'uint32', 'uint64'}
-            indDtau = i;
+            dtau = varargin{i};
         case 'char'
-            indOpts = i;
+            opts = varargin(i:end);
             break
         otherwise
             error('Unsupported input!');
     end
-end
-
-obj = varargin{indObj};
-
-ax = [];
-dtau = [];
-opts = {};
-if indAx > 0
-    ax = varargin{indAx};
-end
-if indDtau > 0
-    dtau = varargin{indDtau};
-end
-if indOpts > 0
-    opts = varargin(indOpts:end);
 end
 
 end%fcn
