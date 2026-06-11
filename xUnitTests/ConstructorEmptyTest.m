@@ -3,10 +3,11 @@ classdef ConstructorEmptyTest < matlab.unittest.TestCase
     properties (TestParameter)
         PathEmpty = struct(...
             'PolygonPath', PolygonPath(), ...
-            'SplinePath', SplinePath());
+            'SplinePath', SplinePath(), ...
+            'DubinsPath', DubinsPath());
     end
     
-    
+
     methods (Test)
         
         function testConstructorNoArgs(testCase, PathEmpty)

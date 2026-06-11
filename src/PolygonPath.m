@@ -96,6 +96,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
                 [obj.curv; obj2.curv]);
         end%fcn
         
+        function b = breaks(obj)
+            b = 0:numel(obj.x);
+        end%fcn
+        
         function [sd,Q,idx,tau,dphi] = cart2frenet(obj, xy, ~, doPlot)
         %
         %   See also PATH2D/CART2FRENET.
@@ -505,62 +509,13 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         %   >> s = PolygonPath.xy2Path([0 0 -3 -2 -4 -3 1 1], [0 1 2 3 4 5 4 0]);
         %   >> intersectCircle(s, [-1 3], 2, true)
             
-            % Brute force approach: check every path segment
-            idxs = (1:obj.numel())';
-            x0 = obj.x - C(1);
-            dx = diff(x0);
-            x0(end) = [];
-            y0 = obj.y - C(2);
-            dy = diff(y0);
-            y0(end) = [];
-            
-            % Each path segment is written as a line P(t) = P0 + t*(P1-P0)
-            % from its initial point P0 to its end point P1, where t =
-            % [0,1]. This results in
-            %   [x0 + t(x1-x0)]^2 + [y0 + t(y1-y0)]^2 = r^2
-            % which requires solving a quadratic polynomial 
-            %   a*t^2 + b*t + c = 0
-            a = dx.^2 + dy.^2;
-            b = 2*(x0.*dx + y0.*dy);
-            c = x0.^2 + y0.^2 - r^2;
-            discriminant = b.^2 - 4*a.*c;
-            
-            %%% Case 1: Discriminant > 0
-            % We have two solutions from the quadratic equation (per
-            % segment), i.e. a secant line.
-            isSecant = (discriminant > 0);
-            xi = sqrt(discriminant(isSecant));
-            tauSecant = 0.5*[...
-                (-b(isSecant) + xi)./a(isSecant); ...
-                (-b(isSecant) - xi)./a(isSecant)];
-            idxSecant = repmat(idxs(isSecant), [2,1]);
-            isValidSec = ~((tauSecant < 0) | (tauSecant > 1));
-            
-            %%% Case 2: Discriminant = 0
-            % We have one solution from the quadratic equation (per
-            % segment), i.e. a tangent line.
-            isTangent = ~((discriminant < 0) | isSecant); % (discriminant == 0)
-            tauTangent = -0.5*b(isTangent)./a(isTangent);
-            idxTangent = idxs(isTangent);
-            isValidTan = ~(tauTangent < 0) & (tauTangent < 1);
-            
-            %%% Case 3: Discriminant < 0
-            % Quadratic formula has complex solutions -> No intersections
-            
-            % Combined set of solutions
-            tauLoc = [tauSecant(isValidSec); tauTangent(isValidTan)];
-            segIdx = [idxSecant(isValidSec); idxTangent(isValidTan)];
-            
-            % Set return values
-            tau = sort(segIdx - 1 + tauLoc, 'ascend');
-            [x,y] = obj.eval(tau);
-            xy = [x,y];
+            [xy,tau] = lineSegXCircle([obj.x obj.y], C, r);
             errFlag = isempty(tau);
             
             % At most two intersections per path segment!
             assert(size(xy, 1) <= (numel(obj.x)-1)*2)
             assert(size(xy, 1) == size(tau, 1))
-                
+            
             if (nargin > 3) && doPlot
                 [~,ax] = plot(obj, 'Marker','.');
                 npState = get(ax, 'NextPlot');
@@ -575,63 +530,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) PolygonPath < Path2D
         
         function [xy,tau,errFlag] = intersectLine(obj, O, psi, doPlot)
             
-            % Shift by line origin O and rotate so that the line is
-            % horizontal -> We can find intersections by checking where the
-            % path's y-components equals zero!
-            R = rotmat2D(psi);
-            xyPath = [obj.x - O(1), obj.y - O(2)] * R;
-            xPath = xyPath(:,1);
-            yPath = xyPath(:,2);
-            
-            % Find segment indexes where the paths y-component (A) changes
-            % sign or (B) equals zero using sign(), which returns 0 only
-            % for inputs that are exactly equal to zero. We try to catch
-            % values almost equal to zero via a magic threshold.
-            signsA = int8(sign(yPath)); 
-            signsB = abs(yPath) <= eps(O(1));
-            signsA(signsB) = int8(0);
-            idxs0 = find([abs(diff(signsA)) > 1; false] | signsB);
-            idxs0 = min(idxs0, obj.numel());
-            
-            if isempty(idxs0) % No intersection of path/line
-                xy = zeros(0, 2);
-                tau = zeros(0,1);
-                errFlag = true;
-            else
-                % End index can not exceed number of path samples since
-                % indexes were obtained using DIFF!
-                idxsE = idxs0 + 1;
-                x0F = [xPath(idxs0), xPath(idxsE)];
-                y0Fd = diff([yPath(idxs0), yPath(idxsE)], 1, 2);
-                x = xPath(idxs0) - yPath(idxs0) .* diff(x0F, 1, 2)./y0Fd; 
-                
-                % Undo transformation. Due to the above rotation/shift, the
-                % intersections y-component is zero. Therefore, only the
-                % x-component needs to be rotated.
-%                 xy = (R * [x';zeros(1,numel(x))] + repmat(O(:), [1,numel(x)]))';
-                xy = [R(1,1)*x + O(1), R(2,1)*x + O(2)];
-                
-                % Since we assume linear interpolation between waypoints,
-                % the local path segment parameter can be computed from x
-                % or y
-%                 tauLocal = (x - x0F(1))/diff(x0F);
-                tauLocal = -yPath(idxs0)./y0Fd;
-                tau = idxs0 - 1 + tauLocal;
-                errFlag = false;
-            end%if
-            
-%             % Alternative approach using matrix inversion
-%             Q1 = O(:) + [cos(psi); sin(psi)];
-%             tau = zeros(0,1);
-%             for i = 1:numel(obj)
-%                P0 = [obj.x(i) obj.y(i)]; 
-%                P1 = [obj.x(i+1) obj.y(i+1)];
-%                [~,tauPQ] = lineLineIntersection(P0, P1, O, Q1);
-%                taui = tauPQ(1);
-%                if taui >= 0 && taui <= 1
-%                    tau = [tau; taui + i - 1];
-%                end
-%             end
+            [xy,tau] = lineSegXline([obj.x obj.y], O, psi);
+            errFlag = isempty(tau);
             
             if (nargin > 3) && doPlot
                 [~,ax] = plot(obj, 'Marker','.', 'MarkerSize',8);

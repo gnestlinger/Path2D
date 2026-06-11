@@ -24,6 +24,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   shift - Shift path.
 % 
 %   Path2D path operations:
+%   breaks - The paths break points.
 %   cart2frenet - Convert cartesian point to frenet coordinates.
 %   cumlengths - Cumulative path segment lengths.
 %   domain - Domain of the path.
@@ -371,13 +372,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
                 hr = h;
                 axr = ax;
             end
-            
         end%fcn
         
         function [hr,axr] = plotG2(varargin)
         %PLOTG2     Plot path, heading and curvature.
         %
-        %    For syntax see also PATH2D/PLOT.
+        %   For syntax see also PATH2D/PLOT.
             
             [ax,obj,dtau,opts] = parsePlotInputs(varargin{:});
             
@@ -594,8 +594,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   PLOTXY(AXH,OBJ,TAU,VARARGIN) plots path OBJ into axes AXH
         %   evaluated at TAU applying line specifications via VARARGIN.
         % 
-        %   [H,AXH,TAU] = PLOTXY(___) return line handles H, axes handle H and path
-        %   parameter TAU.
+        %   [H,AXH,TAU] = PLOTXY(___) return line handles H, axes handle H
+        %   and path parameter TAU.
         %
         %   NOTE: This method supports non-scalar inputs OBJ!
 
@@ -605,7 +605,14 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             end%if
             npState = get(axh, 'NextPlot');
 
-            isDisplayNameProvided = any(strcmp('DisplayName', varargin));
+            % Extract name-value pairs from plot options
+            if mod(numel(varargin), 2) > 0
+                nvOpts = varargin(2:end);
+            else
+                nvOpts = varargin;
+            end
+            
+            isDisplayNameProvided = any(strcmp('DisplayName', nvOpts));
 
             % Plot paths
             N = builtin('numel', obj);
@@ -615,6 +622,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
                     set(axh, 'NextPlot','add');
                 end%if
 
+                % Get the x/y-values
                 obji = obj(i);
                 if isempty(tauIn) || isempty(obji)
                     [x,y,tau] = obji.eval();
@@ -626,7 +634,8 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
                     end
                     [x,y] = obji.eval(tau);
                 end
-
+                
+                % Plot data on axis
                 if isDisplayNameProvided
                     hi = plot(axh, x, y, varargin{:});
                 else
@@ -637,6 +646,12 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
                     end
                     hi = plot(axh, x, y, varargin{:}, 'DisplayName',name);
                 end%if
+                
+                % When running R2016b or newer, show break points
+                if ~verLessThan('matlab','9.1')
+                    idxs = find(ismember(tau, obj.breaks()));
+                    set(hi, 'MarkerIndices',idxs, 'Marker','.', nvOpts{:});
+                end
                 if ~isempty(hi)
                     h(i) = hi;
                 end
@@ -671,6 +686,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   OBJ = append(OBJ0,OBJ1,...,OBJN) appends paths OBJ to OBJN in
         %   the given order creating path OBJ.
         obj = append(obj0, varargin)
+        
+        % BREAKS    Get break points.
+        %   B = BREAKS(OBJ) returns the breaks B of the path OBJ. 
+        b = breaks(obj)
         
         % CART2FRENET    Cartesian point to frenet with respect to path.
         %   SD = CART2FRENET(OBJ,XY,PHIMAX) converts point of interest XY
