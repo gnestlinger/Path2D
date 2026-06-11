@@ -1,12 +1,18 @@
 classdef Cart2FrenetTestDubins < matlab.unittest.TestCase
     
+    properties (TestParameter)
+        DoPlot = {false}
+    end
+    
+    
+    
     methods (Test)
-        function testUniqueSolutions(testCase)
+        function testUniqueSolutions(testCase, DoPlot)
             
             r = 2;
             obj = DubinsPath([0 0 0], [1 0 -1], [pi 3 pi], r);
             
-            [sd,Q,idx,tau,dphi] = obj.cart2frenet([3 4], [], false);
+            [sd,Q,idx,tau,dphi] = obj.cart2frenet([3 4], [], DoPlot);
             verifyEqual(testCase, sd(1), r*pi/2 + 2, 'AbsTol',1e-4);
             verifyEqual(testCase, sd(2), 1);
             verifyEqual(testCase, Q, [2 4]);
@@ -15,13 +21,13 @@ classdef Cart2FrenetTestDubins < matlab.unittest.TestCase
             verifyEqual(testCase, dphi, 0);
         end%fcn
         
-        function testInitialPointSolution(testCase)
+        function testInitialPointSolution(testCase, DoPlot)
         % Check for initial point solution
             
             r = 2;
             obj = DubinsPath([0 0 0], [1 0 -1], [pi 3 pi], r);
             
-            [sd,Q,idx,tau,dphi] = obj.cart2frenet([0 -1], [], false);
+            [sd,Q,idx,tau,dphi] = obj.cart2frenet([0 -1], [], DoPlot);
             verifyEqual(testCase, sd(:,1), 0);
             verifyEqual(testCase, sd(:,2), 1);
             verifyEqual(testCase, Q, [0 0], 'AbsTol',4e-16);
@@ -30,13 +36,13 @@ classdef Cart2FrenetTestDubins < matlab.unittest.TestCase
             verifyEqual(testCase, dphi, 0);
         end%fcn
         
-        function testEndPointSolution(testCase)
+        function testEndPointSolution(testCase, DoPlot)
         % Check for end point solution
             
             r = 2;
             obj = DubinsPath([0 0 0], [1 0 -1], [pi 3 pi], r);
             
-            [sd,Q,idx,tau,dphi] = obj.cart2frenet([4 8], [], false);
+            [sd,Q,idx,tau,dphi] = obj.cart2frenet([4 8], [], DoPlot);
             verifyEqual(testCase, sd(:,1), r*pi + 3, 'AbsTol',2e-5);
             verifyEqual(testCase, sd(:,2), -1);
             verifyEqual(testCase, Q, [4 7]);
@@ -45,12 +51,12 @@ classdef Cart2FrenetTestDubins < matlab.unittest.TestCase
             verifyEqual(testCase, dphi, 0);
         end%fcn
         
-        function testMultipleSolutions(testCase)
+        function testMultipleSolutions(testCase, DoPlot)
             
             r = 2;
             obj = DubinsPath([0 0 0], [1 0 -1 0 -1 0], [r*0.75*pi 1 r*0.75*pi 1 pi 1], r);
             
-            [sd,Q,idx,tau,dphi] = obj.cart2frenet([2.5 5], [], false);
+            [sd,Q,idx,tau,dphi] = obj.cart2frenet([2.5 5], [], DoPlot);
             
             verifyEqual(testCase, sd, [...
                 5.065942 1.889087;
@@ -69,14 +75,14 @@ classdef Cart2FrenetTestDubins < matlab.unittest.TestCase
             verifyEqual(testCase, dphi, zeros(5,1));
         end%fcn
         
-        function testFallbackInitialPoint(testCase)
+        function testFallbackInitialPoint(testCase, DoPlot)
         % Fallback solution at initial point
             
             r = 2;
             obj = DubinsPath([0 0 0], [1 0 -1], [r*0.75*pi 1 r*0.75*pi], r);
             P0 = obj.termPoints();
             
-            [sd,Q,idx,tau,dphi] = obj.cart2frenet([-1 -1], [], false);
+            [sd,Q,idx,tau,dphi] = obj.cart2frenet([-1 -1], [], DoPlot);
             verifyEqual(testCase, sd, [0 sqrt(2)]);
             verifyEqual(testCase, Q, P0(:)');
             verifyEqual(testCase, idx, 1);
@@ -84,7 +90,7 @@ classdef Cart2FrenetTestDubins < matlab.unittest.TestCase
             verifyEqual(testCase, dphi, pi/4);
         end%fcn
         
-        function testFallbackEndPoint(testCase)
+        function testFallbackEndPoint(testCase, DoPlot)
         % Fallback solution at end point
             
             r = 2;
@@ -100,7 +106,7 @@ classdef Cart2FrenetTestDubins < matlab.unittest.TestCase
             [~,P1] = obj.termPoints();
             S = length(obj);
             
-            [sd,Q,idx,tau,dphi] = obj.cart2frenet([3 7], [], false);
+            [sd,Q,idx,tau,dphi] = obj.cart2frenet([3 7], [], DoPlot);
             verifyEqual(testCase, sd, [S 0]);
             verifyEqual(testCase, Q, P1(:)');
             verifyEqual(testCase, idx, 3);
@@ -108,7 +114,7 @@ classdef Cart2FrenetTestDubins < matlab.unittest.TestCase
             verifyEqual(testCase, dphi, pi/2);
         end%fcn
         
-        % function testFallbackNonTerminalPoint(testCase)
+        % function testFallbackNonTerminalPoint(testCase, DoPlot)
         % % Fallback non-terminal point
         %     % TODO
         % end%fcn

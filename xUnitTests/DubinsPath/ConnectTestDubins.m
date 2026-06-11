@@ -27,6 +27,8 @@ classdef ConnectTestDubins < matlab.unittest.TestCase
             {[5 2 pi/2], [1 2 -pi/2], 3}}
     end
     
+    
+    
     methods (Test, ParameterCombination='sequential')
         function testRightTurn(testCase, ConfigsRight)
 

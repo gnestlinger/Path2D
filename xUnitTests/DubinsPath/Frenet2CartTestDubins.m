@@ -3,17 +3,19 @@ classdef Frenet2CartTestDubins < matlab.unittest.TestCase
     properties (TestParameter)
         PathObj = {DubinsPath([0 0 0], [0 1 -1], [1 pi/2 pi/2], 2)}
         DSet = {-1 +1 3 -4}
+        
+        DoPlot = {false}
     end
     
     
         
     methods (Test)
         
-        function testFrenet2Cart(testCase, PathObj)
+        function testFrenet2Cart(testCase, PathObj, DoPlot)
             
             s = [0 0.5 linspace(1, PathObj.length(), 6)];
             d = zeros(size(s));
-            [xy,Q,idx,tau] = PathObj.frenet2cart([s; d]', false);
+            [xy,Q,idx,tau] = PathObj.frenet2cart([s; d]', DoPlot);
             
             % Test the distance from Q to xy
             dAct = hypot1Arg(xy - Q);
@@ -28,11 +30,11 @@ classdef Frenet2CartTestDubins < matlab.unittest.TestCase
             verifyEqual(testCase, tau, [0 0.5 1 1.4 1.8 2.2 2.6 3]');
         end%fcn
         
-        function testFrenet2CartVariedD(testCase, PathObj, DSet)
+        function testFrenet2CartVariedD(testCase, PathObj, DSet, DoPlot)
             
             s = [0 0.5 linspace(1, PathObj.length(), 6)];
             d = DSet*ones(size(s));
-            [xy,Q,idx,tau] = PathObj.frenet2cart([s; d]', false);
+            [xy,Q,idx,tau] = PathObj.frenet2cart([s; d]', DoPlot);
             
             % Test the distance from Q to xy
             dAct = hypot1Arg(xy - Q);
@@ -43,17 +45,17 @@ classdef Frenet2CartTestDubins < matlab.unittest.TestCase
             verifyEqual(testCase, tau, [0 0.5 1 1.4 1.8 2.2 2.6 3]');
         end%fcn
         
-        function testOutOfBound(testCase, PathObj)
+        function testOutOfBound(testCase, PathObj, DoPlot)
             
             % Pre-path/post-path  solution
-            [xy,Q,idx,tau] = PathObj.frenet2cart([-1 1; 5 1], false);
+            [xy,Q,idx,tau] = PathObj.frenet2cart([-1 1; 5 1], DoPlot);
             testCase.verifyEqual(xy, [-1 1; 5.076867634387 1.899465155730], 'AbsTol',1e-12);
             testCase.verifyEqual(Q, [-1 0; 4.660720797840 0.990167728905], 'AbsTol',1e-12);
             testCase.verifyEqual(idx, uint32([1; 3]));
             testCase.verifyEqual(tau, [-1; 3.546479089470], 'AbsTol',1e-12);
         end%fcn
         
-        function testCircuit(testCase)
+        function testCircuit(testCase, DoPlot)
             % TODO
         end%fcn
         
