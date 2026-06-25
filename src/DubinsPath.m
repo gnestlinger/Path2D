@@ -20,17 +20,19 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
 
 
 
-    properties (SetAccess = private)
+    properties (SetAccess = immutable)
         % TurningRadius - Turning radius
         %   The radius of circular arc path segments.
         TurningRadius = 1
-        
+    end
+   
+    properties (SetAccess = private)
         % SegmentTypes - Segment types
         %   1 ... Left turn
         %   0 ... Straight line
         %  -1 ... Right turn
         SegmentTypes = zeros(1,0, 'int8')
-
+        
         % SegmentLengths - Segment lengths
         SegmentLengths = zeros(1,0)
         
@@ -80,6 +82,9 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             if nargin < 1
                 % Return with default values
                 return
+            elseif nargin == 1
+                obj.TurningRadius = validateTurningRadius(startPose);
+                return
             end
             
             P0 = startPose(1:2);
@@ -91,7 +96,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
                 'Number of path property elements must be equal!');
             obj.SegmentTypes = types;
             obj.SegmentLengths = lengths;
-            obj.TurningRadius = R;
+            obj.TurningRadius = validateTurningRadius(R);
             
             obj.ArcLengths = cumsum(obj.SegmentLengths)';
               
@@ -104,7 +109,10 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         end%Constructor
         
         function obj = append(obj, obj2)
-            error('Not implemented!')
+            assert(obj.TurningRadius == obj2.TurningRadius)
+            
+            obj.SegmentTypes = [obj.SegmentTypes obj2.SegmentTypes];
+            obj.SegmentLengths = [obj.SegmentLengths obj2.SegmentLengths];
         end%fcn
         
         function b = breaks(obj)
@@ -402,7 +410,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             
             % BUILTIN is supported for code-generation starting with R2017b
             for i = 1:builtin('numel', obj)
-                obj(i).InitialPos = obj(i).InitialPos + P;
+                obj(i).InitialPos = obj(i).InitialPos + P(:);
             end
             
         end%fcn
@@ -448,11 +456,6 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
         
         function obj = set.SegmentTypes(obj, val)
             obj.SegmentTypes = int8(val(:)');
-        end%fcn
-        
-        function obj = set.TurningRadius(obj, val)
-            assert(isscalar(val) && isnumeric(val) && val > 0);
-            obj.TurningRadius = double(val);
         end%fcn
     end%methods
     
@@ -654,7 +657,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) DubinsPath < Path2D
             Description = '';
             BusElements = {...
                 {'turningRadius',   1, 'double', -1, 'real', 'Sample', 'Variable', [], [], 'm', ''},...
-                {'segmentTypes',    N, 'double', -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
+                {'segmentTypes',    N, 'int8',   -1, 'real', 'Sample', 'Variable', [], [], '', ''},...
                 {'segmentLengths',  N, 'double', -1, 'real', 'Sample', 'Variable', [], [], 'm', ''},...
                 {'initialPose',     3, 'double', -1, 'real', 'Sample', 'Variable', [], [], 'm/m/rad', ''},...
                 };
@@ -717,6 +720,11 @@ coder.inline('always')
 C = P + r*[-sin(head); cos(head)];
 end%fcn
 
+function val = validateTurningRadius(val)
+assert(isscalar(val) && isnumeric(val) && val > 0);
+val = double(val);
+end%fcn
+
 function [w,s,l] = dubinsLSL(d, a, b)
 
 w = coder.const(uint8([1;0;1]));
@@ -726,7 +734,7 @@ if p2 < 0
     l = [0;0;0];
     return
 end
-    
+
 p = sqrt(p2);
 tmp = atan2(cos(b)-cos(a), d+sin(a)-sin(b));
 t = mod2pi(tmp - a);
