@@ -39,6 +39,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   pointProjection - Point projection on path.
 %   s2tau - Path length to path parameter.
 %   termPoints - Terminal points.
+%   sfgvf - Singularity-free guiding vector field.
 %   vectorField - Vector field towards path.
 % 
 %   Path2D visualization methods:
@@ -52,7 +53,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
 %   xy2Path - Construct path from cartesian coordinates.
 %   circle - Construct circle.
 %   straight - Construct straight path.
-%   getBusDef - Get bus defintion.
+%   getBusDef - Get bus definition.
 %
 %   See also PolygonPath, SplinePath.
     
@@ -266,6 +267,127 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
             obj.IsCircuit = (norm(P1 - P0) < ths);
         end%fcn
         
+        function [chi1,chi2,chi3] = sfgvf(obj, x, y, tau, k, objD, doPlot)
+        % SFGVF     Singularity-Free Guiding Vector Field.
+        %   [FX,FY,FZ] = SFGVF(OBJ,X,Y,TAU) computes the 3D vector field
+        %   (FX,FY,FZ) for the set of query points (X,Y) and reference path
+        %   parameters TAU.
+        %
+        %   [___] = SFGVF(OBJ,X,Y,TAU,K) specifies the vector of positive
+        %   gains K = [KX KY] used to weight the normal components in the
+        %   augmented vector field. Default: K = [1 1].
+        %
+        %   [___] = SFGVF(OBJ,X,Y,TAU,K,OBJD) supplies a pre-computed
+        %   derivative-path object OBJD. If empty or omitted the derivative
+        %   is computed internally.
+        %
+        %   [___] = SFGVF(...,DOPLOT) when DOPLOT is true produces a set of
+        %   subplot visualizations showing the path, a marker for the
+        %   reference point and quiver plots of the 2D vector field for a
+        %   subset of TAU. Default: false.
+        % 
+        %   Notes
+        %    - Inputs X and Y must have the same size.
+        %    - Outputs Fx, Fy, Fz are of size size(X)-by-numel(TAU).
+        %
+        %   References:
+        %    [1] A. González-Calvin, L. García-Pérez and J.F. Jiménez,
+        %    (2025), "Singularity-Free Guiding Vector Field Over Bézier's
+        %    Curves Applied to Rovers Path Planning and Path Following" in
+        %    Journal of Field Robotics, 42: 2720-2739.
+        %    https://doi.org/10.1002/rob.22541
+        % 
+        %    [2] W. Yao, H. G. de Marina, B. Lin and M. Cao,
+        %    "Singularity-Free Guiding Vector Field for Robot Navigation"
+        %    in IEEE Transactions on Robotics, vol. 37, no. 4, pp.
+        %    1206-1221, Aug. 2021, https://doi.org/10.1109/TRO.2020.3043690
+        %
+        %   Example:
+        %   obj = SplinePath.bezier2Path([1 1; 3 -4; 1 0; 3 4; 1 -1]');
+        %   [X,Y] = meshgrid(1:0.1:2, -1.2:0.1:1.2);
+        %   obj.sfgvf(X, Y, linspace(obj.Breaks(1),obj.Breaks(end),100), [1 1], [], true)
+            
+            assert(isequal(size(x), size(y)))
+            
+            if nargin < 5 || isempty(k)
+                k = [1 1];
+            end
+            
+            if (nargin < 6) || isempty(objD)
+                objD = obj.derivative();
+            end
+            
+            w = tau(:);
+            
+            % Zero-level surfaces, see [1, Eq. (5)]
+            [f1,f2] = obj.eval(w);
+            phi1 = bsxfun(@minus, x(:), f1');
+            phi2 = bsxfun(@minus, y(:), f2');
+            
+            % Augmented vector field, see [1, Eq. (9)]
+            [gf1,gf2] = objD.eval(w);
+            chi1 = reshape(bsxfun(@minus, gf1', k(1)*phi1), [size(x) numel(tau)]);
+            chi2 = reshape(bsxfun(@minus, gf2', k(2)*phi2), [size(y) numel(tau)]);
+            chi3 = reshape(1 +...
+                bsxfun(@times, k(1)*phi1, gf1') + bsxfun(@times, k(2)*phi2, gf2'), ...
+                [size(x) numel(tau)]);
+            
+            if (nargin > 6) && doPlot
+                assert(ismatrix(x) && ismatrix(y), 'X and Y must be matrices!')
+                if isscalar(w)
+                    wi = w;
+                else 
+                    wi = linspace(w(1), w(end), 9);
+                end
+                for i = 1:numel(wi)
+                    [~,ind] = min(abs(w - wi(i)));
+                    wi(i) = w(ind);
+                
+                    axi = subplot(3, 3, i);
+                    hi = plot(axi, f1, f2, 'r');
+                    hold(axi, 'on');
+                    if ~verLessThan('matlab','9.1') % 2016b or newer
+                        set(hi, 'MarkerIndices',ind, 'Marker','o', ...
+                            'MarkerFaceColor','r')
+                    end
+                    quiver(axi, x, y, chi1(:,:,ind), chi2(:,:,ind), 'k');
+                    title(axi, ['w = ', num2str(wi(i))])
+                    grid(axi, 'on');
+                    hold(axi, 'off');
+                end
+                
+                % if isa(obj, 'SplinePath')
+                %     % Draw the surfaces phi_1 = 0 and phi2 = 0. Implemented
+                %     % only for first path segment!
+                %     clf('reset')
+                %     plot3(f1, f2, w, 'r', 'DisplayName','Augmented path')
+                %     ax = gca;
+                %     set(ax, 'XGrid','on', 'YGrid','on', 'ZGrid','on')
+                %     xlabel(ax, 'X')
+                %     ylabel(ax, 'Y')
+                %     zlabel(ax, 'Z')
+                %     legend(ax, 'show')
+                % 
+                %     hold(ax, 'on')
+                %     surfStyle = {'EdgeColor','k', 'EdgeAlpha',0.2, 'FaceAlpha',0.1};
+                %     [x_,phi1_] = sfgvfRoots(unique(x), permute(obj.Coefs(1,1,:), [2 3 1]));
+                %     [X_,Y_] = meshgrid(x_, unique(y));
+                %     surf(X_, Y_, repmat(phi1_', [size(X_,1) 1]), surfStyle{:}, ...
+                %         'FaceColor','y', ...
+                %         'DisplayName','\phi_1 = 0');
+                % 
+                %     [y_,phi2_] = sfgvfRoots(unique(y), permute(obj.Coefs(2,1,:), [2 3 1]));
+                %     [X_,Y_] = meshgrid(unique(x), y_);
+                %     surf(X_, Y_, repmat(phi2_, [1 size(X_,2)]), surfStyle{:}, ...
+                %         'FaceColor','m', ...
+                %         'DisplayName','\phi_2 = 0');
+                % 
+                %     view([-30 30])
+                %     hold(ax, 'off')
+                % end
+            end
+        end%fcn
+        
         function [Fx,Fy] = vectorField(obj, x, y, kf, doPlot)
         %VECTORFIELD    Vector field towards path.
         %   [FX,FY] = VECTORFIELD(OBJ,X,Y) computes the vector field F(X,Y)
@@ -275,7 +397,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %   normal over the tangential component of the vector field.
         %   Default value: 1.
         %   
-        %   EXAMPLES: 
+        %   Examples: 
         %    po = PolygonPath.straight([0 0], [10 5]);
         %    [x,y] = meshgrid(linspace(-5,15,41), linspace(-5,10,31));
         %    po.vectorField(x, y, 1, true);
@@ -284,7 +406,7 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
         %    [x,y] = meshgrid(linspace(-5,5,21), linspace(-5,5,21));
         %    po.vectorField(x, y, 1, true);
         % 
-        %   REFERENCES:
+        %   References:
         %    [1] A. M. C. Rezende, V. M. Goncalves and L. C. A. Pimenta,
         %    "Constructive Time-Varying Vector Fields for Robot
         %    Navigation," in IEEE Transactions on Robotics, vol. 38, no. 2,
@@ -896,3 +1018,20 @@ classdef (InferiorClasses = {?matlab.graphics.axis.Axes}) Path2D
     end
     
 end%class
+
+
+function [x_,r] = sfgvfRoots(x, xCoefs)
+
+x_ = [];
+r = [];
+for i = 1:numel(x)
+    c = xCoefs;
+    c(end) = c(end) - x(i);
+    ri = realroots(c);
+    x_ = [x_; repmat(x(i), [numel(ri) 1])];
+    r = [r; ri];
+end
+[r,sIdx] = sort(r);
+x_ = x_(sIdx);
+
+end%fcn
